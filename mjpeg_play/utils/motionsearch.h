@@ -132,11 +132,10 @@ extern int (*pbsumsq) (uint8_t *pf, uint8_t *pb,
 extern int (*pbsad) (uint8_t *pf, uint8_t *pb,
 					 uint8_t *p2, int rowstride, int hxf, int hyf, int hxb, int hyb, int h);
 
-extern void (*psubsample_image) ( uint8_t *image, int rowstride, 
-					  uint8_t *sub22_image, 
-					  uint8_t *sub44_image);
-
 void init_motion_search(void);
 int round_search_radius( int radius );
+void subsample_image( uint8_t *image, int rowstride, 
+					  uint8_t *sub22_image, 
+					  uint8_t *sub44_image);
 
 #endif  /* __MOTIONSEARCH_H__ */

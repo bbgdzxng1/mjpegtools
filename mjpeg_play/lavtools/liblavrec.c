@@ -51,9 +51,7 @@
 #include <stdlib.h>
 
 #include <linux/videodev.h>
-#ifdef HAVE_SYS_SOUNDCARD_H
 #include <sys/soundcard.h>
-#endif
 
 #include <videodev_mjpeg.h>
 #include <pthread.h>

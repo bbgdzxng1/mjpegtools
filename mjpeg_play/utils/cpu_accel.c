@@ -25,10 +25,6 @@
 #include <setjmp.h>
 #include "cpu_accel.h"
 
-#ifdef HAVE_ALTIVEC
-extern int detect_altivec();
-#endif
-
 #ifdef HAVE_X86CPU 
 
 #include "mjpeg_types.h"
@@ -159,8 +155,6 @@ int cpu_accel (void)
     }
 
     return accel;
-#elif defined(HAVE_ALTIVEC)
-    return detect_altivec();
 #else
     return 0;
 #endif

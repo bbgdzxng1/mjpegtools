@@ -30,12 +30,8 @@
 /* For HAVEX86CPU: Define if the nasm assembler is available */
 #undef HAVE_ASM_NASM
 
-/* Define for a PowerPC CPU */
+/* Define for a PowerPPC CPU */
 #undef HAVE_PPCCPU
-
-/* For HAVE_PPCCPU: Define if the installed GCC tool-chain can generate
- * AltiVec instructions */
-#undef HAVE_ALTIVEC
 
 /* whether we're in linux or not (video4linux?) */
 #undef HAVE_V4L

@@ -69,12 +69,9 @@ int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant_mat);
 
 
-/* static */ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
+static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
 static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
 
-#ifdef HAVE_ALTIVEC
-extern void enable_altivec_quantization();
-#endif
 
 /*
   Initialise quantization routines.
@@ -125,10 +122,6 @@ void init_quantizer(void)
 	  pquant_weight_coeff_sum = quant_weight_coeff_sum;
 	  piquant_non_intra_m1 = iquant_non_intra_m1;
 	}
-#ifdef HAVE_ALTIVEC
-	if (cpu_accel())
-	    enable_altivec_quantization();
-#endif
 }
 
 /*
