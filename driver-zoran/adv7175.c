@@ -56,12 +56,7 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
-/* temp hack */
-#ifndef I2C_DRIVERID_ADV7175
-#warning Using temporary hack for missing I2C driver-ID for adv7175
-#define I2C_DRIVERID_ADV7175 48	/* same as in 2.5.x */
-#endif
-/* /temp hack */
+#include "zoran-i2c-compat.h"
 
 #include <linux/video_encoder.h>
 
@@ -105,7 +100,7 @@ adv7175_write (struct i2c_client *client,
 	       u8                 reg,
 	       u8                 value)
 {
-	struct adv7175 *encoder = client->data;
+	struct adv7175 *encoder = i2c_get_clientdata(client);
 	encoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -129,7 +124,7 @@ adv7175_write_block (struct i2c_client *client,
 	 * the adapter understands raw I2C */
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		/* do raw I2C, not smbus compatible */
-		struct adv7175 *encoder = client->data;
+		struct adv7175 *encoder = i2c_get_clientdata(client);
 		struct i2c_msg msg;
 		u8 block_data[32];
 		msg.addr = client->addr;
@@ -167,11 +162,11 @@ adv7175_write_block (struct i2c_client *client,
 static void
 dump (struct i2c_client *client)
 {
-	struct adv7175 *encoder = client->data;
+	struct adv7175 *encoder = i2c_get_clientdata(client);
 	int i, j;
-	printk(KERN_INFO "%s: registry dump\n", client->name);
+	printk(KERN_INFO "%s: registry dump\n", I2C_DEVNAME(client));
 	for (i = 0; i < 182 / 8; i++) {
-		printk("%s: 0x%02x -", client->name, i * 8);
+		printk("%s: 0x%02x -", I2C_DEVNAME(client), i * 8);
 		for (j = 0; j < 8; j++) {
 			printk(" 0x%02x", encoder->reg[i * 8 + j]);
 		}
@@ -244,7 +239,7 @@ adv7175_command (struct i2c_client *client,
 		 unsigned int       cmd,
 		 void              *arg)
 {
-	struct adv7175 *encoder = client->data;
+	struct adv7175 *encoder = i2c_get_clientdata(client);
 
 	switch (cmd) {
 
@@ -308,11 +303,11 @@ adv7175_command (struct i2c_client *client,
 			break;
 		default:
 			dprintk(1, KERN_ERR "%s: illegal norm: %d\n",
-				client->name, iarg);
+				I2C_DEVNAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_INFO "%s: switched to %s\n", client->name,
+		dprintk(1, KERN_INFO "%s: switched to %s\n", I2C_DEVNAME(client),
 			norms[iarg]);
 		encoder->norm = iarg;
 	}
@@ -359,11 +354,11 @@ adv7175_command (struct i2c_client *client,
 
 		default:
 			dprintk(1, KERN_ERR "%s: illegal input: %d\n",
-				client->name, iarg);
+				I2C_DEVNAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_INFO "%s: switched to %s\n", client->name,
+		dprintk(1, KERN_INFO "%s: switched to %s\n", I2C_DEVNAME(client),
 			inputs[iarg]);
 		encoder->input = iarg;
 	}
@@ -478,11 +473,10 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 		/* We should never get here!!! */
 		return 0;
 	}
-	snprintf(client->name, sizeof(client->name) - 1, "%s[%d]", dname,
-		 client->id);
+	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		"%s[%d]", dname, client->id);
 
-	client->data = encoder =
-	    kmalloc(sizeof(struct adv7175), GFP_KERNEL);
+	encoder = kmalloc(sizeof(struct adv7175), GFP_KERNEL);
 	if (encoder == NULL) {
 		return -ENOMEM;
 	}
@@ -490,6 +484,7 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 	encoder->norm = VIDEO_MODE_PAL;
 	encoder->input = 0;
 	encoder->enable = 1;
+	i2c_set_clientdata(client, encoder);
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -504,11 +499,11 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 		i = adv7175_write(client, 0x07, TR0MODE);
 		i = adv7175_read(client, 0x12);
 		dprintk(1, KERN_INFO "%s_attach: rev. %d at 0x%x\n",
-			client->name, i & 1, client->addr << 1);
+			I2C_DEVNAME(client), i & 1, client->addr << 1);
 	}
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init error 0x%x\n",
-			client->name, i);
+			I2C_DEVNAME(client), i);
 	}
 
 	return 0;
@@ -520,14 +515,14 @@ adv7175_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"adv7175.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
+		I2C_DEVNAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &adv7175_detect_client);
 }
 
 static int
 adv7175_detach_client (struct i2c_client *client)
 {
-	struct adv7175 *encoder = client->data;
+	struct adv7175 *encoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);

@@ -54,44 +54,7 @@
 #include "zoran_device.h"
 #include "zoran_procfs.h"
 
-/* temp hack */
-#ifndef I2C_DRIVERID_ADV7175
-#warning Using temporary hack for missing I2C driver-ID for adv7175
-#define I2C_DRIVERID_ADV7175 48	/* same as in 2.5.x */
-#endif
-#ifndef I2C_DRIVERID_SAA7114
-#warning Using temporary hack for missing I2C driver-ID for saa7114
-#define I2C_DRIVERID_SAA7114 I2C_DRIVERID_EXP1
-#endif
-#ifndef I2C_DRIVERID_ADV7170
-#warning Using temporary hack for missing I2C driver-ID for adv7170
-#define I2C_DRIVERID_ADV7170 I2C_DRIVERID_EXP2
-#endif
-#ifndef I2C_DRIVERID_VPX3220
-#warning Using temporary hack for missing I2C driver-ID for vpx3220
-#define I2C_DRIVERID_VPX3220 I2C_DRIVERID_VPX32XX
-#endif
-#ifndef I2C_HW_B_ZR36067
-#warning Using temporary hack for missing I2C adapter-ID for zr36067
-#define I2C_HW_B_ZR36067 0x20
-#endif
-#ifndef PCI_VENDOR_ID_IOMEGA
-#warning Using temporary hack for missing Iomega vendor-ID
-#define PCI_VENDOR_ID_IOMEGA 0x13ca
-#endif
-#ifndef PCI_DEVICE_ID_IOMEGA_BUZ
-#warning Using temporary hack for missing Iomega Buz device-ID
-#define PCI_DEVICE_ID_IOMEGA_BUZ 0x4231
-#endif
-#ifndef PCI_DEVICE_ID_MIRO_DC10PLUS
-#warning Using temporary hack for missing Miro DC10+ device-ID
-#define PCI_DEVICE_ID_MIRO_DC10PLUS 0x7efe
-#endif
-#ifndef PCI_DEVICE_ID_MIRO_DC30PLUS
-#warning Using temporary hack for missing Miro DC30+ device-ID
-#define PCI_DEVICE_ID_MIRO_DC30PLUS 0xd801
-#endif
-/* /temp hack */
+#include "zoran-i2c-compat.h"
 
 extern const struct zoran_format zoran_formats[];
 extern const int zoran_num_formats;
@@ -301,7 +264,7 @@ zr36016_write (struct videocodec *codec,
 static void
 dc10_init (struct zoran *zr)
 {
-	dprintk(3, KERN_DEBUG "%s: dc10_init()\n", zr->name);
+	dprintk(3, KERN_DEBUG "%s: dc10_init()\n", ZR_DEVNAME(zr));
 
 	/* Pixel clock selection */
 	GPIO(zr, 4, 0);
@@ -313,13 +276,13 @@ dc10_init (struct zoran *zr)
 static void
 dc10plus_init (struct zoran *zr)
 {
-	dprintk(3, KERN_DEBUG "%s: dc10plus_init()\n", zr->name);
+	dprintk(3, KERN_DEBUG "%s: dc10plus_init()\n", ZR_DEVNAME(zr));
 }
 
 static void
 buz_init (struct zoran *zr)
 {
-	dprintk(3, KERN_DEBUG "%s: buz_init()\n", zr->name);
+	dprintk(3, KERN_DEBUG "%s: buz_init()\n", ZR_DEVNAME(zr));
 
 	/* some stuff from Iomega */
 	pci_write_config_dword(zr->pci_dev, 0xfc, 0x90680f15);
@@ -330,7 +293,7 @@ buz_init (struct zoran *zr)
 static void
 lml33_init (struct zoran *zr)
 {
-	dprintk(3, KERN_DEBUG "%s: lml33_init()\n", zr->name);
+	dprintk(3, KERN_DEBUG "%s: lml33_init()\n", ZR_DEVNAME(zr));
 
 	GPIO(zr, 2, 1);		// Set Composite input/output
 }
@@ -695,12 +658,12 @@ zoran_i2c_setscl (void *data,
 static int
 zoran_i2c_client_register (struct i2c_client *client)
 {
-	struct zoran *zr = (struct zoran *) (client->adapter->data);
+	struct zoran *zr = (struct zoran *) i2c_get_adapdata(client->adapter);
 	int res = 0;
 
 	dprintk(2,
 		KERN_DEBUG "%s: i2c_client_register() - driver id = %d\n",
-		zr->name, client->driver->id);
+		ZR_DEVNAME(zr), client->driver->id);
 
 	down(&zr->resource_lock);
 
@@ -731,10 +694,10 @@ clientreg_unlock_and_return:
 static int
 zoran_i2c_client_unregister (struct i2c_client *client)
 {
-	struct zoran *zr = (struct zoran *) client->adapter->data;
+	struct zoran *zr = (struct zoran *) i2c_get_adapdata(client->adapter);
 	int res = 0;
 
-	dprintk(2, KERN_DEBUG "%s: i2c_client_unregister()\n", zr->name);
+	dprintk(2, KERN_DEBUG "%s: i2c_client_unregister()\n", ZR_DEVNAME(zr));
 
 	down(&zr->resource_lock);
 
@@ -748,7 +711,7 @@ zoran_i2c_client_unregister (struct i2c_client *client)
 		zr->encoder = NULL;
 	} else if (client == zr->decoder) {
 		zr->decoder = NULL;
-		snprintf(zr->name, sizeof(zr->name), "MJPEG[%d]", zr->id);
+		snprintf(ZR_DEVNAME(zr), sizeof(ZR_DEVNAME(zr)), "MJPEG[%d]", zr->id);
 	}
 clientunreg_unlock_and_return:
 	up(&zr->resource_lock);
@@ -766,7 +729,7 @@ static struct i2c_algo_bit_data zoran_i2c_bit_data_template = {
 };
 
 static struct i2c_adapter zoran_i2c_adapter_template = {
-	.name = "zr36057",
+	.I2C_TEMPL_DEVNAME("zr36057"),
 	.id = I2C_HW_B_ZR36067,
 	.algo = NULL,
 	.client_register = zoran_i2c_client_register,
@@ -781,8 +744,9 @@ zoran_register_i2c (struct zoran *zr)
 	zr->i2c_algo.data = zr;
 	memcpy(&zr->i2c_adapter, &zoran_i2c_adapter_template,
 	       sizeof(struct i2c_adapter));
-	strcpy(zr->i2c_adapter.name, zr->name);
-	zr->i2c_adapter.data = zr;
+	strncpy(I2C_DEVNAME(&zr->i2c_adapter), ZR_DEVNAME(zr),
+		sizeof(I2C_DEVNAME(&zr->i2c_adapter)) - 1);
+	i2c_set_adapdata(&zr->i2c_adapter, zr);
 	zr->i2c_adapter.algo_data = &zr->i2c_algo;
 	return i2c_bit_add_bus(&zr->i2c_adapter);
 }
@@ -803,12 +767,12 @@ zoran_check_jpg_settings (struct zoran              *zr,
 	dprintk(4,
 		KERN_DEBUG
 		"%s: check_jpg_settings() - dec: %d, Hdcm: %d, Vdcm: %d, Tdcm: %d\n",
-		zr->name, settings->decimation, settings->HorDcm,
+		ZR_DEVNAME(zr), settings->decimation, settings->HorDcm,
 		settings->VerDcm, settings->TmpDcm);
 	dprintk(4,
 		KERN_DEBUG
 		"%s: check_jpg_settings() - x: %d, y: %d, w: %d, y: %d\n",
-		zr->name, settings->img_x, settings->img_y,
+		ZR_DEVNAME(zr), settings->img_x, settings->img_y,
 		settings->img_width, settings->img_height);
 	/* Check decimation, set default values for decimation = 1, 2, 4 */
 	switch (settings->decimation) {
@@ -841,7 +805,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 			dprintk(1,
 				KERN_DEBUG
 				"%s: check_jpg_settings() - HDec by 4 is not supported on the DC10\n",
-				zr->name);
+				ZR_DEVNAME(zr));
 			err0++;
 			break;
 		}
@@ -896,7 +860,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 			dprintk(1,
 				KERN_ERR
 				"%s: check_jpg_settings() - error in params for decimation = 0\n",
-				zr->name);
+				ZR_DEVNAME(zr));
 			err++;
 		}
 		break;
@@ -904,7 +868,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 		dprintk(1,
 			KERN_ERR
 			"%s: check_jpg_settings() - decimation = %d, must be 0, 1, 2 or 4\n",
-			zr->name, settings->decimation);
+			ZR_DEVNAME(zr), settings->decimation);
 		err++;
 		break;
 	}
@@ -986,7 +950,7 @@ zoran_open_init_params (struct zoran *zr)
 		dprintk(1,
 			KERN_ERR
 			"%s: zoran_open_init_params() internal error\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 
 	clear_interrupt_counters(zr);
 	zr->testing = 0;
@@ -1006,7 +970,7 @@ test_interrupts (struct zoran *zr)
 	btwrite(0, ZR36057_ICR);
 	btwrite(0x78000000, ZR36057_ISR);
 	zr->testing = 0;
-	dprintk(5, KERN_INFO "%s: Testing interrupts...\n", zr->name);
+	dprintk(5, KERN_INFO "%s: Testing interrupts...\n", ZR_DEVNAME(zr));
 	if (timeout) {
 		dprintk(1, ": time spent: %d\n", 1 * HZ - timeout);
 	}
@@ -1027,7 +991,7 @@ zr36057_init (struct zoran *zr)
 	dprintk(1,
 		KERN_INFO
 		"%s: zr36057_init() - initializing card[%d], zr=%p\n",
-		zr->name, zr->id, zr);
+		ZR_DEVNAME(zr), zr->id, zr);
 
 	/* default setup of all parameters which will persist between opens */
 	zr->user = 0;
@@ -1053,7 +1017,7 @@ zr36057_init (struct zoran *zr)
 		dprintk(1,
 			KERN_WARNING
 			"%s: zr36057_init() - default TV standard not supported by hardware. PAL will be used.\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 		zr->norm = VIDEO_MODE_PAL;
 		zr->timing = zr->card.tvn[zr->norm];
 	}
@@ -1077,7 +1041,7 @@ zr36057_init (struct zoran *zr)
 		dprintk(1,
 			KERN_ERR
 			"%s: zr36057_init() - kmalloc (STAT_COM) failed\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 		return -ENOMEM;
 	}
 	memset((void *) mem, 0, mem_needed);
@@ -1090,7 +1054,7 @@ zr36057_init (struct zoran *zr)
 	 *   Now add the template and register the device unit.
 	 */
 	memcpy(&zr->video_dev, &zoran_template, sizeof(zoran_template));
-	strcpy(zr->video_dev.name, zr->name);
+	strcpy(zr->video_dev.name, ZR_DEVNAME(zr));
 	if (video_register_device
 	    (&zr->video_dev, VFL_TYPE_GRABBER, video_nr) < 0) {
 		zoran_unregister_i2c(zr);
@@ -1156,14 +1120,14 @@ zoran_setup_videocodec (struct zoran *zr,
 		dprintk(1,
 			KERN_ERR
 			"%s: zoran_setup_videocodec() - no memory\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 		return m;
 	}
 
 	m->magic = 0L; /* magic not used */
 	m->type = VID_HARDWARE_ZR36067;
 	m->flags = CODEC_FLAG_ENCODER | CODEC_FLAG_DECODER;
-	strncpy(m->name, zr->name, sizeof(m->name));
+	strncpy(m->name, ZR_DEVNAME(zr), sizeof(m->name));
 	m->data = zr;
 
 	switch (type)
@@ -1215,7 +1179,7 @@ find_zr36057 (void)
 		zr->pci_dev = dev;
 		//zr->zr36057_mem = NULL;
 		zr->id = zoran_num;
-		snprintf(zr->name, sizeof(zr->name), "MJPEG[%u]", zr->id);
+		snprintf(ZR_DEVNAME(zr), sizeof(ZR_DEVNAME(zr)), "MJPEG[%u]", zr->id);
 		spin_lock_init(&zr->spinlock);
 		init_MUTEX(&zr->resource_lock);
 		if (pci_enable_device(dev))
@@ -1227,14 +1191,14 @@ find_zr36057 (void)
 			dprintk(1,
 				KERN_INFO
 				"%s: Zoran ZR36057 (rev %d) irq: %d, memory: 0x%08x.\n",
-				zr->name, zr->revision, zr->pci_dev->irq,
+				ZR_DEVNAME(zr), zr->revision, zr->pci_dev->irq,
 				zr->zr36057_adr);
 
 			if (card_num == -1) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - no card specified, please use the card=X insmod option\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				continue;
 			}
 		} else {
@@ -1245,24 +1209,24 @@ find_zr36057 (void)
 			dprintk(1,
 				KERN_INFO
 				"%s: Zoran ZR36067 (rev %d) irq: %d, memory: 0x%08x\n",
-				zr->name, zr->revision, zr->pci_dev->irq,
+				ZR_DEVNAME(zr), zr->revision, zr->pci_dev->irq,
 				zr->zr36057_adr);
 			dprintk(1,
 				KERN_INFO
 				"%s: subsystem vendor=0x%04x id=0x%04x\n",
-				zr->name, ss_vendor, ss_device);
+				ZR_DEVNAME(zr), ss_vendor, ss_device);
 			if (card_num == -1) {
 				dprintk(3,
 					KERN_DEBUG
 					"%s: find_zr36057() - trying to autodetect card type\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				for (i=0;i<NUM_CARDS;i++) {
 					if (ss_vendor == zoran_cards[i].vendor_id &&
 					    ss_device == zoran_cards[i].device_id) {
 						dprintk(3,
 							KERN_DEBUG
 							"%s: find_zr36057() - card %s detected\n",
-							zr->name,
+							ZR_DEVNAME(zr),
 							zoran_cards[i].name);
 						card_num = i;
 						break;
@@ -1272,7 +1236,7 @@ find_zr36057 (void)
 					dprintk(1,
 						KERN_ERR
 						"%s: find_zr36057() - unknown card\n",
-						zr->name);
+						ZR_DEVNAME(zr));
 					continue;
 				}
 			}
@@ -1282,7 +1246,7 @@ find_zr36057 (void)
 			dprintk(2,
 				KERN_ERR
 				"%s: find_zr36057() - invalid cardnum %d\n",
-				zr->name, card_num);
+				ZR_DEVNAME(zr), card_num);
 			continue;
 		}
 
@@ -1292,7 +1256,7 @@ find_zr36057 (void)
 		 * strongly discouraged. This structure is intended to
 		 * keep general card information, no settings or anything */
 		zr->card = zoran_cards[card_num];
-		snprintf(zr->name, sizeof(zr->name),
+		snprintf(ZR_DEVNAME(zr), sizeof(ZR_DEVNAME(zr)),
 			 "%s[%u]", zr->card.name, zr->id);
 
 		zr->zr36057_mem = ioremap_nocache(zr->zr36057_adr, 0x1000);
@@ -1300,30 +1264,30 @@ find_zr36057 (void)
 			dprintk(1,
 				KERN_ERR
 				"%s: find_zr36057() - ioremap failed\n",
-				zr->name);
+				ZR_DEVNAME(zr));
 			continue;
 		}
 
 		result =
 		    request_irq(zr->pci_dev->irq, zoran_irq,
-				SA_SHIRQ | SA_INTERRUPT, zr->name,
+				SA_SHIRQ | SA_INTERRUPT, ZR_DEVNAME(zr),
 				(void *) zr);
 		if (result < 0) {
 			if (result == -EINVAL) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - bad irq number or handler\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 			} else if (result == -EBUSY) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - IRQ %d busy, change your PnP config in BIOS\n",
-					zr->name, zr->pci_dev->irq);
+					ZR_DEVNAME(zr), zr->pci_dev->irq);
 			} else {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - can't assign irq, error code %d\n",
-					zr->name, result);
+					ZR_DEVNAME(zr), result);
 			}
 			goto zr_unmap;
 		}
@@ -1336,7 +1300,7 @@ find_zr36057 (void)
 			dprintk(2,
 				KERN_INFO
 				"%s: Changing PCI latency from %d to %d.\n",
-				zr->name, latency, need_latency);
+				ZR_DEVNAME(zr), latency, need_latency);
 			pci_write_config_byte(zr->pci_dev,
 					      PCI_LATENCY_TIMER,
 					      need_latency);
@@ -1345,7 +1309,7 @@ find_zr36057 (void)
 		zr36057_restart(zr);
 		/* i2c */
 		dprintk(2, KERN_INFO "%s: Initializing i2c bus...\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 
 		/* i2c decoder */
 		if (decoder[zr->id] != -1) {
@@ -1363,7 +1327,7 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: failed to load module %s: %d\n",
-					zr->name, i2c_dec_name, result);
+					ZR_DEVNAME(zr), i2c_dec_name, result);
 			}
 		}
 
@@ -1383,7 +1347,7 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: failed to load module %s: %d\n",
-					zr->name, i2c_enc_name, result);
+					ZR_DEVNAME(zr), i2c_enc_name, result);
 			}
 		}
 
@@ -1391,13 +1355,13 @@ find_zr36057 (void)
 			dprintk(1,
 				KERN_ERR
 				"%s: find_zr36057() - can't initialize i2c bus\n",
-				zr->name);
+				ZR_DEVNAME(zr));
 			goto zr_free_irq;
 		}
 
 		dprintk(2,
 			KERN_INFO "%s: Initializing videocodec bus...\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 
 		if (zr->card.video_codec != 0 &&
 		    (codec_name =
@@ -1406,7 +1370,7 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: failed to load modules %s: %d\n",
-					zr->name, codec_name, result);
+					ZR_DEVNAME(zr), codec_name, result);
 			}
 		}
 		if (zr->card.video_vfe != 0 &&
@@ -1416,7 +1380,7 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: failed to load modules %s: %d\n",
-					zr->name, vfe_name, result);
+					ZR_DEVNAME(zr), vfe_name, result);
 			}
 		}
 
@@ -1435,14 +1399,14 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - no codec found\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				goto zr_free_codec;
 			}
 			if (zr->codec->type != zr->card.video_codec) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - wrong codec\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				goto zr_detach_codec;
 			}
 		}
@@ -1456,14 +1420,14 @@ find_zr36057 (void)
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - no VFE found\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				goto zr_free_vfe;
 			}
 			if (zr->vfe->type != zr->card.video_vfe) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() = wrong VFE\n",
-					zr->name);
+					ZR_DEVNAME(zr));
 				goto zr_detach_vfe;
 			}
 		}
@@ -1560,7 +1524,7 @@ init_dc10_cards (void)
 			dprintk(1,
 				KERN_INFO
 				"%s: ZR36057/Natoma bug, max. buffer size is 128K\n",
-				zr->name);
+				ZR_DEVNAME(zr));
 		}
 
 		if (zr36057_init(zr) < 0) {

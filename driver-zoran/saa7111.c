@@ -56,6 +56,8 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#include "zoran-i2c-compat.h"
+
 #include <linux/video_decoder.h>
 
 static int debug = 0;
@@ -91,7 +93,7 @@ saa7111_write (struct i2c_client *client,
 	       u8                 reg,
 	       u8                 value)
 {
-	struct saa7111 *decoder = client->data;
+	struct saa7111 *decoder = i2c_get_clientdata(client);
 	decoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -108,7 +110,7 @@ saa7111_write_block (struct i2c_client *client,
 	 * the adapter understands raw I2C */
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		/* do raw I2C, not smbus compatible */
-		struct saa7111 *decoder = client->data;
+		struct saa7111 *decoder = i2c_get_clientdata(client);
 		struct i2c_msg msg;
 		u8 block_data[32];
 		msg.addr = client->addr;
@@ -196,7 +198,7 @@ saa7111_command (struct i2c_client *client,
 		 unsigned int       cmd,
 		 void              *arg)
 {
-	struct saa7111 *decoder = client->data;
+	struct saa7111 *decoder = i2c_get_clientdata(client);
 
 	switch (cmd) {
 
@@ -211,7 +213,7 @@ saa7111_command (struct i2c_client *client,
 		for (i = 0; i < 32; i += 16) {
 			int j;
 
-			printk(KERN_DEBUG "%s: %03x", client->name, i);
+			printk(KERN_DEBUG "%s: %03x", I2C_DEVNAME(client), i);
 			for (j = 0; j < 16; ++j) {
 				printk(" %02x",
 				       saa7111_read(client, i + j));
@@ -242,7 +244,7 @@ saa7111_command (struct i2c_client *client,
 		int res;
 
 		status = saa7111_read(client, 0x1f);
-		dprintk(1, KERN_DEBUG "%s status: 0x%02x\n", client->name,
+		dprintk(1, KERN_DEBUG "%s status: 0x%02x\n", I2C_DEVNAME(client),
 			status);
 		res = 0;
 		if ((status & (1 << 6)) == 0) {
@@ -489,11 +491,10 @@ saa7111_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_saa7111;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = saa7111_i2c_id++;
-	snprintf(client->name, sizeof(client->name) - 1, "saa7111[%d]",
-		 client->id);
+	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		"saa7111[%d]", client->id);
 
-	client->data = decoder =
-	    kmalloc(sizeof(struct saa7111), GFP_KERNEL);
+	decoder = kmalloc(sizeof(struct saa7111), GFP_KERNEL);
 	if (decoder == NULL) {
 		kfree(client);
 		return -ENOMEM;
@@ -506,6 +507,7 @@ saa7111_detect_client (struct i2c_adapter *adapter,
 	decoder->contrast = 32768;
 	decoder->hue = 32768;
 	decoder->sat = 32768;
+	i2c_set_clientdata(client, decoder);
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -517,12 +519,12 @@ saa7111_detect_client (struct i2c_adapter *adapter,
 	i = saa7111_write_block(client, init, sizeof(init));
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach error: init status %d\n",
-			client->name, i);
+			I2C_DEVNAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version %x at address 0x%x\n",
-			client->name, saa7111_read(client, 0x00) >> 4,
+			I2C_DEVNAME(client), saa7111_read(client, 0x00) >> 4,
 			client->addr << 1);
 	}
 
@@ -535,14 +537,14 @@ saa7111_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"saa7111.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
+		I2C_DEVNAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &saa7111_detect_client);
 }
 
 static int
 saa7111_detach_client (struct i2c_client *client)
 {
-	struct saa7111 *decoder = client->data;
+	struct saa7111 *decoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);

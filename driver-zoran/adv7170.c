@@ -60,12 +60,7 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
-/* temp hack */
-#ifndef I2C_DRIVERID_ADV7170
-#warning Using temporary hack for missing I2C driver-ID for adv7170
-#define I2C_DRIVERID_ADV7170 I2C_DRIVERID_EXP2
-#endif
-/* /temp hack */
+#include "zoran-i2c-compat.h"
 
 #include <linux/video_encoder.h>
 
@@ -109,7 +104,7 @@ adv7170_write (struct i2c_client *client,
 	       u8                 reg,
 	       u8                 value)
 {
-	struct adv7170 *encoder = client->data;
+	struct adv7170 *encoder = i2c_get_clientdata(client);
 	encoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -133,7 +128,7 @@ adv7170_write_block (struct i2c_client *client,
 	 * the adapter understands raw I2C */
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		/* do raw I2C, not smbus compatible */
-		struct adv7170 *encoder = client->data;
+		struct adv7170 *encoder = i2c_get_clientdata(client);
 		struct i2c_msg msg;
 		u8 block_data[32];
 		msg.addr = client->addr;
@@ -246,7 +241,7 @@ adv7170_command (struct i2c_client *client,
 		 unsigned int       cmd,
 		 void *             arg)
 {
-	struct adv7170 *encoder = client->data;
+	struct adv7170 *encoder = i2c_get_clientdata(client);
 
 	switch (cmd) {
 
@@ -276,7 +271,7 @@ adv7170_command (struct i2c_client *client,
 		int iarg = *(int *) arg;
 
 		dprintk(1, KERN_DEBUG "%s_command: set norm %d",
-			client->name, iarg);
+			I2C_DEVNAME(client), iarg);
 
 		switch (iarg) {
 
@@ -300,11 +295,11 @@ adv7170_command (struct i2c_client *client,
 
 		default:
 			dprintk(1, KERN_ERR "%s: illegal norm: %d\n",
-			       client->name, iarg);
+			       I2C_DEVNAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_DEBUG "%s: switched to %s\n", client->name,
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_DEVNAME(client),
 			norms[iarg]);
 		encoder->norm = iarg;
 	}
@@ -319,7 +314,7 @@ adv7170_command (struct i2c_client *client,
 		 *iarg = 2: color bar */
 
 		dprintk(1, KERN_DEBUG "%s_command: set input from %s\n",
-			client->name,
+			I2C_DEVNAME(client),
 			iarg == 0 ? "decoder" : "ZR36060");
 
 		switch (iarg) {
@@ -344,11 +339,11 @@ adv7170_command (struct i2c_client *client,
 
 		default:
 			dprintk(1, KERN_ERR "%s: illegal input: %d\n",
-				client->name, iarg);
+				I2C_DEVNAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_DEBUG "%s: switched to %s\n", client->name,
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_DEVNAME(client),
 			inputs[iarg]);
 		encoder->input = iarg;
 	}
@@ -455,11 +450,10 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 		/* We should never get here!!! */
 		return 0;
 	}
-	snprintf(client->name, sizeof(client->name) - 1, "%s[%d]", dname,
-		 client->id);
+	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		"%s[%d]", dname, client->id);
 
-	client->data = encoder =
-	    kmalloc(sizeof(struct adv7170), GFP_KERNEL);
+	encoder = kmalloc(sizeof(struct adv7170), GFP_KERNEL);
 	if (encoder == NULL) {
 		return -ENOMEM;
 	}
@@ -467,6 +461,7 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 	encoder->norm = VIDEO_MODE_NTSC;
 	encoder->input = 0;
 	encoder->enable = 1;
+	i2c_set_clientdata(client, encoder);
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -481,11 +476,11 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 		i = adv7170_write(client, 0x07, TR0MODE);
 		i = adv7170_read(client, 0x12);
 		dprintk(1, KERN_INFO "%s_attach: rev. %d at 0x%02x\n",
-			client->name, i & 1, client->addr << 1);
+			I2C_DEVNAME(client), i & 1, client->addr << 1);
 	}
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init error 0x%x\n",
-		       client->name, i);
+		       I2C_DEVNAME(client), i);
 	}
 
 	return 0;
@@ -497,14 +492,14 @@ adv7170_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"adv7170.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
+		I2C_DEVNAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &adv7170_detect_client);
 }
 
 static int
 adv7170_detach_client (struct i2c_client *client)
 {
-	struct adv7170 *encoder = client->data;
+	struct adv7170 *encoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);

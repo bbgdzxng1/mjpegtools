@@ -35,6 +35,7 @@
 #include <linux/vmalloc.h>
 
 #include <linux/proc_fs.h>
+#include <linux/pci.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 #include <linux/videodev.h>
@@ -121,7 +122,7 @@ setparam (struct zoran *zr,
 			dprintk(4,
 				KERN_INFO
 				"%s: setparam: setting ZR36067 register 0x%03x: 0x%08x=>0x%08x %s=%d\n",
-				zr->name, zr67[i].reg, reg0, reg,
+				ZR_DEVNAME(zr), zr67[i].reg, reg0, reg,
 				zr67[i].name, val);
 			btwrite(reg, zr67[i].reg);
 			break;
@@ -211,13 +212,13 @@ zoran_write_proc (struct file   *file,
 		dprintk(1,
 			KERN_ERR
 			"%s: write_proc: can not allocate memory\n",
-			zr->name);
+			ZR_DEVNAME(zr));
 		return -ENOMEM;
 	}
 	memcpy(string, buffer, count);
 	string[count] = 0;
 	dprintk(4, KERN_INFO "%s: write_proc: name=%s count=%lu data=%x\n",
-		zr->name, file->f_dentry->d_name.name, count, (int) data);
+		ZR_DEVNAME(zr), file->f_dentry->d_name.name, count, (int) data);
 	ldelim = " \t\n";
 	tdelim = "=";
 	line = strpbrk(sp, ldelim);
@@ -253,10 +254,10 @@ zoran_proc_init (struct zoran *zr)
 		dprintk(2,
 			KERN_INFO
 			"%s: procfs entry /proc/%s allocated. data=%p\n",
-			zr->name, name, zr->zoran_proc->data);
+			ZR_DEVNAME(zr), name, zr->zoran_proc->data);
 	} else {
 		dprintk(1, KERN_ERR "%s: Unable to initialise /proc/%s\n",
-			zr->name, name);
+			ZR_DEVNAME(zr), name);
 		return 1;
 	}
 #endif

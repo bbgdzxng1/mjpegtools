@@ -56,6 +56,8 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#include "zoran-i2c-compat.h"
+
 #include <linux/video_encoder.h>
 
 static int debug = 0;
@@ -96,7 +98,7 @@ saa7185_write (struct i2c_client *client,
 	       u8                 reg,
 	       u8                 value)
 {
-	struct saa7185 *encoder = client->data;
+	struct saa7185 *encoder = i2c_get_clientdata(client);
 	dprintk(1, KERN_DEBUG "SAA7185: %02x set to %02x\n", reg, value);
 	encoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
@@ -114,7 +116,7 @@ saa7185_write_block (struct i2c_client *client,
 	 * the adapter understands raw I2C */
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		/* do raw I2C, not smbus compatible */
-		struct saa7185 *encoder = client->data;
+		struct saa7185 *encoder = i2c_get_clientdata(client);
 		struct i2c_msg msg;
 		u8 block_data[32];
 		msg.addr = client->addr;
@@ -252,7 +254,7 @@ saa7185_command (struct i2c_client *client,
 		 unsigned int       cmd,
 		 void              *arg)
 {
-	struct saa7185 *encoder = client->data;
+	struct saa7185 *encoder = i2c_get_clientdata(client);
 
 	switch (cmd) {
 
@@ -433,17 +435,17 @@ saa7185_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_saa7185;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = saa7185_i2c_id++;
-	snprintf(client->name, sizeof(client->name) - 1, "saa7185[%d]",
-		 client->id);
+	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		"saa7185[%d]", client->id);
 
-	client->data = encoder =
-	    kmalloc(sizeof(struct saa7185), GFP_KERNEL);
+	encoder = kmalloc(sizeof(struct saa7185), GFP_KERNEL);
 	if (encoder == NULL) {
 		return -ENOMEM;
 	}
 	memset(encoder, 0, sizeof(struct saa7185));
 	encoder->norm = VIDEO_MODE_NTSC;
 	encoder->enable = 1;
+	i2c_set_clientdata(client, encoder);
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -459,12 +461,12 @@ saa7185_detect_client (struct i2c_adapter *adapter,
 	}
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init error %d\n",
-			client->name, i);
+			I2C_DEVNAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version %d at address 0x%x\n",
-			client->name, saa7185_read(client) >> 5,
+			I2C_DEVNAME(client), saa7185_read(client) >> 5,
 			client->addr << 1);
 	}
 
@@ -477,14 +479,14 @@ saa7185_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"saa7185.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
+		I2C_DEVNAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &saa7185_detect_client);
 }
 
 static int
 saa7185_detach_client (struct i2c_client *client)
 {
-	struct saa7185 *encoder = client->data;
+	struct saa7185 *encoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);

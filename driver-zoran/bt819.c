@@ -60,6 +60,8 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#include "zoran-i2c-compat.h"
+
 #include <linux/video_decoder.h>
 
 static int debug = 0;
@@ -111,7 +113,7 @@ bt819_write (struct i2c_client *client,
 	     u8                 reg,
 	     u8                 value)
 {
-	struct bt819 *decoder = client->data;
+	struct bt819 *decoder = i2c_get_clientdata(client);
 	decoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -122,7 +124,7 @@ bt819_setbit (struct i2c_client *client,
 	      u8                 bit,
 	      u8                 value)
 {
-	struct bt819 *decoder = client->data;
+	struct bt819 *decoder = i2c_get_clientdata(client);
 	return bt819_write(client, reg,
 			   (decoder->
 			    reg[reg] & ~(1 << bit)) |
@@ -141,7 +143,7 @@ bt819_write_block (struct i2c_client *client,
 	 * the adapter understands raw I2C */
 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		/* do raw I2C, not smbus compatible */
-		struct bt819 *decoder = client->data;
+		struct bt819 *decoder = i2c_get_clientdata(client);
 		struct i2c_msg msg;
 		u8 block_data[32];
 		msg.addr = client->addr;
@@ -184,7 +186,7 @@ bt819_read (struct i2c_client *client,
 static int
 bt819_init (struct i2c_client *client)
 {
-	struct bt819 *decoder = client->data;
+	struct bt819 *decoder = i2c_get_clientdata(client);
 
 	static unsigned char init[] = {
 		//0x1f, 0x00,     /* Reset */
@@ -254,7 +256,7 @@ bt819_command (struct i2c_client *client,
 {
 	int temp;
 
-	struct bt819 *decoder = client->data;
+	struct bt819 *decoder = i2c_get_clientdata(client);
 
 	if (!decoder->initialized) {	// First call to bt819_init could be
 		bt819_init(client);	// without #FRST = 0
@@ -311,7 +313,7 @@ bt819_command (struct i2c_client *client,
 		res |= DECODER_STATUS_COLOR;
 		*iarg = res;
 
-		dprintk(1, KERN_INFO "%s: get status %x\n", client->name,
+		dprintk(1, KERN_INFO "%s: get status %x\n", I2C_DEVNAME(client),
 			*iarg);
 	}
 		break;
@@ -321,7 +323,7 @@ bt819_command (struct i2c_client *client,
 		int *iarg = arg;
 		struct timing *timing = NULL;
 
-		dprintk(1, KERN_INFO "%s: set norm %x\n", client->name,
+		dprintk(1, KERN_INFO "%s: set norm %x\n", I2C_DEVNAME(client),
 			*iarg);
 
 		switch (*iarg) {
@@ -351,7 +353,7 @@ bt819_command (struct i2c_client *client,
 			dprintk(1,
 				KERN_ERR
 				"%s: unsupported norm %d\n",
-				client->name, *iarg);
+				I2C_DEVNAME(client), *iarg);
 			return -EINVAL;
 		}
 
@@ -377,7 +379,7 @@ bt819_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set input %x\n", client->name,
+		dprintk(1, KERN_INFO "%s: set input %x\n", I2C_DEVNAME(client),
 			*iarg);
 
 		if (*iarg < 0 || *iarg > 7) {
@@ -402,7 +404,7 @@ bt819_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set output %x\n", client->name,
+		dprintk(1, KERN_INFO "%s: set output %x\n", I2C_DEVNAME(client),
 			*iarg);
 
 		/* not much choice of outputs */
@@ -418,7 +420,7 @@ bt819_command (struct i2c_client *client,
 		int enable = (*iarg != 0);
 
 		dprintk(1, KERN_INFO "%s: enable output %x\n",
-			client->name, *iarg);
+			I2C_DEVNAME(client), *iarg);
 
 		if (decoder->enable != enable) {
 			decoder->enable = enable;
@@ -439,7 +441,7 @@ bt819_command (struct i2c_client *client,
 		dprintk(1,
 			KERN_INFO
 			"%s: set picture brightness %d contrast %d colour %d\n",
-			client->name, pic->brightness, pic->contrast,
+			I2C_DEVNAME(client), pic->brightness, pic->contrast,
 			pic->colour);
 
 
@@ -552,7 +554,7 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = bt819_i2c_id++;
 
-	client->data = decoder = kmalloc(sizeof(struct bt819), GFP_KERNEL);
+	decoder = kmalloc(sizeof(struct bt819), GFP_KERNEL);
 	if (decoder == NULL) {
 		kfree(client);
 		return -ENOMEM;
@@ -567,19 +569,20 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	decoder->hue = 32768;
 	decoder->sat = 32768;
 	decoder->initialized = 0;
+	i2c_set_clientdata(client, decoder);
 
 	id = bt819_read(client, 0x17);
 	switch (id & 0xf0) {
 	case 0x70:
-	        snprintf(client->name, sizeof(client->name) - 1,
+	        snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
 			 "bt819a[%d]", client->id);
 		break;
 	case 0x60:
-		snprintf(client->name, sizeof(client->name) - 1,
+		snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
 			 "bt817a[%d]", client->id);
 		break;
 	case 0x20:
-		snprintf(client->name, sizeof(client->name) - 1,
+		snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
 			 "bt815a[%d]", client->id);
 		break;
 	default:
@@ -602,12 +605,12 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	i = bt819_init(client);
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init status %d\n",
-			client->name, i);
+			I2C_DEVNAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version 0x%x at address 0x%x\n",
-			client->name, id & 0x0f,
+			I2C_DEVNAME(client), id & 0x0f,
 			client->addr << 1);
 	}
 
@@ -623,7 +626,7 @@ bt819_attach_adapter (struct i2c_adapter *adapter)
 static int
 bt819_detach_client (struct i2c_client *client)
 {
-	struct bt819 *decoder = client->data;
+	struct bt819 *decoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);

@@ -60,6 +60,8 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#include "zoran-i2c-compat.h"
+
 #include <linux/video_encoder.h>
 
 static int debug = 0;
@@ -96,7 +98,7 @@ bt856_write (struct i2c_client *client,
 	     u8                 reg,
 	     u8                 value)
 {
-	struct bt856 *encoder = client->data;
+	struct bt856 *encoder = i2c_get_clientdata(client);
 	encoder->reg[reg - REG_OFFSET] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -107,7 +109,7 @@ bt856_setbit (struct i2c_client *client,
 	      u8                 bit,
 	      u8                 value)
 {
-	struct bt856 *encoder = client->data;
+	struct bt856 *encoder = i2c_get_clientdata(client);
 	return bt856_write(client, reg,
 			   (encoder->
 			    reg[reg - REG_OFFSET] & ~(1 << bit)) |
@@ -118,8 +120,8 @@ static void
 bt856_dump (struct i2c_client *client)
 {
 	int i;
-	struct bt856 *encoder = client->data;
-	printk(KERN_INFO "%s: register dump:", client->name);
+	struct bt856 *encoder = i2c_get_clientdata(client);
+	printk(KERN_INFO "%s: register dump:", I2C_DEVNAME(client));
 	for (i = 0xd6; i <= 0xde; i += 2)
 		printk(" %02x", encoder->reg[i - REG_OFFSET]);
 	printk("\n");
@@ -132,7 +134,7 @@ bt856_command (struct i2c_client *client,
 	       unsigned int       cmd,
 	       void              *arg)
 {
-	struct bt856 *encoder = client->data;
+	struct bt856 *encoder = i2c_get_clientdata(client);
 
 	switch (cmd) {
 
@@ -170,7 +172,7 @@ bt856_command (struct i2c_client *client,
 		struct video_encoder_capability *cap = arg;
 
 		dprintk(1, KERN_INFO "%s: get capabilities\n",
-			client->name);
+			I2C_DEVNAME(client));
 
 		cap->flags = VIDEO_ENCODER_PAL |
 			     VIDEO_ENCODER_NTSC |
@@ -184,7 +186,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set norm %d\n", client->name,
+		dprintk(1, KERN_INFO "%s: set norm %d\n", I2C_DEVNAME(client),
 			*iarg);
 
 		switch (*iarg) {
@@ -213,7 +215,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set input %d\n", client->name,
+		dprintk(1, KERN_INFO "%s: set input %d\n", I2C_DEVNAME(client),
 			*iarg);
 
 		/* We only have video bus.
@@ -252,7 +254,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set output %d\n", client->name,
+		dprintk(1, KERN_INFO "%s: set output %d\n", I2C_DEVNAME(client),
 			*iarg);
 
 		/* not much choice of outputs */
@@ -269,7 +271,7 @@ bt856_command (struct i2c_client *client,
 		encoder->enable = !!*iarg;
 
 		dprintk(1, KERN_INFO "%s: enable output %d\n",
-			client->name, encoder->enable);
+			I2C_DEVNAME(client), encoder->enable);
 	}
 		break;
 
@@ -340,17 +342,17 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_bt856;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = bt856_i2c_id++;
-	snprintf(client->name, sizeof(client->name) - 1, "bt856[%d]",
-		 client->id);
+	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		"bt856[%d]", client->id);
 
-	client->data = encoder = kmalloc(sizeof(struct bt856), GFP_KERNEL);
-
+	encoder = kmalloc(sizeof(struct bt856), GFP_KERNEL);
 	if (encoder == NULL) {
 		return -ENOMEM;
 	}
 	memset(encoder, 0, sizeof(struct bt856));
 	encoder->norm = VIDEO_MODE_NTSC;
 	encoder->enable = 1;
+	i2c_set_clientdata(client, encoder);
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -385,7 +387,7 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	if (debug != 0)
 		bt856_dump(client);
 
-	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", client->name,
+	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", I2C_DEVNAME(client),
 		client->addr << 1);
 
 	return 0;
@@ -397,14 +399,14 @@ bt856_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"bt856.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
+		I2C_DEVNAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &bt856_detect_client);
 }
 
 static int
 bt856_detach_client (struct i2c_client *client)
 {
-	struct bt856 *encoder = client->data;
+	struct bt856 *encoder = i2c_get_clientdata(client);
 	int err;
 
 	err = i2c_detach_client(client);
