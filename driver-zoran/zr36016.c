@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36016.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
+   $Id: zr36016.c,v 1.1.2.3 2002-12-26 22:19:32 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -56,14 +56,14 @@
 #define MAX_CODECS 20
 
 /* amount of chips attached via this driver */
-static int __init zr36016_codecs = 0;
+static int zr36016_codecs = 0;
 
 /* this are the API (de-)initializers */
 EXPORT_NO_SYMBOLS;
 
 /* debugging is available via module parameter */
 
-int __init debug = 0;
+static int debug = 0;
 
 #define DEBUG1(x...) if (debug>=1) printk(KERN_DEBUG x);
 #define DEBUG2(x...) if (debug>=2) printk(KERN_DEBUG x);
@@ -399,7 +399,7 @@ int zr36016_setup(struct videocodec *codec)
         }
         memset(ptr,0,sizeof(struct zr36016));
 
-        sprintf(ptr->name,"zr36016[%d]",zr36016_codecs);
+        snprintf(ptr->name, sizeof(ptr->name), "zr36016[%d]", zr36016_codecs);
         ptr->num=zr36016_codecs++;
         ptr->codec=codec;
 
@@ -424,19 +424,19 @@ int zr36016_setup(struct videocodec *codec)
 }
 
 static const struct videocodec zr36016_codec = {
-	"zr36016",
-        0L,         // magic not used
-        CODEC_FLAG_HARDWARE | CODEC_FLAG_VFE |
-        CODEC_FLAG_ENCODER | CODEC_FLAG_DECODER,
-        CODEC_TYPE_ZR36016,
-        NULL,       // master data comes later
-        NULL,       // slave private data is filled in later
-        zr36016_setup,       // functionality
-        zr36016_unset,
-        zr36016_set_mode,
-        zr36016_set_video,
-        zr36016_control,
-                             // others are not used
+	.name		= "zr36016",
+	.magic		= 0L,         // magic not used
+	.flags		= CODEC_FLAG_HARDWARE |
+			  CODEC_FLAG_VFE |
+			  CODEC_FLAG_ENCODER |
+			  CODEC_FLAG_DECODER,
+	.type		= CODEC_TYPE_ZR36016,
+	.setup		= zr36016_setup,       // functionality
+	.unset		= zr36016_unset,
+	.set_mode	= zr36016_set_mode,
+	.set_video	= zr36016_set_video,
+	.control	= zr36016_control,
+	// others are not used
 };
 
 
@@ -444,7 +444,7 @@ static const struct videocodec zr36016_codec = {
    HOOK IN DRIVER AS KERNEL MODULE
    ========================================================================= */
 
-int __init zr36016_init_module(void)
+static int __init zr36016_init_module(void)
 {     
         //printk("ZR36016 driver %s\n",ZR016_VERSION);
         zr36016_codecs=0;
@@ -453,7 +453,7 @@ int __init zr36016_init_module(void)
         return 0;
 }
 
-void __init zr36016_cleanup_module(void)
+static void __init zr36016_cleanup_module(void)
 {
         if (zr36016_codecs) {
                 printk("zr36016: something's wrong - %d codecs left somehow.\n",
@@ -463,7 +463,6 @@ void __init zr36016_cleanup_module(void)
         }
 }
 
-#ifdef MODULE
 module_init(zr36016_init_module);
 module_exit(zr36016_cleanup_module);
 
@@ -472,8 +471,4 @@ MODULE_PARM_DESC(debug, "debug level");
 
 MODULE_AUTHOR("Wolfgang Scherr <scherr@net4you.at>");
 MODULE_DESCRIPTION("Driver module for ZR36016 video frontends " ZR016_VERSION);
-#if LINUX_VERSION_CODE < 0x20407
 MODULE_LICENSE("GPL");
-#endif
-
-#endif

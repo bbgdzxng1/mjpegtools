@@ -30,19 +30,7 @@
 #ifndef _BUZ_H_
 #define _BUZ_H_
 
-/* The Buz only supports a maximum width of 720, but some V4L
-   applications (e.g. xawtv are more happy with 768).
-   If XAWTV_HACK is defined, we try to fake a device with bigger width */
-
-//#define XAWTV_HACK
-
-//#ifdef XAWTV_HACK
-//#define   BUZ_MAX_WIDTH   768   /* never display more than 768 pixels */
 #define   BUZ_MAX_WIDTH   (zr->timing->Wa)
-//#else
-//#define   BUZ_MAX_WIDTH   720   /* never display more than 720 pixels */
-//#endif
-//#define   BUZ_MAX_HEIGHT  576   /* never display more than 576 rows */
 #define   BUZ_MAX_HEIGHT  (zr->timing->Ha)
 #define   BUZ_MIN_WIDTH    32	/* never display less than 32 pixels */
 #define   BUZ_MIN_HEIGHT   24	/* never display less than 24 rows */
@@ -309,9 +297,9 @@ struct zoran_jpg_struct {
 	enum zoran_lock_activity 	active; 		/* feature currently in use? */
 	struct zoran_jpg_buffer 	buffer[BUZ_MAX_FRAME]; 	/* buffers */
 	int 				num_buffers, buffer_size;
-	int 				allocated;		/* Flag if buffers are allocated  */
-	int				secretly_allocated;	/* Temporary hack as long as kfree() within munmap() oopses */
-	int 				need_contiguous; 	/* Flag if contiguous buffers are needed */
+	u8 				allocated;		/* Flag if buffers are allocated  */
+	u8				secretly_allocated;	/* Temporary hack as long as kfree() within munmap() oopses */
+	u8 				need_contiguous; 	/* Flag if contiguous buffers are needed */
 };
 
 struct zoran_v4l_struct {
@@ -368,22 +356,24 @@ struct card_info {
 };
 
 struct zoran {
-	struct video_device     video_dev;
+	struct video_device	video_dev;
 
-	struct i2c_adapter      i2c_adapter;	/* */
+	struct i2c_adapter	i2c_adapter;	/* */
 	struct i2c_algo_bit_data i2c_algo;	/* */
 	u32			i2cbr;
 
 	struct i2c_client	*decoder;	/* video decoder i2c client */
 	struct i2c_client	*encoder;	/* video encoder i2c client */
 
-	struct videocodec       *codec;		/* video codec */
-	struct videocodec       *vfe;		/* video front end */
+	struct videocodec	*codec;		/* video codec */
+	struct videocodec	*vfe;		/* video front end */
 
-	int                     initialized;	/* flag if zoran has been correctly initalized */
-	int                     user;		/* number of current users */
+	struct semaphore	resource_lock;	/* prevent evil stuff */
+
+	u8			initialized;	/* flag if zoran has been correctly initalized */
+	int			user;		/* number of current users */
         struct card_info	*card;
-        struct tvnorm           *timing;
+        struct tvnorm		*timing;
 
 	unsigned short          id;		/* number of this device */
 	char                    name[32];	/* name of this device */
@@ -491,23 +481,5 @@ struct zoran {
 #define btand(dat,adr)      btwrite((dat) & btread(adr), adr)
 #define btor(dat,adr)       btwrite((dat) | btread(adr), adr)
 #define btaor(dat,mask,adr) btwrite((dat) | ((mask) & btread(adr)), adr)
-
-#define I2C_TSA5522        0xc2
-#define I2C_TDA9850        0xb6
-#define I2C_HAUPEE         0xa0
-#define I2C_STBEE          0xae
-#define   I2C_SAA7111        0x48
-#define   I2C_SAA7110        0x9c
-#define   I2C_SAA7185        0x88
-//#define   I2C_ADV7175        0xd4
-#define   I2C_ADV7175        0x54
-
-#define TDA9850_CON1       0x04
-#define TDA9850_CON2       0x05
-#define TDA9850_CON3       0x06
-#define TDA9850_CON4       0x07
-#define TDA9850_ALI1       0x08
-#define TDA9850_ALI2       0x09
-#define TDA9850_ALI3       0x0a
 
 #endif

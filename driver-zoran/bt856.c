@@ -365,8 +365,6 @@ bt856_detect_client (struct i2c_adapter *adapter,
    printk(KERN_INFO "%s_attach: at address 0x%x\n",
       client->name, client->addr<<1);
 
-   bt856_inc_use(client);
-
    return 0;
 }
 
@@ -389,7 +387,6 @@ bt856_detach_client(struct i2c_client *client)
       return err;
    }
 
-   bt856_dec_use(client);
    kfree(encoder);
    kfree(client);
    return 0;
@@ -406,6 +403,8 @@ struct i2c_driver i2c_driver_bt856 = {
    attach_adapter:	bt856_attach_adapter,
    detach_client:	bt856_detach_client,
    command:		bt856_command,
+   inc_use:		bt856_inc_use,
+   dec_use:		bt856_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;

@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.8 2002-11-13 12:54:32 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.9 2002-12-26 22:19:32 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -53,14 +53,15 @@
 #define MAX_CODECS 20
 
 /* amount of chips attached via this driver */
-static int __init zr36060_codecs = 0;
+static int zr36060_codecs = 0;
 
 /* this are the API (de-)initializers */
 EXPORT_NO_SYMBOLS;
 
 /* debugging is available via module parameter */
 
-int __init debug = 0;
+static int debug = 0;
+static int low_bitrate = 0;
 
 #define DEBUG1(x...) if (debug>=1) printk(KERN_DEBUG x);
 #define DEBUG2(x...) if (debug>=2) printk(KERN_DEBUG x);
@@ -708,12 +709,12 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
         blocks = size / 64;
 	/* Target compressed field size in bits: */
 	size = size * 16;	/* uncompressed size in bits */
-	/* (Ronald) quality = 100 is a compression ratio 1:4 -
-	 * using 1:4 (instead of 1:2, zr36060 max) as limit because the
-	 * buz can't handle more at decimation=1... s/400/200/
-	 * for maximum quality (note: don't change it unless you
-	 * know what you're doing!) */
-	size = size * cap->quality / 400;
+	/* (Ronald) by default, quality = 100 is a compression
+	 * ratio 1:2. Setting low_bitrate (insmod option) sets
+	 * it to 1:4 (instead of 1:2, zr36060 max) as limit because the
+	 * buz can't handle more at decimation=1... Use low_bitrate if
+	 * you have a Buz, unless you know what you're doing */
+	size = size * cap->quality / (low_bitrate?200:400);
 	/* Lower limit (arbitrary, 1 KB) */
 	if (size < 8192)
 		size = 8192;
@@ -862,7 +863,7 @@ int zr36060_setup(struct videocodec *codec)
         }
         memset(ptr,0,sizeof(struct zr36060));
 
-        sprintf(ptr->name,"zr36060[%d]",zr36060_codecs);
+        snprintf(ptr->name, sizeof(ptr->name), "zr36060[%d]", zr36060_codecs);
         ptr->num=zr36060_codecs++;
         ptr->codec=codec;
 
@@ -897,20 +898,20 @@ int zr36060_setup(struct videocodec *codec)
 }
 
 static const struct videocodec zr36060_codec = {
-	"zr36060",
-        0L,         // magic not used
-        CODEC_FLAG_JPEG | CODEC_FLAG_HARDWARE |
-        CODEC_FLAG_ENCODER | CODEC_FLAG_DECODER |
-	CODEC_FLAG_VFE,
-        CODEC_TYPE_ZR36060,
-        NULL,       // master data comes later
-        NULL,       // slave private data is filled in later
-        zr36060_setup,       // functionality
-        zr36060_unset,
-        zr36060_set_mode,
-        zr36060_set_video,
-        zr36060_control,
-                             // others are not used
+	.name		= "zr36060",
+	.magic		= 0L,         // magic not used
+	.flags		= CODEC_FLAG_JPEG |
+			  CODEC_FLAG_HARDWARE |
+			  CODEC_FLAG_ENCODER |
+			  CODEC_FLAG_DECODER |
+			  CODEC_FLAG_VFE,
+	.type		= CODEC_TYPE_ZR36060,
+	.setup		= zr36060_setup,       // functionality
+	.unset		= zr36060_unset,
+	.set_mode	= zr36060_set_mode,
+	.set_video	= zr36060_set_video,
+	.control	= zr36060_control,
+	// others are not used
 };
 
 
@@ -918,7 +919,7 @@ static const struct videocodec zr36060_codec = {
    HOOK IN DRIVER AS KERNEL MODULE
    ========================================================================= */
 
-int __init zr36060_init_module(void)
+static int __init zr36060_init_module(void)
 {     
         //printk("zr36060 driver %s\n",ZR060_VERSION);
         zr36060_codecs=0;
@@ -927,7 +928,7 @@ int __init zr36060_init_module(void)
         return 0;
 }
 
-void __init zr36060_cleanup_module(void)
+static void __init zr36060_cleanup_module(void)
 {
         if (zr36060_codecs) {
                 printk("zr36060: something's wrong - %d codecs left somehow.\n",
@@ -937,14 +938,14 @@ void __init zr36060_cleanup_module(void)
         }
 }
 
-#ifdef MODULE
 module_init(zr36060_init_module);
 module_exit(zr36060_cleanup_module);
 
 MODULE_PARM(debug, "i");
 MODULE_PARM_DESC(debug, "debug level");
+MODULE_PARM(low_bitrate, "i");
+MODULE_PARM_DESC(low_bitrate, "Buz compatibility option, halves bitrate");
 
 MODULE_AUTHOR("Laurent Pinchart <laurent.pinchart@skynet.be>");
 MODULE_DESCRIPTION("Driver module for ZR36060 jpeg processors " ZR060_VERSION);
 MODULE_LICENSE("GPL");
-#endif

@@ -6,7 +6,7 @@
    
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
   
-   $Id: videocodec.c,v 1.1.2.3 2002-11-13 12:54:31 rbultje Exp $
+   $Id: videocodec.c,v 1.1.2.4 2002-12-26 22:19:32 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -46,13 +46,6 @@
 #include <asm/uaccess.h>
 #endif
 
-//#include <sys/errno.h>
-
-#if CONFIG_MODVERSIONS==1
-#define MODVERSIONS
-#include <linux/modversions.h>
-#endif
-
 #include <linux/version.h>
 #ifndef KERNEL_VERSION
 #define KERNEL_VERSION(a,b,c) ((a)*65536+(b)*256+(c))
@@ -60,7 +53,7 @@
 
 #include "videocodec.h"
 
-int __init debug = 0;
+static int debug = 0;
 
 #define DEBUG1(x...) if (debug>=1) printk(KERN_DEBUG x);
 #define DEBUG2(x...) if (debug>=2) printk(KERN_DEBUG x);
@@ -78,7 +71,7 @@ struct codec_list {
         struct codec_list *next;
 };
 
-static struct codec_list __init *codeclist_top = NULL;
+static struct codec_list *codeclist_top = NULL;
 
 
 /* ================================================= */
@@ -118,7 +111,8 @@ struct videocodec *videocodec_attach(struct videocodec_master *master)
                         }
                         memcpy(codec,h->codec,sizeof(struct videocodec));
         
-                        sprintf(codec->name,"%s[%d]",codec->name,h->attached);
+                        snprintf(codec->name,sizeof(codec->name), "%s[%d]",
+				codec->name,h->attached);
                         codec->master_data = master;
                         res = codec->setup(codec);
                         if (res==0) {
@@ -301,8 +295,8 @@ int videocodec_unregister(const struct videocodec *codec)
 /* procfs stuff */
 /* ============ */
 
-static char __init *videocodec_buf = NULL;
-static int __init videocodec_bufsize = 0;
+static char *videocodec_buf = NULL;
+static int videocodec_bufsize = 0;
 
 static int videocodec_build_table(void)
 {
@@ -314,7 +308,7 @@ static int videocodec_build_table(void)
         while (h) {
                 i += h->attached + 1; h = h->next;
         }
-        #define LINESIZE 100
+#define LINESIZE 100
         size = LINESIZE*(i+1);
 
         DEBUG2("videocodec_build table: %d entries, %d bytes\n",i,size);
@@ -323,22 +317,22 @@ static int videocodec_build_table(void)
         videocodec_buf = (char *)kmalloc(size, GFP_KERNEL);
 
         i=0;
-        i += sprintf(videocodec_buf+i,
+        i += snprintf(videocodec_buf+i, size-1,
              "<S>lave or attached <M>aster name  type flags    magic    ");
-        i += sprintf(videocodec_buf+i,
+        i += snprintf(videocodec_buf+i, size-1,
              "(connected as)\n");
         
         h = codeclist_top;
         while (h) {
                 if (i>(size-LINESIZE)) break;  // security check
-                i += sprintf(videocodec_buf+i,
+                i += snprintf(videocodec_buf+i, size,
                        "S %32s %04x %08lx %08lx (TEMPLATE)\n",
                        h->codec->name, h->codec->type,
                        h->codec->flags, h->codec->magic);
                 a = h->list;
                 while (a) {
                         if (i>(size-LINESIZE)) break;  // security check
-                        i += sprintf(videocodec_buf+i,
+                        i += snprintf(videocodec_buf+i, size,
                                        "M %32s %04x %08lx %08lx (%s)\n",
                                        a->codec->master_data->name,
                                        a->codec->master_data->type,
@@ -398,7 +392,7 @@ static int videocodec_info(char *buffer,char **buffer_location,
 /* ===================== */
 /* hook in driver module */
 /* ===================== */
-int __init videocodec_init(void)
+static int __init videocodec_init(void)
 {
 #ifdef CONFIG_PROC_FS
         static struct proc_dir_entry *videocodec_proc_entry;
@@ -423,7 +417,7 @@ int __init videocodec_init(void)
         return 0;
 }
 
-void __init videocodec_exit(void)
+static void __init videocodec_exit(void)
 {
 #ifdef CONFIG_PROC_FS
         remove_proc_entry("videocodecs", 0);
@@ -436,7 +430,6 @@ EXPORT_SYMBOL(videocodec_detach);
 EXPORT_SYMBOL(videocodec_register);
 EXPORT_SYMBOL(videocodec_unregister);
 
-#ifdef MODULE
 module_init(videocodec_init);
 module_exit(videocodec_exit);
 
@@ -446,5 +439,3 @@ MODULE_PARM_DESC(debug, "debug level");
 MODULE_AUTHOR("Wolfgang Scherr <scherr@net4you.at>");
 MODULE_DESCRIPTION("Intermediate API module for video codecs " VIDEOCODEC_VERSION);
 MODULE_LICENSE("GPL");
-#endif
-

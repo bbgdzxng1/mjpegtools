@@ -441,7 +441,6 @@ static int vpx3220_detach_client (struct i2c_client *client)
 		return err;
 	}
 
-	vpx3220_dec_use(client);
 	kfree(client);
 	return 0;
 }
@@ -514,7 +513,6 @@ static int vpx3220_detect_client (struct i2c_adapter *adapter, int address,
 	printk (KERN_INFO __func__ ": %s found at 0x%02x\n", client->name, client->addr<<1);
 
 	vpx3220_init_client(client);
-	vpx3220_inc_use(client);
 
 	return 0;
 }
@@ -539,6 +537,8 @@ static struct i2c_driver vpx3220_i2c_driver = {
 	attach_adapter:	&vpx3220_attach_adapter,
 	detach_client:	&vpx3220_detach_client,
 	command:	&vpx3220_command,
+	inc_use:	vpx3220_inc_use,
+	dec_use:	vpx3220_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;

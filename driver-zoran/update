@@ -89,7 +89,7 @@ do
             fi
             $SUDO /sbin/insmod ./saa7111.o
             $SUDO /sbin/insmod ./saa7185.o
-            $SUDO /sbin/insmod ./zr36060.o
+            $SUDO /sbin/insmod ./zr36060.o low_bitrate=1
             cards="$cards $1"
             incompat="buz"
             ;;

@@ -497,8 +497,6 @@ bt819_detect_client (struct i2c_adapter *adapter,
 		client->name, bt819_read(client, 0x17) & 0x0f, client->addr<<1);
    }
 
-   bt819_inc_use(client);
-
    return 0;
 }
 
@@ -521,7 +519,6 @@ bt819_detach_client(struct i2c_client *client)
       return err;
    }
 
-   bt819_dec_use(client);
    kfree(decoder);
    kfree(client);
    return 0;
@@ -538,6 +535,8 @@ struct i2c_driver i2c_driver_bt819 = {
    attach_adapter:	bt819_attach_adapter,
    detach_client:	bt819_detach_client,
    command:		bt819_command,
+   inc_use:		bt819_inc_use,
+   dec_use:		bt819_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;

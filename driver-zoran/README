@@ -11,8 +11,17 @@ Serguei Miridonov <mirsev@cicese.mx>
 Changes for videodev2/v4l2 by
 Ronald Bultje <rbultje@ronald.bitfreak.net>
 
-Current homepage: http://www.cicese.mx/~mirsev/Linux/DC10plus/
-Current maintainer: Serguei Miridonov <mirsev@cicese.mx>
+Support for the DC10-old/DC30/DC30plus cards added by
+Laurent Pinchart <laurent.pinchart@skynet.be>
+
+Current homepage: http://www.sf.net/projects/mjpeg/
+                  (see also http://www.cicese.mx/~mirsev/Linux/DC10plus/)
+Current maintainers: Ronald Bultje <rbultje@ronald.bitfreak.net>
+                     Laurent Pinchart <laurent.pinchart@skynet.be>
+With many thanks to: Serguei Miridonov <mirsev@cicese.mx>
+                     Rainer Johanni <Rainer@Johanni.de>
+                     Wolfgang Scherr <scherr@net4you.net>
+                     Dave Perks <dperks@ibm.net>
 
   This is a driver for DC10plus capture cards from Pinnacle Systems
   Inc., LML33 cards from Linux Media Labs and Buz from Iomega.

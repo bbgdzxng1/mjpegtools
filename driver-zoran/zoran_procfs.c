@@ -157,33 +157,37 @@ static int zoran_write_proc(struct file *file, const char *buffer, unsigned long
 	return count;
 }
 
-static int zoran_proc_init(int i)
+static int __init
+zoran_proc_init (struct zoran *zr)
 {
 #ifdef CONFIG_PROC_FS
 	char name[8];
-	sprintf(name, "zoran%d", i);
-	if ((zoran[i].zoran_proc = create_proc_entry(name, 0, 0))) {
-		zoran[i].zoran_proc->read_proc = zoran_read_proc;
-		zoran[i].zoran_proc->write_proc = zoran_write_proc;
-		zoran[i].zoran_proc->data = &zoran[i];
-                zoran[i].zoran_proc->owner = THIS_MODULE;
-		dprintk(0, KERN_INFO "%s: procfs entry /proc/%s allocated. data=%x\n", zoran[i].name, name, (int) zoran[i].zoran_proc->data);
+	snprintf(name, 7, "zoran%d", zr->id);
+	if ((zr->zoran_proc = create_proc_entry(name, 0, 0))) {
+		zr->zoran_proc->read_proc = zoran_read_proc;
+		zr->zoran_proc->write_proc = zoran_write_proc;
+		zr->zoran_proc->data = zr;
+                zr->zoran_proc->owner = THIS_MODULE;
+		dprintk(0, KERN_INFO "%s: procfs entry /proc/%s allocated. data=%p\n",
+			zr->name, name, zr->zoran_proc->data);
 	} else {
-		dprintk(0, KERN_ERR "%s: Unable to initialise /proc/%s\n", zoran[i].name, name);
+		dprintk(0, KERN_ERR "%s: Unable to initialise /proc/%s\n",
+			zr->name, name);
 		return 1;
 	}
 #endif
 	return 0;
 }
 
-static void zoran_proc_cleanup(int i)
+static void __init
+zoran_proc_cleanup (struct zoran *zr)
 {
 #ifdef CONFIG_PROC_FS
 	char name[8];
-	sprintf(name, "zoran%d", i);
-	if (zoran[i].zoran_proc) {
+	snprintf(name, 7, "zoran%d", zr->id);
+	if (zr->zoran_proc) {
 		remove_proc_entry(name, 0);
 	}
-	zoran[i].zoran_proc = NULL;
+	zr->zoran_proc = NULL;
 #endif
 }

@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36050.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
+   $Id: zr36050.c,v 1.1.2.3 2002-12-26 22:19:32 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -53,14 +53,14 @@
 #define MAX_CODECS 20
 
 /* amount of chips attached via this driver */
-static int __init zr36050_codecs = 0;
+static int zr36050_codecs = 0;
 
 /* this are the API (de-)initializers */
 EXPORT_NO_SYMBOLS;
 
 /* debugging is available via module parameter */
 
-int __init debug = 0;
+static int debug = 0;
 
 #define DEBUG1(x...) if (debug>=1) printk(KERN_DEBUG x);
 #define DEBUG2(x...) if (debug>=2) printk(KERN_DEBUG x);
@@ -731,7 +731,7 @@ int zr36050_setup(struct videocodec *codec)
         }
         memset(ptr,0,sizeof(struct zr36050));
 
-        sprintf(ptr->name,"zr36050[%d]",zr36050_codecs);
+        snprintf(ptr->name, sizeof(ptr->name), "zr36050[%d]", zr36050_codecs);
         ptr->num=zr36050_codecs++;
         ptr->codec=codec;
 
@@ -765,19 +765,19 @@ int zr36050_setup(struct videocodec *codec)
 }
 
 static const struct videocodec zr36050_codec = {
-	"zr36050",
-        0L,         // magic not used
-        CODEC_FLAG_JPEG | CODEC_FLAG_HARDWARE |
-        CODEC_FLAG_ENCODER | CODEC_FLAG_DECODER,
-        CODEC_TYPE_ZR36050,
-        NULL,       // master data comes later
-        NULL,       // slave private data is filled in later
-        zr36050_setup,       // functionality
-        zr36050_unset,
-        zr36050_set_mode,
-        zr36050_set_video,
-        zr36050_control,
-                             // others are not used
+	.name		= "zr36050",
+	.magic		= 0L,         // magic not used
+	.flags		= CODEC_FLAG_JPEG |
+			  CODEC_FLAG_HARDWARE |
+			  CODEC_FLAG_ENCODER |
+			  CODEC_FLAG_DECODER,
+	.type		= CODEC_TYPE_ZR36050,
+	.setup		= zr36050_setup,       // functionality
+	.unset		= zr36050_unset,
+	.set_mode	= zr36050_set_mode,
+	.set_video	= zr36050_set_video,
+	.control	= zr36050_control,
+	// others are not used
 };
 
 
@@ -785,7 +785,7 @@ static const struct videocodec zr36050_codec = {
    HOOK IN DRIVER AS KERNEL MODULE
    ========================================================================= */
 
-int __init zr36050_init_module(void)
+static int __init zr36050_init_module(void)
 {     
         //printk("ZR36050 driver %s\n",ZR050_VERSION);
         zr36050_codecs=0;
@@ -794,7 +794,7 @@ int __init zr36050_init_module(void)
         return 0;
 }
 
-void __init zr36050_cleanup_module(void)
+static void __init zr36050_cleanup_module(void)
 {
         if (zr36050_codecs) {
                 printk("zr36050: something's wrong - %d codecs left somehow.\n",
@@ -804,7 +804,6 @@ void __init zr36050_cleanup_module(void)
         }
 }
 
-#ifdef MODULE
 module_init(zr36050_init_module);
 module_exit(zr36050_cleanup_module);
 
@@ -813,8 +812,4 @@ MODULE_PARM_DESC(debug, "debug level");
 
 MODULE_AUTHOR("Wolfgang Scherr <scherr@net4you.at>");
 MODULE_DESCRIPTION("Driver module for ZR36050 jpeg processors " ZR050_VERSION);
-#if LINUX_VERSION_CODE < 0x20407
 MODULE_LICENSE("GPL");
-#endif
-
-#endif

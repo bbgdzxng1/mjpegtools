@@ -443,8 +443,6 @@ saa7111_detect_client (struct i2c_adapter *adapter,
          client->name, saa7111_read(client, 0x00)>>4, client->addr<<1);
    }
 
-   saa7111_inc_use(client);
-
    return 0;
 }
 
@@ -467,7 +465,6 @@ saa7111_detach_client(struct i2c_client *client)
       return err;
    }
 
-   saa7111_dec_use(client);
    kfree(decoder);
    kfree(client);
    return 0;
@@ -485,6 +482,8 @@ struct i2c_driver i2c_driver_saa7111 =
    attach_adapter:	saa7111_attach_adapter,
    detach_client:	saa7111_detach_client,
    command:		saa7111_command,
+   inc_use:		saa7111_inc_use,
+   dec_use:		saa7111_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
