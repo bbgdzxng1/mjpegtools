@@ -447,7 +447,7 @@ adv7170_detect_client (struct i2c_adapter *adapter,
    client->addr = address;
    client->adapter = adapter;
    client->driver = &i2c_driver_adv7170;
-   client->flags = 0;
+   client->flags = I2C_CLIENT_ALLOW_USE;
    client->id = adv7170_i2c_id++;
    if ((client->addr == I2C_ADV7170>>1) ||
        (client->addr == (I2C_ADV7170>>1)+1)) {
