@@ -5512,19 +5512,18 @@ strmoff_unlock_and_return:
 			dprintk(2, KERN_DEBUG "%s: VIDIOC_S_STD - norm=0x%llx\n",
 				zr->name, *std);
 
-			switch (*std) {
-				case V4L2_STD_PAL:
-					norm = VIDEO_MODE_PAL;
-					break;
-				case V4L2_STD_NTSC:
-					norm = VIDEO_MODE_NTSC;
-					break;
-				case V4L2_STD_SECAM:
-					norm = VIDEO_MODE_SECAM;
-					break;
-				case V4L2_STD_ALL:
-					norm = VIDEO_MODE_AUTO;
-					break;
+			if (*std == V4L2_STD_PAL)
+				norm = VIDEO_MODE_PAL;
+			else if (*std == V4L2_STD_NTSC)
+				norm = VIDEO_MODE_NTSC;
+			else if (*std == V4L2_STD_SECAM)
+				norm = VIDEO_MODE_SECAM;
+			else if (*std == V4L2_STD_ALL)
+				norm = VIDEO_MODE_AUTO;
+			else {
+				dprintk(0, KERN_ERR "%s: VIDIOC_S_STD - invalid norm 0x%llx\n",
+					zr->name, *std);
+				return -EINVAL;
 			}
 
 			down(&zr->resource_lock);
