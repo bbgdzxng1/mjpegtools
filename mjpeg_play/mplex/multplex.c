@@ -42,8 +42,8 @@ int             transport_prefix_sectors;
 	
 
 static unsigned int packets_per_pack;
-static unsigned int audio_buffer_size;
-static unsigned int video_buffer_size;
+static unsigned int audio_buffer_size = 0;
+static unsigned int video_buffer_size = 0;
 
 static int rate_restriction_flag;
 static int always_sys_header_in_pack;
@@ -113,24 +113,23 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 	switch( opt_mux_format  )
 	{
-		case 1 : /* MPEG_VCD */ 
- 		/* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
-	 	fixed bitrate=1150000.0, packets_per_pack=1,
-	 	sys_headers only in first two sector(s?)... all timestamps...
-	 	program end code needs to be appended.
-  		*/
+	case MPEG_VCD :
+		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	video_buffer_size = 46*1024;
+ 
+	case MPEG_VCD_NSR : /* VCD format, non-standard rate */
+		mjpeg_info( "Selecting VCD output profile\n");
+		if( video_buffer_size == 0 )
+			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	trailing_pad_pack = 1;
-	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
-	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
-	  	video_buffer_size = 46*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
@@ -139,8 +138,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		dtspts_for_all_vau = 1;
 		break;
 		
-		case  MPEG_MPEG2 : 
-		fprintf( stderr, "WARNING: MPEG-2 support untested!\n" );
+	case  MPEG_MPEG2 : 
+		mjpeg_info( "Selecting generic MPEG2 output profile\n");
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 1;
@@ -160,8 +159,14 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
         dtspts_for_all_vau = 0;
 		break;
 
-		case  MPEG_SVCD : 
-		fprintf( stderr, "WARNING: SVCD support experimental!\n" );
+	case MPEG_SVCD :
+		opt_data_rate = 150*2324;
+	  	video_buffer_size = 230*1024;
+
+	case  MPEG_SVCD_NSR :		/* Non-standard data-rate */
+		mjpeg_info( "Selecting SVCD output profile\n");
+		if( video_buffer_size == 0 )
+			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 2;
 		/* TODO should test specified data-rate is < 2*CD
 		   = 150 sectors/sec * (mode 2 XA payload) */ 
@@ -172,9 +177,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
-		opt_data_rate = 150*2324;
 	  	opt_VBR = 1;
-	  	video_buffer_size = 230*1024;
+
 		buffers_in_video = 0;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 0;
@@ -185,7 +189,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 		break;
 			 
-	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
+	default : /* MPEG_MPEG1 - auto format MPEG1 */
+		mjpeg_info( "Selecting generic MPEG1 output profile\n");
 		opt_mpeg = 1;
 	  	packets_per_pack = opt_packets_per_pack;
 	  	always_sys_header_in_pack = opt_always_system_headers;
@@ -207,7 +212,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	
 
   audio_buffer_size = 4 * 1024;
-  printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
+  mjpeg_info("SYSTEMS/PROGRAM stream:\n");
     
  
 
@@ -258,10 +263,10 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 			video_rate = video_info->peak_bit_rate *50;
 			if( video_buffer_size < video_rate / 2 )
 			{
-				fprintf( stderr, "WARNING: VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
+				mjpeg_warn( "VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
 			}
-			printf( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
-					video_rate*8, video_buffer_size/1024 );
+			mjpeg_info( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
+						video_rate*8, video_buffer_size/1024 );
 		}
 		else
 		{
@@ -279,30 +284,29 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	/* TODO: This is a pretty inexact guess and may need tweaking for different stream formats	 */
 	 
 	dmux_rate = video_rate + audio_rate;
-	dmux_rate = ((double)dmux_rate) * 
+	dmux_rate = 1.01 * ((double)dmux_rate) * 
 				( 1.0  *   ((double)sector_size)/((double)video_min_packet_data) +
 			      ((double)(packets_per_pack-1)) * ((double)sector_size)/((double)(video_max_packet_data))
 			    )
 			     / ((double)packets_per_pack);
 	dmux_rate = (dmux_rate/50 + 25)*50;
-
-		printf ("\nbest-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
-		if( opt_data_rate != 0 )
-
-						printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
-		if( opt_data_rate == 0 )
-		{
-			printf( "Setting best-guess data rate.\n");
-		}
-		else if ( opt_data_rate >= dmux_rate)
-		{
-			printf( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
-			dmux_rate = opt_data_rate;
-		}
-		else if ( opt_data_rate < dmux_rate )
-		{
-			printf( "Warning: Target data rate lower than computed requirement!\n");
-			printf( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
+	
+	mjpeg_info ("best-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
+	if( opt_data_rate != 0 )
+		mjpeg_info ("target data-rate specified               : %7d\n", opt_data_rate*8 );
+	if( opt_data_rate == 0 )
+	{
+		mjpeg_info( "Setting best-guess data rate.\n");
+	}
+	else if ( opt_data_rate >= dmux_rate)
+	{
+		mjpeg_info( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
+		dmux_rate = opt_data_rate;
+	}
+	else if ( opt_data_rate < dmux_rate )
+	{
+			mjpeg_warn( "Target data rate lower than computed requirement!\n");
+			mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
 			dmux_rate = opt_data_rate;
 		}
 
@@ -551,11 +555,6 @@ void outputstream ( char 		*video_file,
 	init_buffer_struc (&video_buffer,video_buffer_size);
 	init_buffer_struc (&audio_buffer,audio_buffer_size);
 	
-	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
-
-
- 
-
 
     /* To avoid Buffer underflow, the DTS of the first video and audio AU's
     	must be offset sufficiently	forward of the SCR to allow the buffer 
@@ -633,12 +632,17 @@ void outputstream ( char 		*video_file,
 			*/
 
 			case start_segment :
+				mjpeg_info( "New sequence commences...\n" );
+				status_info (nsec_a, nsec_v, nsec_p, bytes_output,
+							 buffer_space(&video_buffer),
+							 buffer_space(&audio_buffer),
+							 LOG_INFO);
+
 				bytes_output = 0;
 				bytepos_timecode ( bytes_output, &current_SCR);	
 				
 				buffer_flush (&video_buffer);
 				buffer_flush (&audio_buffer);
-				status_header ();
 				outputstreamprefix( &current_SCR );
 
 				/* The starting PTS/DTS of AU's may of course be
@@ -763,7 +767,7 @@ void outputstream ( char 		*video_file,
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+audio_bytes, &audio_next_SCR);
 			if( audio_next_SCR >= audio_au.PTS+SCR_audio_delay )
-				status_message (STATUS_AUDIO_TIME_OUT,audio_au.dorder);
+				timeout_error (STATUS_AUDIO_TIME_OUT,audio_au.dorder);
 
 			output_audio (current_SCR, SCR_audio_delay, 
 						  istream_a, ostream, 
@@ -787,7 +791,7 @@ void outputstream ( char 		*video_file,
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+video_bytes, &video_next_SCR);
 			if( video_next_SCR >= video_au.DTS+SCR_video_delay )
-				status_message (STATUS_VIDEO_TIME_OUT,video_au.dorder);
+				timeout_error (STATUS_VIDEO_TIME_OUT,video_au.dorder);
 			output_video ( current_SCR, SCR_video_delay, 
 						  istream_v, ostream, 
 						  &video_buffer, &video_au, 
@@ -827,7 +831,8 @@ void outputstream ( char 		*video_file,
 #endif 
 			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
 						 buffer_space(&video_buffer),
-						 buffer_space(&audio_buffer),verbose);
+						 buffer_space(&audio_buffer),
+						 LOG_DEBUG);
 
 #ifdef TIMER
 			gettimeofday (&tp_end,NULL);
@@ -847,8 +852,8 @@ void outputstream ( char 		*video_file,
 	/* status info*/
 	status_info (nsec_a, nsec_v, nsec_p, bytes_output, 
 				 buffer_space(&video_buffer),
-				 buffer_space(&audio_buffer),2); 
-	status_footer ();
+				 buffer_space(&audio_buffer),
+				 LOG_INFO); 
 #ifdef TIMER
 	gettimeofday (&tp_end,NULL);
 	total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
@@ -924,7 +929,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 	  else
 	    {
 		  empty_vaunit_struc (video_au);
-		  status_message(STATUS_VIDEO_END, 0);
+		  status_message(STATUS_VIDEO_END,0);
 		  return;
 	    }
 	  *AU_starting_next_sec = video_au->type;
