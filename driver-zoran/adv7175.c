@@ -209,8 +209,6 @@ static const unsigned char init_common[] = {
 	0x0f, 0x00,		/*  */
 	0x10, 0x00,		/*  */
 	0x11, 0x00,		/*  */
-	0x12, 0x00,		/* MR3 */
-	0x24, 0x00,		/*  */
 };
 
 static const unsigned char init_pal[] = {

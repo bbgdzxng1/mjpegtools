@@ -383,20 +383,15 @@ zr36057_set_vfe (struct zoran              *zr,
 	HorDcm = 64 - X;
 	hcrop1 = 2 * ((tvn->Wa - We) / 4);
 	hcrop2 = tvn->Wa - We - hcrop1;
-	HStart = tvn->HStart ; //| 1;
+	HStart = tvn->HStart ? tvn->HStart : 1;
 	/* (Ronald) Original comment:
 	 * "| 1 Doesn't have any effect, tested on both a DC10 and a DC10+"
 	 * this is false. It inverses chroma values on the LML33R10 (so Cr
 	 * suddenly is shown as Cb and reverse, really cool effect if you
 	 * want to see blue faces, not useful otherwise). So don't use |1.
+	 * However, the DC10 has '0' as HStart, but does need |1, so we
+	 * use a dirty check...
 	 */
-/*        if (zr->card.type == LML33)
-		HStart += 62;
-        if (zr->card.type == BUZ) {   //HStart += 67;
-                HStart += 44;
-        }
-This is not needed anymore (I think) as HSYNC pol has been changed for the BUZ and LML33
-*/
 	HEnd = HStart + tvn->Wa - 1;
 	HStart += hcrop1;
 	HEnd -= hcrop2;

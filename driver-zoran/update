@@ -147,7 +147,7 @@ do
             $SUDO /sbin/insmod ./zr36016.$mod_ext
             $SUDO /sbin/insmod ./zr36050.$mod_ext
             cards="$cards $1"
-            addcardnum 0 48 -1
+            addcardnum 0 -1 48
             ;;
         'lml33r10')
             $SUDO /sbin/insmod ./saa7114.$mod_ext
