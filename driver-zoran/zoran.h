@@ -254,7 +254,7 @@ struct zoran_v4l_settings {
 };
 
 /* whoops, this one is undeclared if !v4l2 */
-#ifndef V4L2
+#ifndef HAVE_V4L2
 struct v4l2_jpegcompression
 {
 	int	quality;
