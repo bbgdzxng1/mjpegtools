@@ -12,7 +12,7 @@ LINUX_VERSION=`uname -r`
 sync;sync
 
 #change to NTSC or SECAM or PAL
-norm=PAL
+norm=UNKNOWN
 
 # Unload everything
 $SUDO /sbin/rmmod dc10 > /dev/null 2>&1     # Just in case if old driver was loaded
