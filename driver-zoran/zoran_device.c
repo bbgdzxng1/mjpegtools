@@ -1432,7 +1432,7 @@ zoran_irq (int             irq,
 
 			if (zr->v4l_memgrab_active) {
 
-/* A lot more checks should be here ... */
+				/* A lot more checks should be here ... */
 				if ((btread(ZR36057_VSSFGR) &
 				     ZR36057_VSSFGR_SnapShot) == 0)
 					dprintk(1,
@@ -1463,7 +1463,6 @@ zoran_irq (int             irq,
 								timestamp);
 						zr->v4l_grab_frame =
 						    NO_GRAB_ACTIVE;
-						zr->v4l_grab_seq++;
 						zr->v4l_pend_tail++;
 					}
 				}
@@ -1520,6 +1519,10 @@ zoran_irq (int             irq,
 					     ZR36057_VDCR);
 				}
 			}
+
+			/* even if we don't grab, we do want to increment
+			 * the sequence counter to see lost frames */
+			zr->v4l_grab_seq++;
 		}
 #if (IRQ_MASK & ZR36057_ISR_CodRepIRQ)
 		if (astat & ZR36057_ISR_CodRepIRQ) {

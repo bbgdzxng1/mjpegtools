@@ -1353,7 +1353,12 @@ find_zr36057 (void)
 		}
 
 		if (i2c_dec_name) {
-			request_module(i2c_dec_name);
+			if ((result = request_module(i2c_dec_name)) < 0) {
+				dprintk(1,
+					KERN_ERR
+					"%s: failed to load module %s: %d\n",
+					zr->name, i2c_dec_name, result);
+			}
 		}
 
 		/* i2c encoder */
@@ -1368,7 +1373,12 @@ find_zr36057 (void)
 		}
 
 		if (i2c_enc_name) {
-			request_module(i2c_enc_name);
+			if ((result = request_module(i2c_enc_name)) < 0) {
+				dprintk(1,
+					KERN_ERR
+					"%s: failed to load module %s: %d\n",
+					zr->name, i2c_enc_name, result);
+			}
 		}
 
 		if (zoran_register_i2c(zr) < 0) {
@@ -1385,12 +1395,24 @@ find_zr36057 (void)
 
 		if (zr->card.video_codec != 0 &&
 		    (codec_name =
-		     codecid_to_modulename(zr->card.video_codec)) != NULL)
-			request_module(codec_name);
+		     codecid_to_modulename(zr->card.video_codec)) != NULL) {
+			if ((result = request_module(codec_name)) < 0) {
+				dprintk(1,
+					KERN_ERR
+					"%s: failed to load modules %s: %d\n",
+					zr->name, codec_name, result);
+			}
+		}
 		if (zr->card.video_vfe != 0 &&
 		    (vfe_name =
-		     codecid_to_modulename(zr->card.video_vfe)) != NULL)
-			request_module(vfe_name);
+		     codecid_to_modulename(zr->card.video_vfe)) != NULL) {
+			if ((result = request_module(vfe_name)) < 0) {
+				dprintk(1,
+					KERN_ERR
+					"%s: failed to load modules %s: %d\n",
+					zr->name, vfe_name, result);
+			}
+		}
 
 		/* reset JPEG codec */
 		jpeg_codec_sleep(zr, 1);
@@ -1474,6 +1496,7 @@ init_dc10_cards (void)
 	memset(zoran, 0, sizeof(zoran));
 	printk(KERN_INFO "Zoran MJPEG board driver version %d.%d.%d\n",
 	       MAJOR_VERSION, MINOR_VERSION, RELEASE_VERSION);
+
 	/* Look for cards */
 	if (find_zr36057() < 0) {
 		return -EIO;
@@ -1511,6 +1534,9 @@ init_dc10_cards (void)
 			"%s: Using supplied video memory base address @ 0x%lx\n",
 			ZORAN_NAME, vidmem);
 	}
+
+	/* random nonsense */
+	dprintk(5, KERN_DEBUG "Jotti is een held!\n");
 
 	/* some mainboards might not do PCI-PCI data transfer well */
 	if (pci_pci_problems & PCIPCI_FAIL) {

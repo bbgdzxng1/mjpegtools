@@ -49,27 +49,14 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/delay.h>
-#include <linux/errno.h>
-#include <linux/fs.h>
-#include <linux/kernel.h>
-#include <linux/major.h>
 #include <linux/slab.h>
-#include <linux/mm.h>
 #include <linux/pci.h>
-#include <linux/signal.h>
-#include <asm/io.h>
-#include <asm/pgtable.h>
-#include <asm/page.h>
-#include <linux/sched.h>
-#include <asm/segment.h>
-#include <linux/types.h>
 #include <linux/wrapper.h>
 
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 
 #include <linux/spinlock.h>
-#include <linux/vmalloc.h>
 #define     MAP_NR(x)       virt_to_page(x)
 #define     ZORAN_HARDWARE  VID_HARDWARE_ZR36067
 #define     ZORAN_VID_TYPE  ( \
@@ -3317,6 +3304,7 @@ zoran_do_ioctl (struct inode *inode,
 
 			zr->v4l_buffers.active = fh->v4l_buffers.active =
 			    ZORAN_LOCKED;
+			zr->v4l_settings = fh->v4l_settings;
 
 			if (!zr->v4l_memgrab_active &&
 			    zr->v4l_pend_head != zr->v4l_pend_tail) {
