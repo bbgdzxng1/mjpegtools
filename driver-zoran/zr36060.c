@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.10 2002-12-27 13:27:37 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.11 2002-12-27 15:58:26 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -584,7 +584,7 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 {
 	struct zr36060 *ptr = (struct zr36060 *)codec->data;
 	u32 reg;
-	int size, blocks;
+	int size;
 
         DEBUG1("%s: set_video %d/%d-%dx%d (%%%d) call\n",ptr->name,
                cap->x, cap->y, cap->width, cap->height, cap->decimation);
@@ -706,7 +706,6 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	zr36060_write(ptr, ZR060_SWR_HEND_LO, (reg >> 0) & 0xff);
 
 	size = ptr->width * ptr->height;
-        blocks = size / 64;
 	/* Target compressed field size in bits: */
 	size = size * 16;	/* uncompressed size in bits */
 	/* (Ronald) by default, quality = 100 is a compression
@@ -721,9 +720,11 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	/* Upper limit: 6/8 of the code buffers */
 	if (size > ptr->total_code_vol * 6)
 		size = ptr->total_code_vol * 6;
-	reg = size / (blocks * 2);
-	if (reg > ptr->max_block_vol)
-                reg = ptr->max_block_vol;	/* 480 bits/block, does 0xff represents unlimited? */
+
+	/* the MBCVR is the *maximum* block volume, according to the
+	 * JPEG ISO specs, this shouldn't be used, since that allows
+	 * for the best encoding quality. So set it to it's max value */
+	reg = ptr->max_block_vol;
 	/* quality setting */
 	zr36060_write(ptr, ZR060_MBCVR, reg);
 	ptr->real_code_vol = size>>3; /* in bytes */
