@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.12 2004-02-23 19:57:26 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.13 2004-02-23 20:00:44 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -641,11 +641,10 @@ zr36050_set_video (struct videocodec   *codec,
 	ptr->width = cap->width / (cap->decimation & 0xff);
 	ptr->height = cap->height / ((cap->decimation >> 8) & 0xff);
 
-	/* (KM)
-           Previously absent code for setting JPEG quality */
-        size = ptr->width * ptr->height;
-        size *= 16; /* size in bits */
-        /* apply quality setting */
+	/* (KM) JPEG quality */
+	size = ptr->width * ptr->height;
+	size *= 16; /* size in bits */
+	/* apply quality setting */
         size = size * cap->quality / 200;
 
         /* Minimum: 1kb */
@@ -658,7 +657,7 @@ zr36050_set_video (struct videocodec   *codec,
         ptr->real_code_vol = size >> 3; /* in bytes */        
         
 	/* Set max_block_vol here (previously in zr36050_init, moved
-           here for consistency with zr36060 code */
+	 * here for consistency with zr36060 code */
         zr36050_write(ptr, ZR050_MBCV, ptr->max_block_vol);
 
 	return 0;
@@ -719,7 +718,7 @@ zr36050_control (struct videocodec *codec,
 			return -EFAULT;
 		ptr->total_code_vol = *ival;
 		/* (Kieran Morrissey)
-		   code copied from zr36060.c to ensure proper bitrate */
+		 * code copied from zr36060.c to ensure proper bitrate */
                 ptr->real_code_vol = (ptr->total_code_vol * 6) >> 3;
 		break;
 
