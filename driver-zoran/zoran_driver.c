@@ -909,12 +909,16 @@ v4l_sync (struct file *file,
 		return -EPROTO;
 	}
 
+	if (zr->v4l_buffers.buffer[frame].state != BUZ_STATE_DONE &&
+	    file->f_flags & O_NONBLOCK)
+		return -EAGAIN;
+
 	/* wait on this buffer to get ready */
 	while (zr->v4l_buffers.buffer[frame].state == BUZ_STATE_PEND) {
 		if (!interruptible_sleep_on_timeout(&zr->v4l_capq, 10 * HZ))
 			return -ETIME;
 		else if (signal_pending(current))
-			return -ERESTARTSYS;
+			return -EINTR;
 	}
 
 	/* buffer should now be in BUZ_STATE_DONE */
@@ -937,6 +941,7 @@ v4l_sync (struct file *file,
 			zr->v4l_buffers.allocated = 0;
 		}
 	}
+	zr->v4l_sync_tail++;
 
 	spin_unlock_irqrestore(&zr->spinlock, flags);
 
@@ -1137,7 +1142,7 @@ jpg_sync (struct file       *file,
 			return -ETIME;
 
 		} else if (signal_pending(current))
-			return -ERESTARTSYS;
+			return -EINTR;
 	}
 
 	spin_lock_irqsave(&zr->spinlock, flags);
@@ -1297,12 +1302,6 @@ zoran_open (struct inode *inode,
 	}
 
 	/* try to grab a module lock */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
-	MOD_INC_USE_COUNT;
-	i2c_inc_use_client(zr->decoder);
-	if (zr->encoder)
-		i2c_inc_use_client(zr->encoder);
-#else
 	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
@@ -1311,6 +1310,11 @@ zoran_open (struct inode *inode,
 		res = -ENODEV;
 		goto open_unlock_and_return;
 	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	i2c_inc_use_client(zr->decoder);
+	if (zr->encoder)
+		i2c_inc_use_client(zr->encoder);
+#else
 	if (!try_module_get(zr->decoder->driver->owner)) {
 		dprintk(1,
 			KERN_ERR
@@ -1398,14 +1402,13 @@ open_unlock_and_return:
 		i2c_dec_use_client(zr->decoder);
 		if (zr->encoder)
 			i2c_dec_use_client(zr->encoder);
-		MOD_DEC_USE_COUNT;
 #else
 		module_put(zr->decoder->driver->owner);
 		if (zr->encoder) {
 			module_put(zr->encoder->driver->owner);
 		}
-		module_put(THIS_MODULE);
 #endif
+		module_put(THIS_MODULE);
 	}
 
 	/* if there's no device found, we didn't obtain the lock either */
@@ -1473,14 +1476,13 @@ zoran_close (struct inode *inode,
 	i2c_dec_use_client(zr->decoder);
 	if (zr->encoder)
 		i2c_dec_use_client(zr->encoder);
-	MOD_DEC_USE_COUNT;
 #else
 	module_put(zr->decoder->driver->owner);
 	if (zr->encoder) {
 		 module_put(zr->encoder->driver->owner);
 	}
-	module_put(THIS_MODULE);
 #endif
+	module_put(THIS_MODULE);
 
 	/*up(&zr->resource_lock);*/
 
@@ -2323,8 +2325,6 @@ zoran_do_ioctl (struct inode *inode,
 		down(&zr->resource_lock);
 		res = v4l_sync(file, *frame);
 		up(&zr->resource_lock);
-		if (!res)
-			zr->v4l_sync_tail++;
 		return res;
 	}
 		break;
@@ -3369,18 +3369,9 @@ zoran_do_ioctl (struct inode *inode,
 			}
 
 			num = zr->v4l_pend[zr->v4l_sync_tail & V4L_MASK_FRAME];
-			if (file->f_flags & O_NONBLOCK &&
-			    zr->v4l_buffers.buffer[num].state !=
-			    BUZ_STATE_DONE) {
-				res = -EAGAIN;
-				goto dqbuf_unlock_and_return;
-			}
 			res = v4l_sync(file, num);
-			if (res)
-				goto dqbuf_unlock_and_return;
-			else
-				zr->v4l_sync_tail++;
-			res = zoran_v4l2_buffer_status(file, buf, num);
+			if (!res)
+				res = zoran_v4l2_buffer_status(file, buf, num);
 			break;
 
 		case ZORAN_MAP_MODE_JPG_REC:

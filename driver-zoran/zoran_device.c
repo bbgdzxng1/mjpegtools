@@ -1512,9 +1512,7 @@ zoran_irq (int             irq,
 						reg +=
 						    zr->v4l_settings.
 						    bytesperline;
-					reg =
-					    (reg <<
-					     ZR36057_VSSFGR_DispStride);
+					reg <<= ZR36057_VSSFGR_DispStride;
 					reg |= ZR36057_VSSFGR_VidOvf;
 					reg |= ZR36057_VSSFGR_SnapShot;
 					reg |= ZR36057_VSSFGR_FrameGrab;

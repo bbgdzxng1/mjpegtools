@@ -5,6 +5,8 @@
 #ifndef __ZORAN_I2C_COMPAT_H__
 #define __ZORAN_I2C_COMPAT_H__
 
+#include <linux/i2c.h>
+
 #ifndef I2C_DRIVERID_ADV7175
 #define I2C_DRIVERID_ADV7175 48 /* same as in 2.5.x */
 #endif
@@ -71,6 +73,19 @@ i2c_set_clientdata (struct i2c_client *client,
 #define I2C_DEVNAME(n) .name = n
 
 #define iminor(inode) minor(inode->i_rdev)
+
+static inline int
+try_module_get (struct module *mod)
+{
+	__MOD_INC_USE_COUNT (mod);
+	return 1;
+}
+
+static inline void
+module_put (struct module *mod)
+{
+	__MOD_DEC_USE_COUNT (mod);
+}
 
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 
