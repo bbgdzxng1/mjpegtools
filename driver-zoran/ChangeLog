@@ -5,12 +5,13 @@ Version 0.9.3 -> 0.9.4
 * fix stupid flaw in open() logic (could result in oops)
 * fix 2.5.x build
 * remove lots of 'dead' includes from zoran_driver.c
-* change i2c client usecounting to what's used in 2.5.x (non-dynamic)
 * remove DataErr from the zr36060 IRQ Mask, this autoresets the chip when
     it loses sync, which means we don't get a timeout. Much better than
     all the manual restart handling (which only worked partly).
 * introduce workaround for kfree-in-munmap-handler oops
 * implement support for bitmaps rather than clips for overlay
+* use try_module_get()/module_put() instead of MOD_INC/DEC_USE_COUNT
+    in 2.5.x... Also implement i2c_driver->owner for all i2c clients
 
 Version 0.9.2 -> 0.9.3
 ----------------------
