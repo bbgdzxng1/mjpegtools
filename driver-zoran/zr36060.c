@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.c,v 1.1.2.21 2003-03-29 07:16:05 rbultje Exp $
+ * $Id: zr36060.c,v 1.1.2.22 2003-05-06 09:35:36 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -85,9 +85,8 @@ zr36060_read (struct zr36060 *ptr,
 
 	// just in case something is wrong...
 	if (ptr->codec->master_data->readreg)
-		value =
-		    (ptr->codec->master_data->
-		     readreg(ptr->codec, reg)) & 0xff;
+		value = (ptr->codec->master_data->readreg(ptr->codec,
+							  reg)) & 0xff;
 	else
 		dprintk(1,
 			KERN_ERR "%s: invalid I/O setup, nothing read!\n",
@@ -142,9 +141,8 @@ zr36060_read_status (struct zr36060 *ptr)
 static u16
 zr36060_read_scalefactor (struct zr36060 *ptr)
 {
-	ptr->scalefact =
-	    (zr36060_read(ptr, ZR060_SF_HI) << 8) |
-	    (zr36060_read(ptr, ZR060_SF_LO) & 0xFF);
+	ptr->scalefact = (zr36060_read(ptr, ZR060_SF_HI) << 8) |
+			 (zr36060_read(ptr, ZR060_SF_LO) & 0xFF);
 
 	/* leave 0 selected for an eventually GO from master */
 	zr36060_read(ptr, 0);
@@ -386,7 +384,8 @@ zr36060_set_sof (struct zr36060 *ptr)
 	sof_data[9] = NO_OF_COMPONENTS;
 	for (i = 0; i < NO_OF_COMPONENTS; i++) {
 		sof_data[10 + (i * 3)] = i;	// index identifier
-		sof_data[11 + (i * 3)] = (ptr->h_samp_ratio[i] << 4) | (ptr->v_samp_ratio[i]);	// sampling ratios
+		sof_data[11 + (i * 3)] = (ptr->h_samp_ratio[i] << 4) |
+					 (ptr->v_samp_ratio[i]); // sampling ratios
 		sof_data[12 + (i * 3)] = zr36060_tq[i];	// Q table selection
 	}
 	return zr36060_pushit(ptr, ZR060_SOF_IDX,
@@ -412,7 +411,8 @@ zr36060_set_sos (struct zr36060 *ptr)
 	sos_data[4] = NO_OF_COMPONENTS;
 	for (i = 0; i < NO_OF_COMPONENTS; i++) {
 		sos_data[5 + (i * 2)] = i;	// index
-		sos_data[6 + (i * 2)] = (zr36060_td[i] << 4) | zr36060_ta[i];	// AC/DC tbl.sel.
+		sos_data[6 + (i * 2)] = (zr36060_td[i] << 4) |
+				        zr36060_ta[i]; // AC/DC tbl.sel.
 	}
 	sos_data[2 + 1 + (2 * NO_OF_COMPONENTS) + 2] = 00;	// scan start
 	sos_data[2 + 1 + (2 * NO_OF_COMPONENTS) + 3] = 0x3f;
