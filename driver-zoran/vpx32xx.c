@@ -20,6 +20,8 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <linux/version.h>
+
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/delay.h>
@@ -797,6 +799,7 @@ DEBUG(printk(KERN_INFO "%s_command: DECODER_GET_STATUS ", device->name));
 					res |= DECODER_STATUS_SECAM;
 					break;
 				default:
+					break;
 			}
 			*(int*)arg = res;
 			return ret;

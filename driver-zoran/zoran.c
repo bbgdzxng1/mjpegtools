@@ -2,13 +2,15 @@
 /*
    Zoran zr36057/zr36067 PCI controller driver, for the
    Pinnacle/Miro DC10/DC10+/DC30/DC30+, Iomega Buz, Linux
-   Media Labs LML33.
+   Media Labs LML33/LML33R10.
    
    Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
 
    Changes for BUZ by Wolfgang Scherr <scherr@net4you.net>
 
-   Changes for DC10 by Laurent Pinchart <laurent.pinchart@skynet.be>
+   Changes for DC10/DC30 by Laurent Pinchart <laurent.pinchart@skynet.be>
+
+   Changes for LML33R10 by Maxim Yevtyushkin <max@linuxmedialabs.com>
    
    Changes for videodev2/v4l2 by Ronald Bultje <rbultje@ronald.bitfreak.net>
 
@@ -70,6 +72,34 @@
 #ifndef I2C_DRIVERID_ADV717X
 #warning Using temporary hack for missing I2C driver-ID for adv717x
 #define I2C_DRIVERID_ADV717X 48 /* same as in 2.5.x */
+#endif
+#ifndef I2C_DRIVERID_MSE3000
+#warning Using temporary hack for missing I2C driver-ID for mse3000
+#define I2C_DRIVERID_MSE3000 I2C_DRIVERID_EXP0
+#endif
+#ifndef I2C_DRIVERID_SAA7114
+#warning Using temporary hack for missing I2C driver-ID for saa7114
+#define I2C_DRIVERID_SAA7114 I2C_DRIVERID_EXP1
+#endif
+#ifndef I2C_DRIVERID_ADV7170
+#warning Using temporary hack for missing I2C driver-ID for adv7170
+#define I2C_DRIVERID_ADV7170 I2C_DRIVERID_EXP2
+#endif
+#ifndef PCI_VENDOR_ID_IOMEGA
+#warning Using temporary hack for missing Iomega vendor-ID
+#define PCI_VENDOR_ID_IOMEGA 0x13ca
+#endif
+#ifndef PCI_DEVICE_ID_IOMEGA_BUZ
+#warning Using temporary hack for missing Iomega Buz device-ID
+#define PCI_DEVICE_ID_IOMEGA_BUZ 0x4231
+#endif
+#ifndef PCI_DEVICE_ID_MIRO_DC10PLUS
+#warning Using temporary hack for missing Miro DC10+ device-ID
+#define PCI_DEVICE_ID_MIRO_DC10PLUS 0x7efe
+#endif
+#ifndef PCI_DEVICE_ID_MIRO_DC30PLUS
+#warning Using temporary hack for missing Miro DC30+ device-ID
+#define PCI_DEVICE_ID_MIRO_DC30PLUS 0xd801
 #endif
 /* /temp hack */
 
@@ -189,7 +219,7 @@ static const struct zoran_format zoran_formats[] = {
 				  ZORAN_FORMAT_COMPRESSED,
 	}
 };
-static const int ZORAN_FORMATS = (sizeof(zoran_formats)/sizeof(struct zoran_format));
+static const int zoran_num_formats = (sizeof(zoran_formats)/sizeof(struct zoran_format));
 
 // RJ: Test only - want to test BUZ_USE_HIMEM even when CONFIG_BIGPHYS_AREA is defined
 #if !defined(CONFIG_BIGPHYS_AREA)
@@ -303,6 +333,12 @@ MODULE_LICENSE("GPL");
 
 /* Anybody who uses more than four? */
 #define BUZ_MAX 4
+
+static int card[BUZ_MAX] = { -1, -1, -1, -1 };
+
+MODULE_PARM(card, "1-4i");
+MODULE_PARM_DESC(card,
+	"The type of card");
 
 static struct pci_device_id zr36067_pci_tbl[] = {
 	{ PCI_VENDOR_ID_ZORAN, PCI_DEVICE_ID_ZORAN_36057, 
@@ -933,89 +969,250 @@ static struct tvnorm f60sqpixel_dc10 = { 780, 640, 0, 716, 525, 480, 12 };
 //static struct tvnorm f50ccir601_dc10 = { 864, 720, 0, 804, 625, 576, 18 };
 //static struct tvnorm f60ccir601_dc10 = { 858, 720, 0, 788, 525, 480, 16 };
 
-static struct card_info dc10_info = {
-	.type		= DC10,
-	.inputs		= 3,
-	.input		= { { 1, "Composite" },
-			    { 2, "S-Video" },
-			    { 0, "Internal/comp" } },
-	.norms		= 3,
+// FIXME: I cannot swap U and V in saa7114, so i do one pixel left shift in zoran
+//        by Maxim Yevtyushkin <max@linuxmedialabs.com>
+static struct tvnorm f50ccir601_lm33r10 = {864, 720, 74, 804, 625, 576, 18};
+static struct tvnorm f60ccir601_lm33r10 = {858, 720, 56, 788, 525, 480, 16}; 
+
+static struct card_info zoran_cards[NUM_CARDS] = {
+	{
+		.type		= UNKNOWN,
+		.name		= "(unknown)",
+		.vendor_id	= -1,
+		.device_id	= -1,
+		.i2c_decoder	= -1,
+		.i2c_encoder	= -1,
+		.audio_chip	= -1,
+	}, {
+		.type		= DC10_old,
+		.name		= "DC10(old)",
+		.vendor_id	= -1, /* apparently, the DC10(old) doesn't */
+		.device_id	= -1, /* have subsystem IDs *at all*! */
+		.i2c_decoder	= I2C_DRIVERID_VPX32XX,
+		.i2c_dec_name	= "vpx3220",
+		.i2c_encoder	= I2C_DRIVERID_MSE3000,
+		.i2c_enc_name	= "mse3000",
+		.audio_chip	= -1,
+
+		.inputs		= 3,
+		.input		= { { 1, "Composite" },
+				    { 2, "S-Video" },
+				    { 0, "Internal/comp" } },
+		.norms		= 3,
 #if 0
-	.tvn		= { &f50ccir601_dc10,
-			    &f60ccir601_dc10,
-			    &f50ccir601_dc10 },
+		.tvn		= { &f50ccir601_dc10,
+				    &f60ccir601_dc10,
+				    &f50ccir601_dc10 },
 #endif
-	.tvn		= { &f50sqpixel_dc10,
-			    &f60sqpixel_dc10,
-			    &f50sqpixel_dc10 },
-	.jpeg_int	= 0,
-	.vsync_int	= ZR36057_ISR_GIRQ1,
-	.gpio		= { 2, 1, -1, 3, 7, 0, 4, 5 },
-	.gpio_pol	= { 0, 0, 0, 1, 0, 0, 0, 0 },
-	.gpcs		= { -1, 0 },
-	.vfe_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
-	.gws_not_connected = 0,
-	.init		= &dc10_init,
-};
+		.tvn		= { &f50sqpixel_dc10,
+				    &f60sqpixel_dc10,
+				    &f50sqpixel_dc10 },
+		.jpeg_int	= 0,
+		.vsync_int	= ZR36057_ISR_GIRQ1,
+		.gpio		= { 2, 1, -1, 3, 7, 0, 4, 5 },
+		.gpio_pol	= { 0, 0, 0, 1, 0, 0, 0, 0 },
+		.gpcs		= { -1, 0 },
+		.vfe_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gws_not_connected = 0,
+		.init		= &dc10_init,
+	}, {
+		.type		= DC10_new,
+		.name		= "DC10(new)",
+		.vendor_id	= PCI_VENDOR_ID_MIRO,
+		.device_id	= -1,
+		.i2c_decoder	= I2C_DRIVERID_SAA7110,
+		.i2c_dec_name	= "saa7110",
+		.i2c_encoder	= I2C_DRIVERID_ADV717X,
+		.i2c_enc_name	= "adv7175",
+		.audio_chip	= -1,
 
-static struct card_info dc10plus_info = {
-	.type		= DC10plus,
-	.inputs		= 3,
-	.input		= { { 0, "Composite" },
-			    { 7, "S-Video" },
-			    { 5, "Internal/comp" } },
-	.norms		= 3,
-	.tvn		= { &f50sqpixel,
-			    &f60sqpixel,
-			    &f50sqpixel },
-	.jpeg_int	= ZR36057_ISR_GIRQ0,
-	.vsync_int	= ZR36057_ISR_GIRQ1,
-	.gpio		= { 3, 0, 6, 1, 2, -1, 4, 5 },
-	.gpio_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
-	.gpcs		= { -1, 1 },
-	.vfe_pol	= { 1, 1, 1, 1, 0, 0, 0, 0 },
-	.gws_not_connected = 0,
-	.init		= &dc10plus_init,
-};
+		.inputs		= 3,
+		.input		= { { 0, "Composite" },
+				    { 7, "S-Video" },
+				    { 5, "Internal/comp" } },
+		.norms		= 3,
+		.tvn		= { &f50sqpixel,
+				    &f60sqpixel,
+				    &f50sqpixel },
+		.jpeg_int	= ZR36057_ISR_GIRQ0,
+		.vsync_int	= ZR36057_ISR_GIRQ1,
+		.gpio		= { 3, 0, 6, 1, 2, -1, 4, 5 },
+		.gpio_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gpcs		= { -1, 1 },
+		.vfe_pol	= { 1, 1, 1, 1, 0, 0, 0, 0 },
+		.gws_not_connected = 0,
+		.init		= &dc10plus_init,
+	}, {
+		.type		= DC10plus,
+		.name		= "DC10plus",
+		.vendor_id	= PCI_VENDOR_ID_MIRO,
+		.device_id	= PCI_DEVICE_ID_MIRO_DC10PLUS,
+		.i2c_decoder	= I2C_DRIVERID_SAA7110,
+		.i2c_dec_name	= "saa7110",
+		.i2c_encoder	= I2C_DRIVERID_ADV717X,
+		.i2c_enc_name	= "adv7175",
+		.audio_chip	= -1,
 
-static struct card_info lml33_info = {
-	.type		= LML33,
-	.inputs		= 2,
-	.input		= { { 0, "Composite" },
-			    { 7, "S-Video" } },
-	.norms		= 2,
-	.tvn		= { &f50ccir601,
-			    &f60ccir601,
-			    NULL },
-	.jpeg_int	= ZR36057_ISR_GIRQ1,
-	.vsync_int	= ZR36057_ISR_GIRQ0,
-	.gpio		= { 1, -1, 3, 5, 7, -1, -1, -1 },
-	.gpio_pol	= { 0, 0, 0, 0, 1, 0, 0, 0 },
-	.gpcs		= { 3, 1 },
-	.vfe_pol	= { 1, 0, 0, 0, 0, 1, 0, 0 },
-	.gws_not_connected = 1,
-	.init		= &lml33_init,
-};
+		.inputs		= 3,
+		.input		= { { 0, "Composite" },
+				    { 7, "S-Video" },
+				    { 5, "Internal/comp" } },
+		.norms		= 3,
+		.tvn		= { &f50sqpixel,
+				    &f60sqpixel,
+				    &f50sqpixel },
+		.jpeg_int	= ZR36057_ISR_GIRQ0,
+		.vsync_int	= ZR36057_ISR_GIRQ1,
+		.gpio		= { 3, 0, 6, 1, 2, -1, 4, 5 },
+		.gpio_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gpcs		= { -1, 1 },
+		.vfe_pol	= { 1, 1, 1, 1, 0, 0, 0, 0 },
+		.gws_not_connected = 0,
+		.init		= &dc10plus_init,
+	}, {
+		.type		= DC30,
+		.name		= "DC30",
+		.vendor_id	= PCI_VENDOR_ID_MIRO,
+		.device_id	= -1,
+		.i2c_decoder	= I2C_DRIVERID_VPX32XX,
+		.i2c_dec_name	= "vpx3220",
+		.i2c_encoder	= I2C_DRIVERID_ADV717X,
+		.i2c_enc_name	= "adv7175",
+		.audio_chip	= -1,
 
-static struct card_info buz_info = {
-	.type		= BUZ,
-	.inputs		= 2,
-	.input		= { { 3, "Composite" },
-			    { 7, "S-Video" } },
-	.norms		= 3,
-	.tvn		= { &f50ccir601,
-			    &f60ccir601,
-			    &f50ccir601 },
-	.jpeg_int	= ZR36057_ISR_GIRQ1,
-	.vsync_int	= ZR36057_ISR_GIRQ0,
-	.gpio		= { 1, -1, 3, -1, -1, -1, -1, -1 },
-	.gpio_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
-	.gpcs		= { 3, 1 },
-	.vfe_pol	= { 1, 1, 0, 0, 0, 1, 0, 0 },
-	.gws_not_connected = 1,
-	.init		= &buz_init,
-};
+		.inputs		= 3,
+		.input		= { { 1, "Composite" },
+				    { 2, "S-Video" },
+				    { 0, "Internal/comp" } },
+		.norms		= 3,
+#if 	0
+		.tvn		= { &f50ccir601_dc10,
+				    &f60ccir601_dc10,
+				    &f50ccir601_dc10 },
+#endif
+		.tvn		= { &f50sqpixel_dc10,
+				    &f60sqpixel_dc10,
+				    &f50sqpixel_dc10 },
+		.jpeg_int	= 0,
+		.vsync_int	= ZR36057_ISR_GIRQ1,
+		.gpio		= { 2, 1, -1, 3, 7, 0, 4, 5 },
+		.gpio_pol	= { 0, 0, 0, 1, 0, 0, 0, 0 },
+		.gpcs		= { -1, 0 },
+		.vfe_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gws_not_connected = 0,
+		.init		= &dc10_init,
+	}, {
+		.type		= DC30plus,
+		.name		= "DC30plus",
+		.vendor_id	= PCI_VENDOR_ID_MIRO,
+		.device_id	= PCI_DEVICE_ID_MIRO_DC30PLUS,
+		.i2c_decoder	= I2C_DRIVERID_VPX32XX,
+		.i2c_dec_name	= "vpx3220",
+		.i2c_encoder	= I2C_DRIVERID_ADV717X,
+		.i2c_enc_name	= "adv7175",
+		.audio_chip	= -1,
 
+		.inputs		= 3,
+		.input		= { { 1, "Composite" },
+				    { 2, "S-Video" },
+				    { 0, "Internal/comp" } },
+		.norms		= 3,
+#if 0
+		.tvn		= { &f50ccir601_dc10,
+				    &f60ccir601_dc10,
+				    &f50ccir601_dc10 },
+#endif
+		.tvn		= { &f50sqpixel_dc10,
+				    &f60sqpixel_dc10,
+				    &f50sqpixel_dc10 },
+		.jpeg_int	= 0,
+		.vsync_int	= ZR36057_ISR_GIRQ1,
+		.gpio		= { 2, 1, -1, 3, 7, 0, 4, 5 },
+		.gpio_pol	= { 0, 0, 0, 1, 0, 0, 0, 0 },
+		.gpcs		= { -1, 0 },
+		.vfe_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gws_not_connected = 0,
+		.init		= &dc10_init,
+	}, {
+		.type		= LML33,
+		.name		= "LML33",
+		.vendor_id	= -1,
+		.device_id	= -1,
+		.i2c_decoder	= I2C_DRIVERID_BT819,
+		.i2c_dec_name	= "bt819",
+		.i2c_encoder	= I2C_DRIVERID_BT856,
+		.i2c_enc_name	= "bt856",
+		.audio_chip	= -1,
+
+		.inputs		= 2,
+		.input		= { { 0, "Composite" },
+				    { 7, "S-Video" } },
+		.norms		= 2,
+		.tvn		= { &f50ccir601,
+				    &f60ccir601,
+				    NULL },
+		.jpeg_int	= ZR36057_ISR_GIRQ1,
+		.vsync_int	= ZR36057_ISR_GIRQ0,
+		.gpio		= { 1, -1, 3, 5, 7, -1, -1, -1 },
+		.gpio_pol	= { 0, 0, 0, 0, 1, 0, 0, 0 },
+		.gpcs		= { 3, 1 },
+		.vfe_pol	= { 1, 0, 0, 0, 0, 1, 0, 0 },
+		.gws_not_connected = 1,
+		.init		= &lml33_init,
+	}, {
+		.type		= LML33R10,
+		.name		= "LML33R10",
+		.vendor_id	= -1,
+		.device_id	= -1,
+		.i2c_decoder	= I2C_DRIVERID_SAA7114,
+		.i2c_dec_name	= "saa7114",
+		.i2c_encoder	= I2C_DRIVERID_ADV7170,
+		.i2c_enc_name	= "adv7170",
+		.audio_chip	= -1,
+
+		.inputs		= 2,
+		.input		= { { 0, "Composite" },
+				    { 7, "S-Video" } },
+		.norms		= 2,
+		.tvn		= { &f50ccir601_lm33r10,
+				    &f60ccir601_lm33r10,
+				    NULL },
+		.jpeg_int	= ZR36057_ISR_GIRQ1,
+		.vsync_int	= ZR36057_ISR_GIRQ0,
+		.gpio		= { 1, -1, 3, 5, 7, -1, -1, -1 },
+		.gpio_pol	= { 0, 0, 0, 0, 1, 0, 0, 0 },
+		.gpcs		= { 3, 1 },
+		.vfe_pol	= { 1, 0, 0, 0, 0, 1, 0, 0 },
+		.gws_not_connected = 1,
+		.init		= &lml33_init,
+	}, {
+		.type		= BUZ,
+		.name		= "Buz",
+		.vendor_id	= PCI_VENDOR_ID_IOMEGA,
+		.device_id	= PCI_DEVICE_ID_IOMEGA_BUZ,
+		.i2c_decoder	= I2C_DRIVERID_SAA7111A,
+		.i2c_dec_name	= "saa7111",
+		.i2c_encoder	= I2C_DRIVERID_SAA7185B,
+		.i2c_enc_name	= "saa7185",
+		.audio_chip	= -1,
+
+		.inputs		= 2,
+		.input		= { { 3, "Composite" },
+				    { 7, "S-Video" } },
+		.norms		= 3,
+		.tvn		= { &f50ccir601,
+				    &f60ccir601,
+				    &f50ccir601 },
+		.jpeg_int	= ZR36057_ISR_GIRQ1,
+		.vsync_int	= ZR36057_ISR_GIRQ0,
+		.gpio		= { 1, -1, 3, -1, -1, -1, -1, -1 },
+		.gpio_pol	= { 0, 0, 0, 0, 0, 0, 0, 0 },
+		.gpcs		= { 3, 1 },
+		.vfe_pol	= { 1, 1, 0, 0, 0, 1, 0, 0 },
+		.gws_not_connected = 1,
+		.init		= &buz_init,
+	}
+};
 
 /*
  * I2C functions
@@ -1086,18 +1283,18 @@ static int zoran_i2c_client_register (struct i2c_client *client)
 
 	switch (client->driver->id) {
 	case I2C_DRIVERID_VPX32XX:
-		zr->card = &dc10_info;
+		zr->card = &zoran_cards[DC10_old];
 		snprintf(zr->name, sizeof(zr->name), "DC10(old)[%u]", zr->id);
 		zr->decoder = client;
 		break;
 
 	case I2C_DRIVERID_SAA7110:
 		if (zr->revision < 2) {
-			zr->card = &dc10plus_info;
+			zr->card = &zoran_cards[DC10_new];
 			snprintf(zr->name, sizeof(zr->name), "DC10(new)[%u]",
 				zr->id);
 		} else {
-			zr->card = &dc10plus_info;
+			zr->card = &zoran_cards[DC10plus];
 			snprintf(zr->name, sizeof(zr->name), "DC10plus[%u]",
 				zr->id);
 		}
@@ -1105,20 +1302,28 @@ static int zoran_i2c_client_register (struct i2c_client *client)
 		break;
 
 	case I2C_DRIVERID_BT819:
-		zr->card = &lml33_info;
+		zr->card = &zoran_cards[LML33];
                 snprintf(zr->name, sizeof(zr->name), "LML33[%u]", zr->id);
 		zr->decoder = client;
 		break;
 
 	case I2C_DRIVERID_SAA7111A:
-		zr->card = &buz_info;
+		zr->card = &zoran_cards[BUZ];
 		snprintf(zr->name, sizeof(zr->name), "Buz[%u]", zr->id);
+		zr->decoder = client;
+		break;
+
+	case I2C_DRIVERID_SAA7114:
+		zr->card = &zoran_cards[LML33R10];
+		snprintf(zr->name, sizeof(zr->name), "LML33R10[%u]", zr->id);
 		zr->decoder = client;
 		break;
 
 	case I2C_DRIVERID_SAA7185B:
 	case I2C_DRIVERID_BT856:
 	case I2C_DRIVERID_ADV717X:
+	case I2C_DRIVERID_MSE3000:
+	case I2C_DRIVERID_ADV7170:
 		zr->encoder = client;
 		break;
 	}
@@ -1132,6 +1337,7 @@ static int zoran_i2c_client_unregister (struct i2c_client *client)
 {
 	struct zoran *zr = (struct zoran *)client->adapter->data;
 	int res = 0;
+
 	dprintk(1, KERN_DEBUG "%s: i2c_client_unregister()\n", zr->name);
 
 	down(&zr->resource_lock);
@@ -1236,7 +1442,7 @@ static void zr36057_adjust_vfe(struct zoran *zr, enum zoran_codec_mode mode)
 	case BUZ_MODE_MOTION_DECOMPRESS:
 		btand(~ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		reg = btread(ZR36057_VFEHCR);
-		if (reg & (1 << 10)) {
+		if ((reg & (1 << 10)) && zr->card->type != LML33R10) {
 			reg += ((1 << 10) | 1);
 		}
 		btwrite(reg, ZR36057_VFEHCR);
@@ -1244,12 +1450,13 @@ static void zr36057_adjust_vfe(struct zoran *zr, enum zoran_codec_mode mode)
 	case BUZ_MODE_MOTION_COMPRESS:
 	case BUZ_MODE_IDLE:
 	default:
-		if (zr->norm == VIDEO_MODE_NTSC)
+		if (zr->norm == VIDEO_MODE_NTSC ||
+		    (zr->card->type == LML33R10 && zr->norm == VIDEO_MODE_PAL))
 			btand(~ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		else
 			btor(ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		reg = btread(ZR36057_VFEHCR);
-		if (!(reg & (1 << 10))) {
+		if (!(reg & (1 << 10)) && zr->card->type != LML33R10) {
 			reg -= ((1 << 10) | 1);
 		}
 		btwrite(reg, ZR36057_VFEHCR);
@@ -1463,12 +1670,12 @@ static void zr36057_overlay(struct zoran *zr, int on)
 		}
 
 		if (fmt) {
-			for (i=0;i<ZORAN_FORMATS;i++) {
+			for (i=0;i<zoran_num_formats;i++) {
 				if (zoran_formats[i].palette == fmt &&
 				    zoran_formats[i].flags & ZORAN_FORMAT_OVERLAY)
 					break;
 			}
-			if (i != ZORAN_FORMATS) {
+			if (i != zoran_num_formats) {
 				format = &zoran_formats[i];
 				zr36057_set_vfe(zr, zr->overlay_settings.width,
 						zr->overlay_settings.height, format);
@@ -1769,13 +1976,13 @@ v4l_grab (struct file       *file,
 	struct zoran *zr = fh->zr;
 	int res=0, i;
 
-	for (i=0;i<ZORAN_FORMATS;i++) {
+	for (i=0;i<zoran_num_formats;i++) {
 		if (zoran_formats[i].palette == mp->format &&
 		    zoran_formats[i].flags & ZORAN_FORMAT_CAPTURE &&
 		    !(zoran_formats[i].flags & ZORAN_FORMAT_COMPRESSED))
 			break;
 	}
-	if (i == ZORAN_FORMATS ||
+	if (i == zoran_num_formats ||
 	    zoran_formats[i].depth == 0) {
 		dprintk(2, KERN_ERR "%s: v4l_grab() - wrong bytes-per-pixel format\n",
 			zr->name);
@@ -1895,6 +2102,7 @@ static void set_videobus_dir(struct zoran *zr, int val)
 {
 	switch (zr->card->type) {
 	case LML33:
+	case LML33R10:
 		if (lml33dpath == 0)
 			GPIO(zr, 5, val);
 		else
@@ -2207,7 +2415,9 @@ static void jpeg_start(struct zoran *zr)
 	reg = (zr->card->gpcs[1] << ZR36057_JCGI_JPEGuestID) | (0 << ZR36057_JCGI_JPEGuestReg);
 	btwrite(reg, ZR36057_JCGI);
 
-        if (zr->card->type == DC10 || zr->card->type == DC30plus)
+        if (zr->card->type == DC10_old ||
+	    zr->card->type == DC30plus ||
+	    zr->card->type == DC30)
 	{
             /* Enable processing on the ZR36016 */
 	    if ( zr->vfe )
@@ -2978,7 +3188,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 
 	case 4:
 
-		if (zr->card->type == DC10)
+		if (zr->card->type == DC10_new)
 		{
 			dprintk(0, KERN_DEBUG "%s: check_jpg_settings() - HDec by 4 is not supported on the DC10\n",
 				zr->name);
@@ -3001,7 +3211,8 @@ zoran_check_jpg_settings (struct zoran              *zr,
 
 		/* We have to check the data the user has set */
 
-		if (settings->HorDcm != 1 && settings->HorDcm != 2 && (zr->card->type == DC10 || settings->HorDcm != 4))
+		if (settings->HorDcm != 1 && settings->HorDcm != 2 &&
+		    (zr->card->type == DC10_new || settings->HorDcm != 4))
 			err0++;
 		if (settings->VerDcm != 1 && settings->VerDcm != 2)
 			err0++;
@@ -3399,6 +3610,7 @@ zoran_open (struct inode *inode,
 	zoran_open_init_session(file);
 
 	MOD_INC_USE_COUNT;
+
 	return 0;
 
 open_unlock_and_return:
@@ -3418,6 +3630,7 @@ zoran_close (struct inode *inode,
 
 	zoran_close_end_session(file);
 
+	down(&zr->resource_lock);
 	if (zr->user-- == 1) {	/* Last process */
 		/* Clean up JPEG process */
 		wake_up_interruptible(&zr->jpg_capq);
@@ -3454,7 +3667,6 @@ zoran_close (struct inode *inode,
 	kfree(fh->overlay_mask);
 	kfree(fh);
 
-	down(&zr->resource_lock);
 	i2c_dec_use_client(zr->decoder);
 	if (zr->encoder)
 		i2c_dec_use_client(zr->encoder);
@@ -4135,10 +4347,10 @@ schan_unlock_and_return:
 				      vbuf->width, vbuf->height,
 			              vbuf->depth, vbuf->bytesperline);
 
-			for (i=0;i<ZORAN_FORMATS;i++)
+			for (i=0;i<zoran_num_formats;i++)
 				if (zoran_formats[i].depth == vbuf->depth)
 					break;
-			if (i == ZORAN_FORMATS) {
+			if (i == zoran_num_formats) {
 				dprintk(0, KERN_ERR "%s: VIDIOCSFBUF - invalid fbuf depth %d\n",
 					zr->name, vbuf->depth);
 				return -EINVAL;
@@ -4526,7 +4738,6 @@ gstat_unlock_and_return:
 
 			if (!res) {
 				bstat->signal = (status & DECODER_STATUS_GOOD) ? 1 : 0;
-
 				if (status & DECODER_STATUS_NTSC)
 					bstat->norm = VIDEO_MODE_NTSC;
 				else if (status & DECODER_STATUS_SECAM)
@@ -4591,13 +4802,14 @@ gstat_unlock_and_return:
 					return -EINVAL;
 			}
 
-			for (i=0;i<ZORAN_FORMATS;i++) {
+			for (i=0;i<zoran_num_formats;i++) {
 				if (zoran_formats[i].flags & flag)
 					num++;
 				if (num == fmt->index)
 					break;
 			}
-			if (fmt->index < 0 /* late, but not too late */ || i == ZORAN_FORMATS)
+			if (fmt->index < 0 /* late, but not too late */ ||
+			    i == zoran_num_formats)
 				return -EINVAL;
 
 			memset(fmt, 0, sizeof(*fmt));
@@ -4805,10 +5017,10 @@ gstat_unlock_and_return:
 sfmtjpg_unlock_and_return:
 						up(&zr->resource_lock);
 					} else {
-						for (i=0;i<ZORAN_FORMATS;i++)
+						for (i=0;i<zoran_num_formats;i++)
 							if (fmt->fmt.pix.pixelformat == zoran_formats[i].fourcc)
 								break;
-						if (i == ZORAN_FORMATS) {
+						if (i == zoran_num_formats) {
 							dprintk(0, KERN_ERR "%s: VIDIOC_S_FMT - unknown/unsupported format 0x%x (%4.4s)\n",
 								zr->name, fmt->fmt.pix.pixelformat, (char*)&printformat);
 							return -EINVAL;
@@ -4872,7 +5084,7 @@ sfmtv4l_unlock_and_return:
 			fb->base = zr->buffer.base;
 			fb->fmt.width = zr->buffer.width;
 			fb->fmt.height = zr->buffer.height;
-			for (i=0;i<ZORAN_FORMATS;i++) {
+			for (i=0;i<zoran_num_formats;i++) {
 				if (zoran_formats[i].depth == zr->buffer.depth &&
 				    zoran_formats[i].flags & ZORAN_FORMAT_OVERLAY) {
 					fb->fmt.pixelformat = zoran_formats[i].fourcc;
@@ -4901,10 +5113,10 @@ sfmtv4l_unlock_and_return:
 				fb->fmt.height, fb->fmt.bytesperline,
 				fb->fmt.pixelformat, (char*)&printformat);
 
-			for (i=0;i<ZORAN_FORMATS;i++)
+			for (i=0;i<zoran_num_formats;i++)
 				if (zoran_formats[i].fourcc == fb->fmt.pixelformat)
 					break;
-			if (i == ZORAN_FORMATS) {
+			if (i == zoran_num_formats) {
 				dprintk(0, KERN_ERR "%s: VIDIOC_S_FBUF - format=0x%x (%4.4s) not allowed\n",
 					zr->name, fb->fmt.pixelformat,
 					(char*)&printformat);
@@ -5827,10 +6039,10 @@ sjpegc_unlock_and_return:
 						fmt->fmt.pix.sizeimage = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
 					} else if (fmt->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 						int i;
-						for (i=0;i<ZORAN_FORMATS;i++)
+						for (i=0;i<zoran_num_formats;i++)
 							if (zoran_formats[i].fourcc == fmt->fmt.pix.pixelformat)
 								break;
-						if (i == ZORAN_FORMATS) {
+						if (i == zoran_num_formats) {
 							res = -EINVAL;
 							goto tryfmt_unlock_and_return;
 						}
@@ -6545,7 +6757,8 @@ find_zr36057 (void)
 
 		/* display codec revision */
 		switch (zr->card->type) {
-		case DC10:
+		case DC10_old:
+		case DC30:
 		case DC30plus:
 			/* Setup ZR36050 */
 			master_codec = kmalloc(sizeof(struct videocodec_master),GFP_KERNEL);
@@ -6591,8 +6804,10 @@ find_zr36057 (void)
 			}
 			break;
 
+		case DC10_new:
 		case DC10plus:
 		case LML33:
+		case LML33R10:
 		case BUZ:
 			/* Setup ZR36060 */
 			master_codec = kmalloc(sizeof(struct videocodec_master),GFP_KERNEL);
@@ -6714,7 +6929,8 @@ init_dc10_cards (void)
 		}
 
 		if (zr36057_init(zr) < 0) {
-			zoran_release(zr);
+			for (i=0;i<zoran_num;i++)
+				zoran_release(&zoran[i]);
 			return -EIO;
 		}
 		zoran_proc_init(zr);

@@ -61,7 +61,7 @@ while [ "$1" != "" ]
 do
     case "$1" in
     
-        'dc10'|'dc10plus')
+        'dc10new'|'dc10plus')
             $SUDO /sbin/insmod ./saa7110.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36060.o
@@ -94,9 +94,16 @@ do
             incompat="buz"
             ;;
         'dc30'|'dc30plus')
+            $SUDO /sbin/insmod ./vpx32xx.o
+            $SUDO /sbin/insmod ./adv7175.o
+            $SUDO /sbin/insmod ./zr36016.o
+            $SUDO /sbin/insmod ./zr36050.o
+            cards="$cards $1"
+            ;;
+        'dc10old')
             $SUDO /sbin/insmod ./vpx3220.o
-            #$SUDO /sbin/insmod ./tea6415.o
-            echo "playback disabled for $1 since the chipset (tea6415) specs are unknown"
+            #$SUDO /sbin/insmod ./mse3000.o
+            echo "playback on card $1 disabled, because we don't have a TV encoder module (mse3000) yet"
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"

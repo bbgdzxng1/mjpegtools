@@ -39,6 +39,16 @@ Drivers to use: videodev, i2c-core, i2c-algo-bit,
 Inputs: Composite and S-video
 Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 
+Linux Media Labs LML33R10:
+* Zoran zr36067 PCI controller
+* Zoran zr36060 MJPEG codec
+* Philips saa7114 TV decoder
+* Analog Devices adv7170 TV encoder
+Drivers to use: videodev, i2c-core, i2c-algo-bit,
+                videocodec, saa7114, adv7170, zr36060, zoran
+Inputs: Composite and S-video
+Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
+
 Pinnacle/Miro DC10(new)/DC10+:
 * Zoran zr36057/zr36067 PCI controller
 * Zoran zr36060 MJPEG codec
@@ -49,21 +59,32 @@ Drivers to use: videodev, i2c-core, i2c-algo-bit,
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 
-Pinnacle/Miro DC10(old)/DC30/DC30+:
+Pinnacle/Miro DC10(old):
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End
-* Micronas vpx3220a/vpx3216b/vpx3214c TV decoder
-* Analog Devices adv7176/tea6415 TV encoder
+* Micronas vpx3220a TV decoder
+* mse3000 TV encoder
+Drivers to use: videodev, i2c-core, i2c-algo-bit,
+                videocodec, vpx3220, mse3000, zr36050, zr36016, zoran
+Inputs: Composite, S-video and Internal
+Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
+
+Note: no module for the mse3000 is available yet.
+
+Pinnacle/Miro DC30/DC30+:
+* Zoran zr36057 PCI controller
+* Zoran zr36050 MJPEG codec
+* Zoran zr36016 Video Front End
+* Micronas vpx3225d TV decoder
+* Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, vpx3220, adv7175, zr36050, zr36016, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 
-Note1: No TV encoder driver for the tea6415 available yet
-Note2: the DC30 apparently can do both ITU/ccir601 (720x576/480) as well as
-         sqpx (768x576/640x480) mode, this should be switcheable at module
-         load time. Don't know any details here (Laurent?)
+Note: both the DC10(old) as well as the DC30/DC30+ don't work yet - work
+        in progress.
 
 ===========================
 

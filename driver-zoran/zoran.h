@@ -166,11 +166,23 @@ Private IOCTL to set up for displaying MJPEG
 
 enum card_type {
         UNKNOWN = 0,
-        DC10,
-        DC10plus,
+
+	/* Pinnacle/Miro */
+        DC10_old, /* DC30 like */
+	DC10_new, /* DC10plus like */
+	DC10plus,
+	DC30,
+	DC30plus,
+
+	/* Linux Media Labs */
         LML33,
+	LML33R10,
+
+	/* Iomega */
         BUZ,
-	DC30plus
+
+	/* total number of cards */
+	NUM_CARDS
 };
 
 enum zoran_codec_mode {
@@ -331,6 +343,10 @@ struct zoran_fh {
 
 struct card_info {
 	enum card_type type;
+	char name[32];
+	int i2c_decoder, i2c_encoder, audio_chip; /* I2C addresses */
+	char i2c_dec_name[16], i2c_enc_name[16], audio_name[16]; /* module */
+	int vendor_id, device_id; /* subsystem vendor/device ID */
 
 	int inputs;			/* number of video inputs */
 	struct input {
