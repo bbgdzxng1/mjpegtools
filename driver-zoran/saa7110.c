@@ -466,8 +466,9 @@ saa7110_dec_use (struct i2c_client *client)
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
  */
-static unsigned short normal_i2c[] =
-    { I2C_SAA7110 >> 1, (I2C_SAA7110 >> 1) + 1,
+static unsigned short normal_i2c[] = {
+	I2C_SAA7110 >> 1,
+	(I2C_SAA7110 >> 1) + 1,
 	I2C_CLIENT_END
 };
 static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };

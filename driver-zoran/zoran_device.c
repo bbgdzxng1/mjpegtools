@@ -540,16 +540,16 @@ zr36057_overlay (struct zoran *zr,
 		if (fmt) {
 			for (i = 0; i < zoran_num_formats; i++) {
 				if (zoran_formats[i].palette == fmt &&
-				    zoran_formats[i].
-				    flags & ZORAN_FORMAT_OVERLAY)
+				    zoran_formats[i].flags & 
+				    ZORAN_FORMAT_OVERLAY)
 					break;
 			}
 			if (i != zoran_num_formats) {
 				format = &zoran_formats[i];
 				zr36057_set_vfe(zr,
 						zr->overlay_settings.width,
-						zr->overlay_settings.
-						height, format);
+						zr->overlay_settings.height,
+						format);
 			}
 		}
 

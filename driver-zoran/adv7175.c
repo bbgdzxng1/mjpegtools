@@ -163,6 +163,7 @@ adv7175_write_block (struct i2c_client *client,
 	return ret;
 }
 
+#ifdef ENCODER_DUMP
 static void
 dump (struct i2c_client *client)
 {
@@ -177,6 +178,7 @@ dump (struct i2c_client *client)
 		printk("\n");
 	}
 }
+#endif
 
 /* ----------------------------------------------------------------------- */
 // Output filter:  S-Video  Composite
@@ -386,12 +388,17 @@ adv7175_command (struct i2c_client *client,
 	}
 		break;
 
+#ifdef ENCODER_DUMP
+	case ENCODER_DUMP:
+	{
+		dump(client);
+	}
+		break;
+#endif
+
 	default:
 		return -EINVAL;
 	}
-
-	if (debug != 0)
-		dump(client);
 
 	return 0;
 }

@@ -74,19 +74,19 @@ Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 2
 
-Pinnacle/Miro DC10(old):
+Pinnacle/Miro DC10(old): *
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End or Fuji md0211 Video Front End (clone?)
 * Micronas vpx3220a TV decoder
-* mse3000 TV encoder or Analog Devices adv7176 TV encoder
+* mse3000 TV encoder or Analog Devices adv7176 TV encoder *
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
-                videocodec, vpx3220, mse3000/adv7176, zr36050, zr36016, zoran
+                videocodec, vpx3220, mse3000/adv7175, zr36050, zr36016, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 0
 
-Pinnacle/Miro DC30:
+Pinnacle/Miro DC30: *
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End
@@ -98,7 +98,7 @@ Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 3
 
-Pinnacle/Miro DC30+:
+Pinnacle/Miro DC30+: *
 * Zoran zr36067 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End
