@@ -253,6 +253,21 @@ struct zoran_v4l_settings {
 	const struct zoran_format *format;	/* capture format */
 };
 
+/* whoops, this one is undeclared if !v4l2 */
+#ifndef V4L2
+struct v4l2_jpegcompression
+{
+	int	quality;
+	int	APPn;
+	int	APP_len;
+	char	APP_data[60];
+	int	COM_len;
+	char	COM_data[60];
+	__u32	jpeg_markers;
+	__u8	reserved[116];
+};
+#endif
+
 /* jpg-capture/-playback settings */
 struct zoran_jpg_settings {
 	int decimation;				/* this bit is used to set everything to default */
