@@ -2797,7 +2797,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 
 		settings->img_x = (BUZ_MAX_WIDTH==720)?8:0;
 		settings->img_y = 0;
-		settings->img_width = BUZ_MAX_WIDTH;
+		settings->img_width = (BUZ_MAX_WIDTH==720)?704:BUZ_MAX_WIDTH;
 		settings->img_height = BUZ_MAX_HEIGHT / 2;
 		break;
 
@@ -2817,7 +2817,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 
 		settings->img_x = (BUZ_MAX_WIDTH==720)?8:0;
 		settings->img_y = 0;
-		settings->img_width = BUZ_MAX_WIDTH;
+		settings->img_width = (BUZ_MAX_WIDTH==720)?704:BUZ_MAX_WIDTH;
 		settings->img_height = BUZ_MAX_HEIGHT / 2;
 		break;
 

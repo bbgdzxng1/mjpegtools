@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.3 2002-08-10 09:53:53 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.4 2002-08-10 12:42:25 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -536,7 +536,9 @@ static void zr36060_init(struct zr36060 *ptr)
                                sizeof(zr36060_dht),zr36060_dht);
 
 		/* Setup the Video Frontend */
-		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIExt);
+		//zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIExt);
+		//this doesn't seem right and doesn't work...
+		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIVedge | ZR060_VCR_Range);
         }
 
 	/* Load the tables */
