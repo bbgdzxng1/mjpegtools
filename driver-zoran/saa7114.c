@@ -145,7 +145,7 @@ saa7114_write (struct i2c_client *client,
 	       u8                 value)
 {
 	struct saa7114 *decoder = i2c_get_clientdata(client);
-	decoder->reg[reg] = value;
+	/*decoder->reg[reg] = value;*/
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
 
@@ -172,7 +172,7 @@ saa7114_write_block (struct i2c_client *client,
 			block_data[msg.len++] = reg = data[0];
 			do {
 				block_data[msg.len++] =
-				    decoder->reg[reg++] = data[1];
+				    /*decoder->reg[reg++] =*/ data[1];
 				len -= 2;
 				data += 2;
 			} while (len >= 2 && data[0] == reg &&
@@ -509,7 +509,6 @@ saa7114_command (struct i2c_client *client,
 
 		cap->flags = VIDEO_DECODER_PAL |
 			     VIDEO_DECODER_NTSC |
-			     VIDEO_DECODER_SECAM |
 			     VIDEO_DECODER_AUTO |
 			     VIDEO_DECODER_CCIR;
 		cap->inputs = 8;
@@ -1169,7 +1168,8 @@ saa7114_detect_client (struct i2c_adapter *adapter,
 		return i;
 	}
 
-	i = saa7114_write_block(client, init, sizeof(init));
+	//i = saa7114_write_block(client, init, sizeof(init));
+	i = 0;
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach error: init status %d\n",
 			I2C_DEVNAME(client), i);

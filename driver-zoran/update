@@ -24,6 +24,7 @@ fi
 # Unload everything
 $SUDO /sbin/rmmod dc10 > /dev/null 2>&1     # Just in case if old driver was loaded
 $SUDO /sbin/rmmod zoran > /dev/null 2>&1
+$SUDO /sbin/rmmod zr36067 > /dev/null 2>&1
 # If you don't have DC10 or DC10plus card comment out next three lines
 $SUDO /sbin/rmmod adv7175 > /dev/null 2>&1
 $SUDO /sbin/rmmod saa7110 > /dev/null 2>&1
@@ -41,6 +42,10 @@ $SUDO /sbin/rmmod adv7175 > /dev/null 2>&1
 $SUDO /sbin/rmmod vpx3220 > /dev/null 2>&1
 $SUDO /sbin/rmmod zr36016 > /dev/null 2>&1
 $SUDO /sbin/rmmod zr36050 > /dev/null 2>&1
+# bla lml33r10 bla etc.
+$SUDO /sbin/rmmod adv7170 > /dev/null 2>&1
+$SUDO /sbin/rmmod saa7114 > /dev/null 2>&1
+$SUDO /sbin/rmmod zr36060 > /dev/null 2>&1
 
 $SUDO /sbin/rmmod videocodec > /dev/null 2>&1
 

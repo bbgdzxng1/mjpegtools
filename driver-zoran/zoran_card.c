@@ -383,10 +383,10 @@ static struct tvnorm f50sqpixel_dc10 = { 944, 768, 0, 880, 625, 576, 16 };
 static struct tvnorm f60sqpixel_dc10 = { 780, 640, 0, 716, 525, 480, 12 };
 
 /* FIXME: I cannot swap U and V in saa7114, so i do one
- * pixel left shift in zoran
+ * pixel left shift in zoran (75 -> 74)
  * (Maxim Yevtyushkin <max@linuxmedialabs.com>) */
-static struct tvnorm f50ccir601_lm33r10 = { 864, 720, 74, 804, 625, 576, 18 };
-static struct tvnorm f60ccir601_lm33r10 = { 858, 720, 56, 788, 525, 480, 16 };
+static struct tvnorm f50ccir601_lm33r10 = { 864, 720, 74+54, 804, 625, 576, 18 };
+static struct tvnorm f60ccir601_lm33r10 = { 858, 720, 56+54, 788, 525, 480, 16 };
 
 static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 	{
@@ -559,6 +559,8 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 	}, {
 		.type = LML33R10,
 		.name = "LML33R10",
+		.vendor_id = PCI_VENDOR_ID_ELECTRONICDESIGNGMBH,
+		.device_id = PCI_DEVICE_ID_LML_33R10,
 		.i2c_decoder = I2C_DRIVERID_SAA7114,
 		.i2c_encoder = I2C_DRIVERID_ADV7170,
 		.video_codec = CODEC_TYPE_ZR36060,
@@ -577,9 +579,9 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.jpeg_int = ZR36057_ISR_GIRQ1,
 		.vsync_int = ZR36057_ISR_GIRQ0,
 		.gpio = { 1, -1, 3, 5, 7, -1, -1, -1 },
-		.gpio_pol = {0, 0, 0, 0, 1, 0, 0, 0 },
+		.gpio_pol = { 0, 0, 0, 0, 1, 0, 0, 0 },
 		.gpcs = { 3, 1 },
-		.vfe_pol = { 1, 0, 0, 0, 0, 1, 0, 0 },
+		.vfe_pol = { 1, 1, 0, 0, 0, 1, 0, 0 },
 		.gws_not_connected = 1,
 		.init = &lml33_init,
 	}, {

@@ -34,6 +34,12 @@
 #ifndef PCI_DEVICE_ID_MIRO_DC30PLUS
 #define PCI_DEVICE_ID_MIRO_DC30PLUS 0xd801
 #endif
+#ifndef PCI_VENDOR_ID_ELECTRONICDESIGNGMBH
+#define PCI_VENDOR_ID_ELECTRONICDESIGNGMBH 0x12f8
+#endif
+#ifndef PCI_DEVICE_ID_LML_33R10
+#define PCI_DEVICE_ID_LML_33R10 0x8a02
+#endif
 
 static inline void *
 i2c_get_adapdata (struct i2c_adapter *adap)

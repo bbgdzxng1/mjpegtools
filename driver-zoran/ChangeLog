@@ -7,6 +7,8 @@ Version 0.9.4 -> 0.9.5
 * change I2C ID probing/scanning to what's used in 2.5.x
 * some small documentation updates
 * VPX32XX->VPX3220
+* add LML33R10 PCI subvendor/-device ID
+* fix LML33R10
 
 Version 0.9.3 -> 0.9.4
 ----------------------
