@@ -20,6 +20,10 @@ Version 0.9.4 -> 0.9.5
     <hch@lst.de>) and add some sort of emulation of module_put/get for 2.4.x
 * fix potential integer overflow (bug detected by Ken Ashcraft
     <kash@stanford.edu>)
+* change subfrequency carrier (patch by Douglas Fraser
+    <ds-fraser@comcast.net>)
+* use msleep() instead of schedule_timeout() (patch by Nishanth Aravamudan
+    <nacc@us.ibm.com>)
 
 Version 0.9.3 -> 0.9.4
 ----------------------
