@@ -1397,7 +1397,7 @@ find_zr36057 (void)
 					zr->name);
 				goto zr_free_vfe;
 			}
-			if (zr->codec->type != zr->card->video_vfe) {
+			if (zr->vfe->type != zr->card->video_vfe) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() = wrong VFE\n",
