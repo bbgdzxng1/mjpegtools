@@ -1268,7 +1268,7 @@ zoran_open (struct inode *inode,
 
 	/* find the device */
 	for (i = 0; i < zoran_num; i++) {
-		if (zoran[i].video_dev.minor == minor) {
+		if (zoran[i].video_dev->minor == minor) {
 			zr = &zoran[i];
 			break;
 		}
@@ -2379,7 +2379,7 @@ zoran_do_ioctl (struct inode *inode,
 		struct video_unit *vunit = arg;
 
 		dprintk(3, KERN_DEBUG "%s: VIDIOCGUNIT\n", ZR_DEVNAME(zr));
-		vunit->video = zr->video_dev.minor;
+		vunit->video = zr->video_dev->minor;
 		vunit->vbi = VIDEO_NO_UNIT;
 		vunit->radio = VIDEO_NO_UNIT;
 		vunit->audio = VIDEO_NO_UNIT;
@@ -4687,5 +4687,8 @@ struct video_device zoran_template __devinitdata = {
 #endif
 	.hardware = ZORAN_HARDWARE,
 	.fops = &zoran_fops,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	.release = &zoran_vdev_release,
+#endif
 	.minor = -1
 };
