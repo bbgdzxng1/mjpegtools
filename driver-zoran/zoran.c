@@ -5827,8 +5827,6 @@ static int zr36057_init(int i)
         init_waitqueue_head(&zr->jpg_capq);
         init_waitqueue_head(&zr->test_q);
 
-	init_MUTEX(&zr->res_lock);
-
  	zr->jpg_buffers.allocated = 0;
 	zr->v4l_buffers.allocated = 0;
 
