@@ -916,8 +916,9 @@ v4l_sync (struct file *file,
 
 	/* wait on this buffer to get ready */
 	while (zr->v4l_buffers.buffer[frame].state == BUZ_STATE_PEND) {
-		interruptible_sleep_on(&zr->v4l_capq);
-		if (signal_pending(current))
+		if (!interruptible_sleep_on_timeout(&zr->v4l_capq, 10 * HZ))
+			return -ETIME;
+		else if (signal_pending(current))
 			return -ERESTARTSYS;
 	}
 
@@ -1813,8 +1814,8 @@ zoran_set_norm (struct zoran *zr,
 	}
 
 	if (norm != VIDEO_MODE_AUTO &&
-	    (norm < 0 || norm >= zr->card->norms ||
-	     !zr->card->tvn[norm])) {
+	    (norm < 0 || norm >= zr->card.norms ||
+	     !zr->card.tvn[norm])) {
 		dprintk(1,
 			KERN_ERR "%s: set_norm() - unsupported norm %d\n",
 			zr->name, norm);
@@ -1837,7 +1838,7 @@ zoran_set_norm (struct zoran *zr,
 
 		/* let changes come into effect */
 		current->state = TASK_UNINTERRUPTIBLE;
-		schedule_timeout(1 * HZ);
+		schedule_timeout(2 * HZ);
 
 		decoder_command(zr, DECODER_GET_STATUS, &status);
 		if (!(status & DECODER_STATUS_GOOD)) {
@@ -1857,7 +1858,7 @@ zoran_set_norm (struct zoran *zr,
 		else
 			norm = VIDEO_MODE_PAL;
 	}
-	zr->timing = zr->card->tvn[norm];
+	zr->timing = zr->card.tvn[norm];
 	norm_encoder = norm;
 
 	/* We switch overlay off and on since a change in the
@@ -1897,7 +1898,7 @@ zoran_set_input (struct zoran *zr,
 		return -EBUSY;
 	}
 
-	if (input < 0 || input >= zr->card->inputs) {
+	if (input < 0 || input >= zr->card.inputs) {
 		dprintk(1,
 			KERN_ERR
 			"%s: set_input() - unnsupported input %d\n",
@@ -1905,7 +1906,7 @@ zoran_set_input (struct zoran *zr,
 		return -EINVAL;
 	}
 
-	realinput = zr->card->input[input].muxsel;
+	realinput = zr->card.input[input].muxsel;
 	zr->input = input;
 
 	decoder_command(zr, DECODER_SET_INPUT, &realinput);
@@ -1937,7 +1938,7 @@ zoran_do_ioctl (struct inode *inode,
 		strncpy(vcap->name, zr->name, sizeof(vcap->name));
 		vcap->type = ZORAN_VID_TYPE;
 
-		vcap->channels = zr->card->inputs;
+		vcap->channels = zr->card.inputs;
 		vcap->audios = 0;
 		down(&zr->resource_lock);
 		vcap->maxwidth = BUZ_MAX_WIDTH;
@@ -1959,7 +1960,7 @@ zoran_do_ioctl (struct inode *inode,
 			zr->name, vchan->channel);
 
 		memset(vchan, 0, sizeof(struct video_channel));
-		if (channel > zr->card->inputs) {
+		if (channel > zr->card.inputs) {
 			dprintk(1,
 				KERN_ERR
 				"%s: VIDIOCGCHAN on not existing channel %d\n",
@@ -1967,7 +1968,7 @@ zoran_do_ioctl (struct inode *inode,
 			return -EINVAL;
 		}
 
-		strcpy(vchan->name, zr->card->input[channel].name);
+		strcpy(vchan->name, zr->card.input[channel].name);
 
 		vchan->tuners = 0;
 		vchan->flags = 0;
@@ -2508,7 +2509,7 @@ zoran_do_ioctl (struct inode *inode,
 			return -EINVAL;
 		}
 
-		input = zr->card->input[bstat->input].muxsel;
+		input = zr->card.input[bstat->input].muxsel;
 		norm = VIDEO_MODE_AUTO;
 
 		down(&zr->resource_lock);
@@ -2533,7 +2534,7 @@ zoran_do_ioctl (struct inode *inode,
 		decoder_command(zr, DECODER_GET_STATUS, &status);
 
 		/* restore previous input and norm */
-		input = zr->card->input[zr->input].muxsel;
+		input = zr->card.input[zr->input].muxsel;
 		decoder_command(zr, DECODER_SET_INPUT, &input);
 		decoder_command(zr, DECODER_SET_NORM, &zr->norm);
 	gstat_unlock_and_return:
@@ -3540,7 +3541,7 @@ zoran_do_ioctl (struct inode *inode,
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_ENUMSTD - index=%d\n",
 			zr->name, std->index);
 
-		if (std->index < 0 || std->index >= (zr->card->norms + 1))
+		if (std->index < 0 || std->index >= (zr->card.norms + 1))
 			return -EINVAL;
 		else {
 			int id = std->index;
@@ -3548,7 +3549,7 @@ zoran_do_ioctl (struct inode *inode,
 			std->index = id;
 		}
 
-		if (std->index == zr->card->norms) {
+		if (std->index == zr->card.norms) {
 			/* if we have autodetect, ... */
 			struct video_decoder_capability caps;
 			decoder_command(zr, DECODER_GET_CAPABILITIES,
@@ -3566,21 +3567,21 @@ zoran_do_ioctl (struct inode *inode,
 			strncpy(std->name, "PAL", 31);
 			std->frameperiod.numerator = 25;
 			std->frameperiod.denominator = 1;
-			std->framelines = zr->card->tvn[0]->Ht;
+			std->framelines = zr->card.tvn[0]->Ht;
 			break;
 		case 1:
 			std->id = V4L2_STD_NTSC;
 			strncpy(std->name, "NTSC", 31);
 			std->frameperiod.numerator = 30000;
 			std->frameperiod.denominator = 1001;
-			std->framelines = zr->card->tvn[1]->Ht;
+			std->framelines = zr->card.tvn[1]->Ht;
 			break;
 		case 2:
 			std->id = V4L2_STD_SECAM;
 			strncpy(std->name, "SECAM", 31);
 			std->frameperiod.numerator = 25;
 			std->frameperiod.denominator = 1;
-			std->framelines = zr->card->tvn[2]->Ht;
+			std->framelines = zr->card.tvn[2]->Ht;
 			break;
 		}
 
@@ -3657,7 +3658,7 @@ zoran_do_ioctl (struct inode *inode,
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_ENUMINPUT - index=%d\n",
 			zr->name, inp->index);
 
-		if (inp->index < 0 || inp->index >= zr->card->inputs)
+		if (inp->index < 0 || inp->index >= zr->card.inputs)
 			return -EINVAL;
 		else {
 			int id = inp->index;
@@ -3665,7 +3666,7 @@ zoran_do_ioctl (struct inode *inode,
 			inp->index = id;
 		}
 
-		strncpy(inp->name, zr->card->input[inp->index].name,
+		strncpy(inp->name, zr->card.input[inp->index].name,
 			sizeof(inp->name) - 1);
 		inp->type = V4L2_INPUT_TYPE_CAMERA;
 		inp->std = V4L2_STD_ALL;
@@ -3964,7 +3965,7 @@ zoran_do_ioctl (struct inode *inode,
 
 		if (*std == V4L2_STD_ALL || *std == V4L2_STD_NTSC ||
 		    *std == V4L2_STD_PAL || (*std == V4L2_STD_SECAM &&
-					     zr->card->norms == 3)) {
+					     zr->card.norms == 3)) {
 			return 0;
 		}
 
@@ -4609,7 +4610,7 @@ zoran_mmap (struct file           *file,
 	return 0;
 }
 
-static struct __devinitdata file_operations zoran_fops = {
+static struct file_operations zoran_fops __devinitdata = {
 	.owner = THIS_MODULE,
 	.open = zoran_open,
 	.release = zoran_close,
@@ -4621,7 +4622,7 @@ static struct __devinitdata file_operations zoran_fops = {
 	.poll = zoran_poll,
 };
 
-struct __devinitdata video_device zoran_template = {
+struct video_device zoran_template __devinitdata = {
 	.name = ZORAN_NAME,
 	.type = ZORAN_VID_TYPE,
 #ifdef HAVE_V4L2

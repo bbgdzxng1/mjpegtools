@@ -120,7 +120,7 @@ post_office_wait (struct zoran *zr)
 	while ((por = btread(ZR36057_POR)) & ZR36057_POR_POPen) {
 		/* wait for something to happen */
 	}
-	if ((por & ZR36057_POR_POTime) && !zr->card->gws_not_connected) {
+	if ((por & ZR36057_POR_POTime) && !zr->card.gws_not_connected) {
 		/* In LML33/BUZ \GWS line is not connected, so it has always timeout set */
 		dprintk(1, KERN_INFO "%s: pop timeout %08x\n", zr->name,
 			por);
@@ -251,7 +251,7 @@ void
 jpeg_codec_sleep (struct zoran *zr,
 		  int           sleep)
 {
-	GPIO(zr, zr->card->gpio[GPIO_JPEG_SLEEP], !sleep);
+	GPIO(zr, zr->card.gpio[GPIO_JPEG_SLEEP], !sleep);
 	if (!sleep) {
 		dprintk(3,
 			KERN_DEBUG
@@ -273,14 +273,14 @@ jpeg_codec_reset (struct zoran *zr)
 	/* Take the codec out of sleep */
 	jpeg_codec_sleep(zr, 0);
 
-	if (zr->card->gpcs[GPCS_JPEG_RESET] != 0xff) {
-		post_office_write(zr, zr->card->gpcs[GPCS_JPEG_RESET], 0,
+	if (zr->card.gpcs[GPCS_JPEG_RESET] != 0xff) {
+		post_office_write(zr, zr->card.gpcs[GPCS_JPEG_RESET], 0,
 				  0);
 		udelay(2);
 	} else {
-		GPIO(zr, zr->card->gpio[GPIO_JPEG_RESET], 0);
+		GPIO(zr, zr->card.gpio[GPIO_JPEG_RESET], 0);
 		udelay(2);
-		GPIO(zr, zr->card->gpio[GPIO_JPEG_RESET], 1);
+		GPIO(zr, zr->card.gpio[GPIO_JPEG_RESET], 1);
 		udelay(2);
 	}
 
@@ -306,7 +306,7 @@ zr36057_adjust_vfe (struct zoran          *zr,
 	case BUZ_MODE_MOTION_DECOMPRESS:
 		btand(~ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		reg = btread(ZR36057_VFEHCR);
-		if ((reg & (1 << 10)) && zr->card->type != LML33R10) {
+		if ((reg & (1 << 10)) && zr->card.type != LML33R10) {
 			reg += ((1 << 10) | 1);
 		}
 		btwrite(reg, ZR36057_VFEHCR);
@@ -315,13 +315,13 @@ zr36057_adjust_vfe (struct zoran          *zr,
 	case BUZ_MODE_IDLE:
 	default:
 		if (zr->norm == VIDEO_MODE_NTSC ||
-		    (zr->card->type == LML33R10 &&
+		    (zr->card.type == LML33R10 &&
 		     zr->norm == VIDEO_MODE_PAL))
 			btand(~ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		else
 			btor(ZR36057_VFESPFR_ExtFl, ZR36057_VFESPFR);
 		reg = btread(ZR36057_VFEHCR);
-		if (!(reg & (1 << 10)) && zr->card->type != LML33R10) {
+		if (!(reg & (1 << 10)) && zr->card.type != LML33R10) {
 			reg -= ((1 << 10) | 1);
 		}
 		btwrite(reg, ZR36057_VFEHCR);
@@ -383,9 +383,9 @@ zr36057_set_vfe (struct zoran              *zr,
 	hcrop1 = 2 * ((tvn->Wa - We) / 4);
 	hcrop2 = tvn->Wa - We - hcrop1;
 	HStart = tvn->HStart | 1;	// | 1 Doesn't have any effect, tested on both a DC10 and a DC10+
-/*        if (zr->card->type == LML33)
+/*        if (zr->card.type == LML33)
 		HStart += 62;
-        if (zr->card->type == BUZ) {   //HStart += 67;
+        if (zr->card.type == BUZ) {   //HStart += 67;
                 HStart += 44;
         }
 This is not needed anymore (I think) as HSYNC pol has been changed for the BUZ and LML33
@@ -395,7 +395,7 @@ This is not needed anymore (I think) as HSYNC pol has been changed for the BUZ a
 	HEnd -= hcrop2;
 	reg = ((HStart & ZR36057_VFEHCR_Hmask) << ZR36057_VFEHCR_HStart)
 	    | ((HEnd & ZR36057_VFEHCR_Hmask) << ZR36057_VFEHCR_HEnd);
-	if (zr->card->vfe_pol.hsync_pol)
+	if (zr->card.vfe_pol.hsync_pol)
 		reg |= ZR36057_VFEHCR_HSPol;
 	btwrite(reg, ZR36057_VFEHCR);
 
@@ -413,7 +413,7 @@ This is not needed anymore (I think) as HSYNC pol has been changed for the BUZ a
 	VEnd -= vcrop2;
 	reg = ((VStart & ZR36057_VFEVCR_Vmask) << ZR36057_VFEVCR_VStart)
 	    | ((VEnd & ZR36057_VFEVCR_Vmask) << ZR36057_VFEVCR_VEnd);
-	if (zr->card->vfe_pol.vsync_pol)
+	if (zr->card.vfe_pol.vsync_pol)
 		reg |= ZR36057_VFEVCR_VSPol;
 	btwrite(reg, ZR36057_VFEVCR);
 
@@ -681,7 +681,7 @@ zr36057_set_memgrab (struct zoran *zr,
 
 		/* switch on VSync interrupts */
 		btwrite(IRQ_MASK, ZR36057_ISR);	// Clear Interrupts
-		btor(zr->card->vsync_int, ZR36057_ICR);	// SW
+		btor(zr->card.vsync_int, ZR36057_ICR);	// SW
 
 		/* enable SnapShot */
 		btor(ZR36057_VSSFGR_SnapShot, ZR36057_VSSFGR);
@@ -696,7 +696,7 @@ zr36057_set_memgrab (struct zoran *zr,
 		zr->v4l_memgrab_active = 0;
 
 		/* switch off VSync interrupts */
-		btand(~zr->card->vsync_int, ZR36057_ICR);	// SW
+		btand(~zr->card.vsync_int, ZR36057_ICR);	// SW
 
 		/* reenable grabbing to screen if it was running */
 		if (zr->v4l_overlay_active) {
@@ -741,14 +741,14 @@ static inline void
 set_frame (struct zoran *zr,
 	   int           val)
 {
-	GPIO(zr, zr->card->gpio[GPIO_JPEG_FRAME], val);
+	GPIO(zr, zr->card.gpio[GPIO_JPEG_FRAME], val);
 }
 
 static void
 set_videobus_dir (struct zoran *zr,
 		  int           val)
 {
-	switch (zr->card->type) {
+	switch (zr->card.type) {
 	case LML33:
 	case LML33R10:
 		if (lml33dpath == 0)
@@ -757,8 +757,8 @@ set_videobus_dir (struct zoran *zr,
 			GPIO(zr, 5, 1);
 		break;
 	default:
-		GPIO(zr, zr->card->gpio[GPIO_VID_DIR],
-		     zr->card->gpio_pol[GPIO_VID_DIR] ? !val : val);
+		GPIO(zr, zr->card.gpio[GPIO_VID_DIR],
+		     zr->card.gpio_pol[GPIO_VID_DIR] ? !val : val);
 		break;
 	}
 }
@@ -830,31 +830,24 @@ zr36057_set_jpg (struct zoran          *zr,
 
 	/* vertical */
 	btor(ZR36057_VFEVCR_VSPol, ZR36057_VFEVCR);
-	reg =
-	    (6 << ZR36057_VSP_VsyncSize) | (tvn->Ht << ZR36057_VSP_FrmTot);
+	reg = (6 << ZR36057_VSP_VsyncSize) |
+	      (tvn->Ht << ZR36057_VSP_FrmTot);
 	btwrite(reg, ZR36057_VSP);
-	reg = ((zr->jpg_settings.img_y + tvn->VStart) << ZR36057_FVAP_NAY)
-	    | (zr->jpg_settings.img_height << ZR36057_FVAP_PAY);
+	reg = ((zr->jpg_settings.img_y + tvn->VStart) << ZR36057_FVAP_NAY) |
+	      (zr->jpg_settings.img_height << ZR36057_FVAP_PAY);
 	btwrite(reg, ZR36057_FVAP);
 
 	/* horizontal */
-#ifndef LEAVE_OUT_FIX
-	if (zr->card->vfe_pol.hsync_pol)
-#endif
+	if (zr->card.vfe_pol.hsync_pol)
 		btor(ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);
-#ifndef LEAVE_OUT_FIX
 	else
 		btand(~ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);		
-#endif
-	reg =
-	    ((tvn->HSyncStart) << ZR36057_HSP_HsyncStart) | (tvn->
-							     Wt <<
-							     ZR36057_HSP_LineTot);
+	reg = ((tvn->HSyncStart) << ZR36057_HSP_HsyncStart) |
+	      (tvn->Wt << ZR36057_HSP_LineTot);
 	btwrite(reg, ZR36057_HSP);
-	reg =
-	    ((zr->jpg_settings.img_x + tvn->HStart +
-	      4) << ZR36057_FHAP_NAX)
-	    | (zr->jpg_settings.img_width << ZR36057_FHAP_PAX);
+	reg = ((zr->jpg_settings.img_x +
+	        tvn->HStart + 4) << ZR36057_FHAP_NAX) |
+	      (zr->jpg_settings.img_width << ZR36057_FHAP_PAX);
 	btwrite(reg, ZR36057_FHAP);
 
 	/* field process parameters */
@@ -878,7 +871,7 @@ zr36057_set_jpg (struct zoran          *zr,
 
 	case BUZ_MODE_STILL_COMPRESS:
 	case BUZ_MODE_MOTION_COMPRESS:
-		if (zr->card->type != BUZ)
+		if (zr->card.type != BUZ)
 			reg = 140;
 		else
 			reg = 60;
@@ -1007,7 +1000,7 @@ jpeg_start (struct zoran *zr)
 	/* clear IRQs */
 	btwrite(IRQ_MASK, ZR36057_ISR);
 	/* enable the JPEG IRQs */
-	btwrite(zr->card->jpeg_int |
+	btwrite(zr->card.jpeg_int |
 			ZR36057_ICR_JPEGRepIRQ |
 			ZR36057_ICR_IntPinEn,
 		ZR36057_ICR);
@@ -1015,12 +1008,12 @@ jpeg_start (struct zoran *zr)
 	set_frame(zr, 0);	// \FRAME
 
 	/* set the JPEG codec guest ID */
-	reg = (zr->card->gpcs[1] << ZR36057_JCGI_JPEGuestID) |
+	reg = (zr->card.gpcs[1] << ZR36057_JCGI_JPEGuestID) |
 	       (0 << ZR36057_JCGI_JPEGuestReg);
 	btwrite(reg, ZR36057_JCGI);
 
-	if (zr->card->video_vfe == CODEC_TYPE_ZR36016 &&
-	    zr->card->video_codec == CODEC_TYPE_ZR36050) {
+	if (zr->card.video_vfe == CODEC_TYPE_ZR36016 &&
+	    zr->card.video_codec == CODEC_TYPE_ZR36050) {
 		/* Enable processing on the ZR36016 */
 		if (zr->vfe)
 			zr36016_write(zr->vfe, 0, 1);
@@ -1078,14 +1071,14 @@ zr36057_enable_jpg (struct zoran          *zr,
 			zr->vfe->control(zr->vfe, CODEC_S_JPEG_TDS_BYTE,
 					 sizeof(int), &field_size);
 			zr->vfe->set_video(zr->vfe, zr->timing, &cap,
-					   &zr->card->vfe_pol);
+					   &zr->card.vfe_pol);
 			zr->vfe->set_mode(zr->vfe, CODEC_DO_COMPRESSION);
 		}
 		/* Setup the JPEG codec */
 		zr->codec->control(zr->codec, CODEC_S_JPEG_TDS_BYTE,
 				   sizeof(int), &field_size);
 		zr->codec->set_video(zr->codec, zr->timing, &cap,
-				     &zr->card->vfe_pol);
+				     &zr->card.vfe_pol);
 		zr->codec->set_mode(zr->codec, CODEC_DO_COMPRESSION);
 
 		init_jpeg_queue(zr);
@@ -1109,12 +1102,12 @@ zr36057_enable_jpg (struct zoran          *zr,
 		/* Setup the VFE */
 		if (zr->vfe) {
 			zr->vfe->set_video(zr->vfe, zr->timing, &cap,
-					   &zr->card->vfe_pol);
+					   &zr->card.vfe_pol);
 			zr->vfe->set_mode(zr->vfe, CODEC_DO_EXPANSION);
 		}
 		/* Setup the JPEG codec */
 		zr->codec->set_video(zr->codec, zr->timing, &cap,
-				     &zr->card->vfe_pol);
+				     &zr->card.vfe_pol);
 		zr->codec->set_mode(zr->codec, CODEC_DO_EXPANSION);
 
 		init_jpeg_queue(zr);
@@ -1128,9 +1121,9 @@ zr36057_enable_jpg (struct zoran          *zr,
 	case BUZ_MODE_IDLE:
 	default:
 		/* shut down processing */
-		btand(~(zr->card->jpeg_int | ZR36057_ICR_JPEGRepIRQ),
+		btand(~(zr->card.jpeg_int | ZR36057_ICR_JPEGRepIRQ),
 		      ZR36057_ICR);
-		btwrite(zr->card->jpeg_int | ZR36057_ICR_JPEGRepIRQ,
+		btwrite(zr->card.jpeg_int | ZR36057_ICR_JPEGRepIRQ,
 			ZR36057_ISR);
 		btand(~ZR36057_JMC_Go_en, ZR36057_JMC);	// \Go_en
 
@@ -1454,7 +1447,7 @@ zoran_irq (int             irq,
 			KERN_DEBUG
 			"zoran_irq: astat: 0x%08x, mask: 0x%08x\n",
 			astat, btread(ZR36057_ICR));*/
-		if (astat & zr->card->vsync_int) {	// SW
+		if (astat & zr->card.vsync_int) {	// SW
 
 			if (zr->codec_mode == BUZ_MODE_MOTION_DECOMPRESS ||
 			    zr->codec_mode == BUZ_MODE_MOTION_COMPRESS) {
@@ -1637,7 +1630,7 @@ zoran_irq (int             irq,
 		}
 #endif				/* (IRQ_MASK & ZR36057_ISR_JPEGRepIRQ) */
 
-		if ((astat & zr->card->jpeg_int)	/* DATERR interrupt received                 */
+		if ((astat & zr->card.jpeg_int)	/* DATERR interrupt received                 */
 		    ||zr->JPEG_missed > 25	/* Too many fields missed without processing */
 		    || zr->JPEG_error == 1	/* We are already in error processing        */
 		    || ((zr->codec_mode == BUZ_MODE_MOTION_DECOMPRESS)
@@ -1689,11 +1682,11 @@ zoran_init_hardware (struct zoran *zr)
 	zoran_set_pci_master(zr, 1);
 
 	/* Initialize the board */
-	if (zr->card->init) {
-		zr->card->init(zr);
+	if (zr->card.init) {
+		zr->card.init(zr);
 	}
 
-	j = zr->card->input[zr->input].muxsel;
+	j = zr->card.input[zr->input].muxsel;
 
 	decoder_command(zr, 0, NULL);
 	decoder_command(zr, DECODER_SET_NORM, &zr->norm);
@@ -1773,7 +1766,7 @@ decoder_command (struct zoran *zr,
 	if (zr->decoder == NULL)
 		return -EIO;
 
-	if (zr->card->type == LML33 &&
+	if (zr->card.type == LML33 &&
 	    (cmd == DECODER_SET_NORM || DECODER_SET_INPUT)) {
 		int res;
 		// Bt819 needs to reset its FIFO buffer using #FRST pin and

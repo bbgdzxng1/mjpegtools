@@ -394,7 +394,7 @@ struct zoran {
 
 	u8 initialized;		/* flag if zoran has been correctly initalized */
 	int user;		/* number of current users */
-	struct card_info *card;
+	struct card_info card;
 	struct tvnorm *timing;
 
 	unsigned short id;	/* number of this device */

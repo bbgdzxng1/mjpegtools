@@ -98,11 +98,8 @@ struct timing {
 
 /* for values, see the bt819 datasheet */
 struct timing timing_data[] = {
-// From Ronald	{864 - 24, 20 /*2*/, 625 - 3 /*- 2*/, 3 /*1*/, 0x0504, 0x0000},
-// Seems to hang capture with -f A	
-	{864 - 24, 20 , 625 - 2 /*- 2*/, 1 /*1*/, 0x0504, 0x0000},
-	{858 - 24, 20 /*2*/, 525 - 3 /*- 2*/, 3 /*1*/, 0x00f8, 0x0000},
-//      { 858-68, 64, 523, 1, 0x00f8, 0x0000 },
+	{864 - 24, 20, 625 - 2, 1, 0x0504, 0x0000},
+	{858 - 24, 20, 525 - 2, 1, 0x00f8, 0x0000},
 };
 
 #define   I2C_BT819        0x8a
@@ -277,6 +274,7 @@ bt819_command (struct i2c_client *client,
 
 		cap->flags = VIDEO_DECODER_PAL |
 			     VIDEO_DECODER_NTSC |
+			     VIDEO_DECODER_AUTO |
 			     VIDEO_DECODER_CCIR;
 		cap->inputs = 8;
 		cap->outputs = 1;
@@ -321,12 +319,13 @@ bt819_command (struct i2c_client *client,
 	case DECODER_SET_NORM:
 	{
 		int *iarg = arg;
-		struct timing *timing;
+		struct timing *timing = NULL;
 
 		dprintk(1, KERN_INFO "%s: set norm %x\n", client->name,
 			*iarg);
 
-		if (*iarg == VIDEO_MODE_NTSC) {
+		switch (*iarg) {
+		case VIDEO_MODE_NTSC:
 			bt819_setbit(client, 0x01, 0, 1);
 			bt819_setbit(client, 0x01, 1, 0);
 			bt819_setbit(client, 0x01, 5, 0);
@@ -334,7 +333,8 @@ bt819_command (struct i2c_client *client,
 			bt819_write(client, 0x19, 0x5d);
 			//bt819_setbit(client, 0x1a,  5, 1);
 			timing = &timing_data[VIDEO_MODE_NTSC];
-		} else if (*iarg == VIDEO_MODE_PAL) {
+			break;
+		case VIDEO_MODE_PAL:
 			bt819_setbit(client, 0x01, 0, 1);
 			bt819_setbit(client, 0x01, 1, 1);
 			bt819_setbit(client, 0x01, 5, 1);
@@ -342,7 +342,12 @@ bt819_command (struct i2c_client *client,
 			bt819_write(client, 0x19, 0x72);
 			//bt819_setbit(client, 0x1a,  5, 0);
 			timing = &timing_data[VIDEO_MODE_PAL];
-		} else {
+			break;
+		case VIDEO_MODE_AUTO:
+			bt819_setbit(client, 0x01, 0, 0);
+			bt819_setbit(client, 0x01, 1, 0);
+			break;
+		default:
 			dprintk(1,
 				KERN_ERR
 				"%s: unsupported norm %d\n",
@@ -350,17 +355,20 @@ bt819_command (struct i2c_client *client,
 			return -EINVAL;
 		}
 
-		bt819_write(client, 0x03,
-			    (((timing->vdelay >> 8) & 0x03) << 6) |
-			    (((timing->vactive >> 8) & 0x03) << 4) |
-			    (((timing->hdelay >> 8) & 0x03) << 2) |
-			     ((timing->hactive >> 8) & 0x03) );
-		bt819_write(client, 0x04, timing->vdelay & 0xff);
-		bt819_write(client, 0x05, timing->vactive & 0xff);
-		bt819_write(client, 0x06, timing->hdelay & 0xff);
-		bt819_write(client, 0x07, timing->hactive & 0xff);
-		bt819_write(client, 0x08, (timing->hscale >> 8) & 0xff);
-		bt819_write(client, 0x09, timing->hscale & 0xff);
+		if (timing) {
+			bt819_write(client, 0x03,
+				    (((timing->vdelay >> 8) & 0x03) << 6) |
+				    (((timing->vactive >> 8) & 0x03) << 4) |
+				    (((timing->hdelay >> 8) & 0x03) << 2) |
+				     ((timing->hactive >> 8) & 0x03) );
+			bt819_write(client, 0x04, timing->vdelay & 0xff);
+			bt819_write(client, 0x05, timing->vactive & 0xff);
+			bt819_write(client, 0x06, timing->hdelay & 0xff);
+			bt819_write(client, 0x07, timing->hactive & 0xff);
+			bt819_write(client, 0x08, (timing->hscale >> 8) & 0xff);
+			bt819_write(client, 0x09, timing->hscale & 0xff);
+		}
+
 		decoder->norm = *iarg;
 	}
 		break;

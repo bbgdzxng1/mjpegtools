@@ -172,7 +172,7 @@ MODULE_PARM(pass_through, "i");
 MODULE_PARM_DESC(pass_through,
 		 "Pass TV signal through to TV-out when idling");
 
-int debug = 0;
+int debug = 1;
 MODULE_PARM(debug, "i");
 MODULE_PARM_DESC(debug, "Debug level (0-4)");
 
@@ -401,16 +401,15 @@ codecid_to_modulename (u16 codecid)
 //      u16 Wt, Wa, HStart, HSyncStart, Ht, Ha, VStart;
 // };
 
-/* The DC10 (57/16/50) uses VActive as HSync, so HStart must be 0 */
-
 static struct tvnorm f50sqpixel = { 944, 768, 83, 880, 625, 576, 16 };
 static struct tvnorm f60sqpixel = { 780, 640, 51, 716, 525, 480, 12 };
 static struct tvnorm f50ccir601 = { 864, 720, 75, 804, 625, 576, 18 };
 static struct tvnorm f60ccir601 = { 858, 720, 57, 788, 525, 480, 16 };
 
 static struct tvnorm f50ccir601_lml33 = { 864, 720, 75+34, 804, 625, 576, 18 };
-static struct tvnorm f60ccir601_lml33 = { 858, 720, 57+62, 788, 525, 480, 16 };
+static struct tvnorm f60ccir601_lml33 = { 858, 720, 57+34, 788, 525, 480, 16 };
 
+/* The DC10 (57/16/50) uses VActive as HSync, so HStart must be 0 */
 static struct tvnorm f50sqpixel_dc10 = { 944, 768, 0, 880, 625, 576, 16 };
 static struct tvnorm f60sqpixel_dc10 = { 780, 640, 0, 716, 525, 480, 12 };
 
@@ -420,7 +419,7 @@ static struct tvnorm f60sqpixel_dc10 = { 780, 640, 0, 716, 525, 480, 12 };
 static struct tvnorm f50ccir601_lm33r10 = { 864, 720, 74, 804, 625, 576, 18 };
 static struct tvnorm f60ccir601_lm33r10 = { 858, 720, 56, 788, 525, 480, 16 };
 
-static struct card_info zoran_cards[NUM_CARDS] = {
+static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 	{
 		.type = DC10_old,
 		.name = "DC10(old)",
@@ -720,9 +719,9 @@ zoran_i2c_client_register (struct i2c_client *client)
 		goto clientreg_unlock_and_return;
 	}
 
-	if (client->driver->id == zr->card->i2c_decoder)
+	if (client->driver->id == zr->card.i2c_decoder)
 		zr->decoder = client;
-	else if (client->driver->id == zr->card->i2c_encoder)
+	else if (client->driver->id == zr->card.i2c_encoder)
 		zr->encoder = client;
 	else
 		return -ENODEV;
@@ -844,7 +843,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 		break;
 	case 4:
 
-		if (zr->card->type == DC10_new) {
+		if (zr->card.type == DC10_new) {
 			dprintk(1,
 				KERN_DEBUG
 				"%s: check_jpg_settings() - HDec by 4 is not supported on the DC10\n",
@@ -868,7 +867,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 		/* We have to check the data the user has set */
 
 		if (settings->HorDcm != 1 && settings->HorDcm != 2 &&
-		    (zr->card->type == DC10_new || settings->HorDcm != 4))
+		    (zr->card.type == DC10_new || settings->HorDcm != 4))
 			err0++;
 		if (settings->VerDcm != 1 && settings->VerDcm != 2)
 			err0++;
@@ -977,7 +976,7 @@ zoran_open_init_params (struct zoran *zr)
 	/* Set necessary params and call zoran_check_jpg_settings to set the defaults */
 	zr->jpg_settings.decimation = 1;
 	zr->jpg_settings.jpg_comp.quality = 50;	/* default compression factor 8 */
-	if (zr->card->type != BUZ)
+	if (zr->card.type != BUZ)
 		zr->jpg_settings.odd_even = 1;
 	else
 		zr->jpg_settings.odd_even = 0;
@@ -1058,13 +1057,13 @@ zr36057_init (struct zoran *zr)
 	    default_norm > VIDEO_MODE_SECAM)
 		default_norm = VIDEO_MODE_PAL;
 	zr->norm = default_norm;
-	if (!(zr->timing = zr->card->tvn[zr->norm])) {
+	if (!(zr->timing = zr->card.tvn[zr->norm])) {
 		dprintk(1,
 			KERN_WARNING
 			"%s: zr36057_init() - default TV standard not supported by hardware. PAL will be used.\n",
 			zr->name);
 		zr->norm = VIDEO_MODE_PAL;
-		zr->timing = zr->card->tvn[zr->norm];
+		zr->timing = zr->card.tvn[zr->norm];
 	}
 
 	zr->input = default_input = (default_input ? 1 : 0);
@@ -1295,9 +1294,9 @@ find_zr36057 (void)
 			continue;
 		}
 
-		zr->card = &zoran_cards[card_num];
+		zr->card = zoran_cards[card_num];
 		snprintf(zr->name, sizeof(zr->name),
-			 "%s[%u]", zr->card->name, zr->id);
+			 "%s[%u]", zr->card.name, zr->id);
 
 		zr->zr36057_mem = ioremap_nocache(zr->zr36057_adr, 0x1000);
 		if (!zr->zr36057_mem) {
@@ -1354,9 +1353,10 @@ find_zr36057 (void)
 		/* i2c decoder */
 		if (decoder[zr->id] != -1) {
 			i2c_dec_name = i2cid_to_modulename(decoder[zr->id]);
-		} else if (zr->card->i2c_decoder != 0) {
+			zr->card.i2c_decoder = decoder[zr->id];
+		} else if (zr->card.i2c_decoder != 0) {
 			i2c_dec_name =
-				i2cid_to_modulename(zr->card->i2c_decoder);
+				i2cid_to_modulename(zr->card.i2c_decoder);
 		} else {
 			i2c_dec_name = NULL;
 		}
@@ -1368,9 +1368,10 @@ find_zr36057 (void)
 		/* i2c encoder */
 		if (encoder[zr->id] != -1) {
 			i2c_enc_name = i2cid_to_modulename(encoder[zr->id]);
-		} else if (zr->card->i2c_encoder != 0) {
+			zr->card.i2c_encoder = encoder[zr->id];
+		} else if (zr->card.i2c_encoder != 0) {
 			i2c_enc_name =
-				i2cid_to_modulename(zr->card->i2c_encoder);
+				i2cid_to_modulename(zr->card.i2c_encoder);
 		} else {
 			i2c_enc_name = NULL;
 		}
@@ -1391,13 +1392,13 @@ find_zr36057 (void)
 			KERN_INFO "%s: Initializing videocodec bus...\n",
 			zr->name);
 
-		if (zr->card->video_codec != 0 &&
+		if (zr->card.video_codec != 0 &&
 		    (codec_name =
-		     codecid_to_modulename(zr->card->video_codec)) != NULL)
+		     codecid_to_modulename(zr->card.video_codec)) != NULL)
 			request_module(codec_name);
-		if (zr->card->video_vfe != 0 &&
+		if (zr->card.video_vfe != 0 &&
 		    (vfe_name =
-		     codecid_to_modulename(zr->card->video_vfe)) != NULL)
+		     codecid_to_modulename(zr->card.video_vfe)) != NULL)
 			request_module(vfe_name);
 
 		/* reset JPEG codec */
@@ -1405,9 +1406,9 @@ find_zr36057 (void)
 		jpeg_codec_reset(zr);
 		/* video bus enabled */
 		/* display codec revision */
-		if (zr->card->video_codec != 0) {
+		if (zr->card.video_codec != 0) {
 			master_codec = zoran_setup_videocodec(zr,
-							      zr->card->video_codec);
+							      zr->card.video_codec);
 			if (!master_codec)
 				goto zr_unreg_i2c;
 			zr->codec = videocodec_attach(master_codec);
@@ -1418,7 +1419,7 @@ find_zr36057 (void)
 					zr->name);
 				goto zr_free_codec;
 			}
-			if (zr->codec->type != zr->card->video_codec) {
+			if (zr->codec->type != zr->card.video_codec) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() - wrong codec\n",
@@ -1426,9 +1427,9 @@ find_zr36057 (void)
 				goto zr_detach_codec;
 			}
 		}
-		if (zr->card->video_vfe != 0) {
+		if (zr->card.video_vfe != 0) {
 			master_vfe = zoran_setup_videocodec(zr,
-							    zr->card->video_vfe);
+							    zr->card.video_vfe);
 			if (!master_vfe)
 				goto zr_detach_codec;
 			zr->vfe = videocodec_attach(master_vfe);
@@ -1439,7 +1440,7 @@ find_zr36057 (void)
 					zr->name);
 				goto zr_free_vfe;
 			}
-			if (zr->vfe->type != zr->card->video_vfe) {
+			if (zr->vfe->type != zr->card.video_vfe) {
 				dprintk(1,
 					KERN_ERR
 					"%s: find_zr36057() = wrong VFE\n",
