@@ -55,6 +55,13 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+/* temp hack */
+#ifndef I2C_DRIVERID_ADV717X
+#warning Using temporary hack for missing I2C driver-ID for adv717x
+#define I2C_DRIVERID_ADV717X 48 /* same as in 2.5.x */
+#endif
+/* /temp hack */
+
 #include <linux/video_encoder.h>
 
 #if (DEBUGLEVEL > 0)
