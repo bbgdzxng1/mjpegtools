@@ -322,6 +322,11 @@ v4l_fbuffer_alloc (struct file *file)
 	unsigned long pmem = 0;
 #endif
 
+	/* we might have old buffers lying around... */
+	if (fh->v4l_buffers.ready_to_be_freed) {
+		v4l_fbuffer_free(file);
+	}
+
 	for (i = 0; i < fh->v4l_buffers.num_buffers; i++) {
 		if (fh->v4l_buffers.buffer[i].fbuffer)
 			dprintk(2,
@@ -484,6 +489,7 @@ v4l_fbuffer_free (struct file *file)
 	}
 
 	fh->v4l_buffers.allocated = 0;
+	fh->v4l_buffers.ready_to_be_freed = 0;
 }
 
 /*
@@ -515,13 +521,13 @@ jpg_fbuffer_alloc (struct file *file)
 {
 	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
-	int i, j, off;		//alloc_contig;
+	int i, j, off;
 	unsigned long mem;
 
-	/* Decide if we should alloc contiguous or fragmented memory */
-	/* This has to be identical in jpg_fbuffer_alloc and jpg_fbuffer_free */
-
-	//alloc_contig = (fh->jpg_buffers.buffer_size <= MAX_KMALLOC_MEM);
+	/* we might have old buffers lying around */
+	if (fh->jpg_buffers.ready_to_be_freed) {
+		jpg_fbuffer_free(file);
+	}
 
 	for (i = 0; i < fh->jpg_buffers.num_buffers; i++) {
 		if (fh->jpg_buffers.buffer[i].frag_tab)
@@ -611,15 +617,10 @@ jpg_fbuffer_free (struct file *file)
 {
 	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
-	int i, j, off;		// alloc_contig;
+	int i, j, off;
 	unsigned char *mem;
 
 	dprintk(4, KERN_DEBUG "%s: jpg_fbuffer_free()\n", zr->name);
-
-	/* Decide if we should alloc contiguous or fragmented memory */
-	/* This has to be identical in jpg_fbuffer_alloc and jpg_fbuffer_free */
-
-	//alloc_contig = (zr->jpg_buffers.buffer_size <= MAX_KMALLOC_MEM);
 
 	for (i = 0; i < fh->jpg_buffers.num_buffers; i++) {
 		if (!fh->jpg_buffers.buffer[i].frag_tab)
@@ -671,7 +672,9 @@ jpg_fbuffer_free (struct file *file)
 			  frag_tab);
 		fh->jpg_buffers.buffer[i].frag_tab = NULL;
 	}
+
 	fh->jpg_buffers.allocated = 0;
+	fh->jpg_buffers.ready_to_be_freed = 0;
 }
 
 /*
@@ -1185,6 +1188,7 @@ zoran_open_init_session (struct file *file)
 		fh->v4l_buffers.buffer[i].bs.frame = i;
 	}
 	fh->v4l_buffers.allocated = 0;
+	fh->v4l_buffers.ready_to_be_freed = 0;
 	fh->v4l_buffers.active = ZORAN_FREE;
 	fh->v4l_buffers.buffer_size = v4l_bufsize;
 	fh->v4l_buffers.num_buffers = v4l_nbufs;
@@ -1200,6 +1204,7 @@ zoran_open_init_session (struct file *file)
 	}
 	fh->jpg_buffers.need_contiguous = zr->jpg_buffers.need_contiguous;
 	fh->jpg_buffers.allocated = 0;
+	fh->jpg_buffers.ready_to_be_freed = 0;
 	fh->jpg_buffers.active = ZORAN_FREE;
 	fh->jpg_buffers.buffer_size = jpg_bufsize;
 	fh->jpg_buffers.num_buffers = jpg_nbufs;
@@ -1229,7 +1234,8 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* v4l buffers */
-	if (fh->v4l_buffers.allocated) {
+	if (fh->v4l_buffers.allocated ||
+	    fh->v4l_buffers.ready_to_be_freed) {
 		v4l_fbuffer_free(file);
 	}
 
@@ -1242,7 +1248,8 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* jpg buffers */
-	if (fh->jpg_buffers.allocated) {
+	if (fh->jpg_buffers.allocated ||
+	    fh->jpg_buffers.ready_to_be_freed) {
 		jpg_fbuffer_free(file);
 	}
 }
@@ -1937,6 +1944,29 @@ zoran_do_ioctl (struct inode *inode,
 {
 	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
+
+	/* we might have older buffers lying around... We don't want
+	 * to wait, but we do want to try cleaning them up ASAP. So
+	 * we try to obtain the lock and free them. If that fails, we
+	 * don't do anything and wait for the next turn. In the end,
+	 * zoran_close() or a new allocation will still free them...
+	 * This is just a 'the sooner the better' extra 'feature'
+	 *
+	 * We don't free the buffers right on munmap() because that
+	 * causes oopses (kfree() inside munmap() oopses for no
+	 * apparent reason - it's also not reproduceable in any way,
+	 * but moving the free code outside the munmap() handler fixes
+	 * all this... If someone knows why, please explain me (Ronald)
+	 */
+	if (!down_trylock(&zr->resource_lock)) {
+		/* we obtained it! Let's try to free some things */
+		if (fh->jpg_buffers.ready_to_be_freed)
+			jpg_fbuffer_free(file);
+		if (fh->v4l_buffers.ready_to_be_freed)
+			v4l_fbuffer_free(file);
+
+		up(&zr->resource_lock);
+	}
 
 	switch (cmd) {
 
@@ -4339,7 +4369,9 @@ zoran_vm_close (struct vm_area_struct *vma)
 					    fh->jpg_buffers.active =
 					    ZORAN_FREE;
 				}
-				jpg_fbuffer_free(file);
+				//jpg_fbuffer_free(file);
+				fh->jpg_buffers.allocated = 0;
+				fh->jpg_buffers.ready_to_be_freed = 1;
 
 				up(&zr->resource_lock);
 			}
@@ -4373,7 +4405,9 @@ zoran_vm_close (struct vm_area_struct *vma)
 					    fh->v4l_buffers.active =
 					    ZORAN_FREE;
 				}
-				v4l_fbuffer_free(file);
+				//v4l_fbuffer_free(file);
+				fh->v4l_buffers.allocated = 0;
+				fh->v4l_buffers.ready_to_be_freed = 1;
 
 				up(&zr->resource_lock);
 			}
