@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.3 2002-08-10 09:53:53 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -590,8 +590,8 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
         /* if () return -EINVAL;
            trust the master driver that it knows what it does - so
            we allow invalid startx/y and norm for now ... */
-        ptr->width  = cap->width;
-        ptr->height = cap->height;
+        ptr->width  = cap->width / (cap->decimation&0xff);
+        ptr->height = cap->height / (cap->decimation>>8);
 
 	zr36060_write(ptr, ZR060_LOAD, ZR060_LOAD_SyncRst);
 
