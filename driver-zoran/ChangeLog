@@ -9,6 +9,7 @@ Version 0.9.3 -> 0.9.4
 * remove DataErr from the zr36060 IRQ Mask, this autoresets the chip when
     it loses sync, which means we don't get a timeout. Much better than
     all the manual restart handling (which only worked partly).
+* introduce workaround for kfree-in-munmap-handler oops
 
 Version 0.9.2 -> 0.9.3
 ----------------------
