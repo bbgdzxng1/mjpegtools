@@ -1369,9 +1369,10 @@ zoran_close (struct inode *inode,
 	dprintk(1, KERN_INFO "%s: zoran_close(%s, pid=[%d])\n", zr->name,
 		current->comm, current->pid);
 
+	down(&zr->resource_lock);
+
 	zoran_close_end_session(file);
 
-	down(&zr->resource_lock);
 	if (zr->user-- == 1) {	/* Last process */
 		/* Clean up JPEG process */
 		wake_up_interruptible(&zr->jpg_capq);
