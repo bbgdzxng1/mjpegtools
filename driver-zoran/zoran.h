@@ -366,7 +366,7 @@ struct card_info {
 	int inputs;		/* number of video inputs */
 	struct input {
 		int muxsel;
-		char *name;
+		char name[32];
 	} input[BUZ_MAX_INPUT];
 
 	int norms;
