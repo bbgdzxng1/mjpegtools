@@ -142,7 +142,7 @@ Private IOCTL to set up for displaying MJPEG
 
 #define MAJOR_VERSION 0		/* driver major version */
 #define MINOR_VERSION 9		/* driver minor version */
-#define RELEASE_VERSION 3	/* release version */
+#define RELEASE_VERSION 4	/* release version */
 
 #define ZORAN_NAME    "ZORAN"	/* name of the device */
 
@@ -252,6 +252,7 @@ struct zoran_overlay_settings {
 	int is_set;
 	int x, y, width, height;	/* position */
 	int clipcount;		/* position and number of clips */
+	const struct zoran_format *format;	/* overlay format */
 };
 
 /* v4l-capture settings */

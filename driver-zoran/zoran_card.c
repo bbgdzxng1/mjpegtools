@@ -96,15 +96,15 @@ extern const struct zoran_format zoran_formats[];
 extern const int zoran_num_formats;
 
 static int card[BUZ_MAX] = { -1, -1, -1, -1 };
-MODULE_PARM(card, "1-4i");
+MODULE_PARM(card, "1-" __stringify(BUZ_MAX) "i");
 MODULE_PARM_DESC(card, "The type of card");
 
 static int encoder[BUZ_MAX] = { -1, -1, -1, -1 };
-MODULE_PARM(encoder, "1-4i");
+MODULE_PARM(encoder, "1-" __stringify(BUZ_MAX) "i");
 MODULE_PARM_DESC(encoder, "i2c TV encoder");
 
 static int decoder[BUZ_MAX] = { -1, -1, -1, -1 };
-MODULE_PARM(decoder, "1-4i");
+MODULE_PARM(decoder, "1-" __stringify(BUZ_MAX) "i");
 MODULE_PARM_DESC(decoder, "i2c TV decoder");
 
 /*
@@ -947,8 +947,6 @@ zoran_open_init_params (struct zoran *zr)
 	int i;
 
 	/* User must explicitly set a window */
-	memset(&zr->overlay_settings, 0,
-	       sizeof(struct zoran_overlay_settings));
 	zr->overlay_settings.is_set = 0;
 	zr->overlay_mask = NULL;
 	zr->overlay_active = ZORAN_FREE;

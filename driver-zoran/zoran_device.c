@@ -512,56 +512,27 @@ void
 zr36057_overlay (struct zoran *zr,
 		 int           on)
 {
-	const struct zoran_format *format = NULL;
-	int fmt, i;
 	u32 reg;
 
 	if (on) {
 		/* do the necessary settings ... */
 		btand(~ZR36057_VDCR_VidEn, ZR36057_VDCR);	/* switch it off first */
 
-		switch (zr->buffer.depth) {
-		case 15:
-			fmt = VIDEO_PALETTE_RGB555;
-			break;
-		case 16:
-			fmt = VIDEO_PALETTE_RGB565;
-			break;
-		case 24:
-			fmt = VIDEO_PALETTE_RGB24;
-			break;
-		case 32:
-			fmt = VIDEO_PALETTE_RGB32;
-			break;
-		default:
-			fmt = 0;
-		}
-
-		if (fmt) {
-			for (i = 0; i < zoran_num_formats; i++) {
-				if (zoran_formats[i].palette == fmt &&
-				    zoran_formats[i].flags & 
-				    ZORAN_FORMAT_OVERLAY)
-					break;
-			}
-			if (i != zoran_num_formats) {
-				format = &zoran_formats[i];
-				zr36057_set_vfe(zr,
-						zr->overlay_settings.width,
-						zr->overlay_settings.height,
-						format);
-			}
-		}
+		zr36057_set_vfe(zr,
+				zr->overlay_settings.width,
+				zr->overlay_settings.height,
+				zr->overlay_settings.format);
 
 		/* Start and length of each line MUST be 4-byte aligned.
 		 * This should be allready checked before the call to this routine.
 		 * All error messages are internal driver checking only! */
 
 		/* video display top and bottom registers */
-		reg =
-		    (u32) zr->buffer.base +
-		    zr->overlay_settings.x * ((format->depth + 7) / 8) +
-		    zr->overlay_settings.y * zr->buffer.bytesperline;
+		reg = (u32) zr->buffer.base +
+		    zr->overlay_settings.x *
+		    ((zr->overlay_settings.format->depth + 7) / 8) +
+		    zr->overlay_settings.y *
+		    zr->buffer.bytesperline;
 		btwrite(reg, ZR36057_VDTR);
 		if (reg & 3)
 			dprintk(1,
@@ -573,9 +544,9 @@ zr36057_overlay (struct zoran *zr,
 		btwrite(reg, ZR36057_VDBR);
 
 		/* video stride, status, and frame grab register */
-		reg =
-		    zr->buffer.bytesperline -
-		    zr->overlay_settings.width * ((format->depth + 7) / 8);
+		reg = zr->buffer.bytesperline -
+		    zr->overlay_settings.width *
+		    ((zr->overlay_settings.format->depth + 7) / 8);
 		if (zr->overlay_settings.height > BUZ_MAX_HEIGHT / 2)
 			reg += zr->buffer.bytesperline;
 		if (reg & 3)

@@ -171,7 +171,8 @@ const struct zoran_format zoran_formats[] = {
 		.colorspace = V4L2_COLORSPACE_SMPTE170M,
 #endif
 		.depth = 16,
-		.flags = ZORAN_FORMAT_CAPTURE,
+		.flags = ZORAN_FORMAT_CAPTURE |
+		         ZORAN_FORMAT_OVERLAY,
 	}, {
 		.name = "Hardware-encoded Motion-JPEG",
 		.palette = -1,
@@ -1183,6 +1184,7 @@ zoran_open_init_session (struct file *file)
 	/* take over the card's current settings */
 	fh->overlay_settings = zr->overlay_settings;
 	fh->overlay_settings.is_set = 0;
+	fh->overlay_settings.format = zr->overlay_settings.format;
 	fh->overlay_active = ZORAN_FREE;
 
 	/* v4l settings */
@@ -1464,13 +1466,19 @@ setup_fbuffer (struct file               *file,
 		bytesperline = width * ((fmt->depth + 7) & ~7) / 8;
 
 	if (zr->overlay_active) {
-		/* Has the user gotten crazy ... ? */
-		dprintk(1,
+		/* dzjee... stupid users... don't even bother to turn off
+		 * overlay before changing the memory location...
+		 * normally, we would return errors here. However, one of
+		 * the tools that does this is... xawtv! and since xawtv
+		 * is used by +/- 99% of the users, we'd rather be user-
+		 * friendly and silently do as if nothing went wrong */
+		dprintk(3,
 			KERN_ERR
-			"%s: setup_fbuffer() - cannot change fbuffer when overlay active\n",
+			"%s: setup_fbuffer() - forced overlay turnoff because framebuffer changed\n",
 			zr->name);
-		return -EBUSY;
+		zr36057_overlay(zr, 0);
 	}
+
 	if (!(fmt->flags & ZORAN_FORMAT_OVERLAY)) {
 		dprintk(1,
 			KERN_ERR
@@ -1497,6 +1505,7 @@ setup_fbuffer (struct file               *file,
 	zr->buffer.height = height;
 	zr->buffer.width = width;
 	zr->buffer.depth = fmt->depth;
+	zr->overlay_settings.format = fmt;
 	zr->buffer.bytesperline = bytesperline;
 
 	/* The user should set new window parameters */
@@ -1525,6 +1534,14 @@ setup_window (struct file       *file,
 		dprintk(1,
 			KERN_ERR
 			"%s: setup_window() - frame buffer has to be set first\n",
+			zr->name);
+		return -EINVAL;
+	}
+
+	if (!fh->overlay_settings.format) {
+		dprintk(1,
+			KERN_ERR
+			"%s: setup_window() - no overlay format set\n",
 			zr->name);
 		return -EINVAL;
 	}
@@ -1656,6 +1673,13 @@ setup_overlay (struct file *file,
 			dprintk(1,
 				KERN_ERR
 				"%s: setup_overlay() - buffer or window not set\n",
+				zr->name);
+			return -EINVAL;
+		}
+		if (!fh->overlay_settings.format) {
+			dprintk(1,
+				KERN_ERR
+				"%s: setup_overlay() - no overlay format set\n",
 				zr->name);
 			return -EINVAL;
 		}
@@ -2028,25 +2052,13 @@ zoran_do_ioctl (struct inode *inode,
 		vpict->brightness = zr->brightness;
 		vpict->contrast = zr->contrast;
 		vpict->colour = zr->saturation;
-		vpict->depth = zr->buffer.depth;
-		up(&zr->resource_lock);
-		switch (vpict->depth) {
-		case 15:
-			vpict->palette = VIDEO_PALETTE_RGB555;
-			break;
-
-		case 16:
-			vpict->palette = VIDEO_PALETTE_RGB565;
-			break;
-
-		case 24:
-			vpict->palette = VIDEO_PALETTE_RGB24;
-			break;
-
-		case 32:
-			vpict->palette = VIDEO_PALETTE_RGB32;
-			break;
+		if (fh->overlay_settings.format) {
+			vpict->depth = fh->overlay_settings.format->depth;
+			vpict->palette = fh->overlay_settings.format->palette;
+		} else {
+			vpict->depth = 0;
 		}
+		up(&zr->resource_lock);
 
 		return 0;
 	}
@@ -2055,6 +2067,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCSPICT:
 	{
 		struct video_picture *vpict = arg;
+		int i;
 
 		dprintk(3,
 			KERN_DEBUG
@@ -2063,16 +2076,32 @@ zoran_do_ioctl (struct inode *inode,
 			vpict->colour, vpict->contrast, vpict->depth,
 			vpict->palette);
 
+		for (i = 0; i < zoran_num_formats; i++) {
+			const struct zoran_format *fmt = &zoran_formats[i];
+			if (fmt->palette != -1 &&
+			    fmt->flags & ZORAN_FORMAT_OVERLAY &&
+			    fmt->palette == vpict->palette &&
+			    fmt->depth == vpict->depth)
+				break;
+		}
+		if (i == zoran_num_formats) {
+			dprintk(1,
+				KERN_ERR
+				"%s: VIDIOCSPICT - Invalid palette %d\n",
+				zr->name, vpict->palette);
+			return -EINVAL;
+		}
+
 		down(&zr->resource_lock);
 
 		decoder_command(zr, DECODER_SET_PICTURE, vpict);
 
-		/* The depth and palette values have no meaning to us,
-		 * should we return  -EINVAL if they don't fit ? */
 		zr->hue = vpict->hue;
 		zr->contrast = vpict->contrast;
 		zr->saturation = vpict->colour;
 		zr->brightness = vpict->brightness;
+
+		fh->overlay_settings.format = &zoran_formats[i];
 
 		up(&zr->resource_lock);
 
@@ -2174,16 +2203,6 @@ zoran_do_ioctl (struct inode *inode,
 		up(&zr->resource_lock);
 
 		return res;
-	}
-		break;
-
-		/* RJ: what is VIDIOCKEY intended to do ??? */
-
-	case VIDIOCKEY:
-	{
-		/* Will be handled higher up .. */
-		dprintk(3, KERN_DEBUG "%s: VIDIOCKEY\n", zr->name);
-		return 0;
 	}
 		break;
 
@@ -2954,7 +2973,6 @@ zoran_do_ioctl (struct inode *inode,
 
 	case VIDIOC_G_FBUF:
 	{
-		int i;
 		struct v4l2_framebuffer *fb = arg;
 
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_FBUF\n", zr->name);
@@ -2964,14 +2982,9 @@ zoran_do_ioctl (struct inode *inode,
 		fb->base = zr->buffer.base;
 		fb->fmt.width = zr->buffer.width;
 		fb->fmt.height = zr->buffer.height;
-		for (i = 0; i < zoran_num_formats; i++) {
-			if (zoran_formats[i].depth == zr->buffer.depth &&
-			    zoran_formats[i].
-			    flags & ZORAN_FORMAT_OVERLAY) {
-				fb->fmt.pixelformat =
-				    zoran_formats[i].fourcc;
-				break;
-			}
+		if (zr->overlay_settings.format) {
+			fb->fmt.pixelformat =
+				fh->overlay_settings.format->fourcc;
 		}
 		fb->fmt.bytesperline = zr->buffer.bytesperline;
 		up(&zr->resource_lock);
