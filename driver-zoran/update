@@ -108,6 +108,12 @@ do
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
             ;;
+        'lml33r10')
+            $SUDO /sbin/insmod ./saa7114.o
+            $SUDO /sbin/insmod ./adv7170.o
+            $SUDO /sbin/insmod ./zr36060.o
+            cards="$cards $1"
+            ;;
         'PAL'|'SECAM'|'NTSC')
             norm=$1
             ;;
