@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.10 2003-08-03 07:34:26 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.11 2003-08-03 14:54:53 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -265,9 +265,16 @@ zr36016_init (struct zr36016 *ptr)
 
 	// mode setup (yuv422 in and out, compression/expansuon due to mode)
 	zr36016_write(ptr, ZR016_MODE,
-		      ZR016_YUV422 | ZR016_YUV422_YUV422 |
+		      /*ZR016_YUV422 |*/ ZR016_YUV422_YUV422 |
 		      (ptr->mode == CODEC_DO_COMPRESSION ?
 		       ZR016_COMPRESSION : ZR016_EXPANSION));
+
+	// misc setup
+	zr36016_writei(ptr, ZR016I_SETUP1,
+		       (ptr->ydec ? ZR016_HRFL | ZR016_HORZ : 0) |
+		       (ptr->xdec ? ZR016_VERT : 0) | ZR016_CNTI);
+	zr36016_writei(ptr, ZR016I_SETUP2, /*ZR016_CCIR*/ 0);
+
 	// Window setup
 	// (no extra offset for now, norm defines offset, default width height)
 	zr36016_writei(ptr, ZR016I_PAX_HI, ptr->width >> 8);
@@ -279,12 +286,8 @@ zr36016_init (struct zr36016 *ptr)
 	zr36016_writei(ptr, ZR016I_NAY_HI, ptr->yoff >> 8);
 	zr36016_writei(ptr, ZR016I_NAY_LO, ptr->yoff & 0xFF);
 
-	// misc setup
-	zr36016_writei(ptr, ZR016I_SETUP1,
-		       (ptr->ydec ? ZR016_HRFL | ZR016_HORZ : 0) |
-		       (ptr->xdec ? ZR016_VERT : 0) | ZR016_CNTI);
-//        zr36016_writei(ptr, ZR016I_SETUP2, ZR016_SIGN | ZR016_CCIR );
-	zr36016_writei(ptr, ZR016I_SETUP2, ZR016_CCIR);
+	/* shall we continue now, please? */
+	zr36016_write(ptr, ZR016_GOSTOP, 1);
 }
 
 /* =========================================================================
@@ -321,18 +324,31 @@ zr36016_set_video (struct videocodec   *codec,
 {
 	struct zr36016 *ptr = (struct zr36016 *) codec->data;
 
-	dprintk(2, "%s: set_video %d.%d, %d/%d-%dx%d call\n", ptr->name,
-		norm->HStart, norm->VStart, cap->x, cap->y, cap->width,
-		cap->height);
+	dprintk(2, "%s: set_video %d.%d, %d/%d-%dx%d (0x%x) call\n",
+		ptr->name, norm->HStart, norm->VStart,
+		cap->x, cap->y, cap->width, cap->height,
+		cap->decimation);
 
 	/* if () return -EINVAL;
 	 * trust the master driver that it knows what it does - so
 	 * we allow invalid startx/y for now ... */
 	ptr->width = cap->width;
 	ptr->height = cap->height;
-	ptr->xoff = norm->HStart;
-	ptr->yoff = norm->VStart;
-	zr36016_init(ptr);
+	/* (Ronald) This is ugly. zoran_device.c, line 387
+	 * already mentions what happens if HStart is even
+	 * (blue faces, etc., cr/cb inversed). There's probably
+	 * some good reason why HStart is 0 instead of 1, so I'm
+	 * leaving it to this for now, but really... This can be
+	 * done a lot simpler */
+	ptr->xoff = (norm->HStart ? norm->HStart : 1) + cap->x;
+	/* Something to note here (I don't understand it), setting
+	 * VStart too high will cause the codec to 'not work'. I
+	 * really don't get it. values of 16 (VStart) already break
+	 * it here. Just '0' seems to work. More testing needed! */
+	ptr->yoff = /*norm->VStart +*/ cap->y; // + 68;
+	/* (Ronald) dzjeeh, can't this thing do hor_decimation = 4? */
+	ptr->xdec = ((cap->decimation & 0xff) == 1) ? 0 : 1;
+	ptr->ydec = (((cap->decimation >> 8) & 0xff) == 1) ? 0 : 1;
 
 	return 0;
 }
@@ -475,9 +491,11 @@ zr36016_setup (struct videocodec *codec)
 	}
 	//final setup
 	ptr->mode = CODEC_DO_COMPRESSION;
-	ptr->width = 384;
+	ptr->width = 768;
 	ptr->height = 288;
-	//zr36016_init(ptr);
+	ptr->xdec = 1;
+	ptr->ydec = 0;
+	zr36016_init(ptr);
 
 	dprintk(1, KERN_INFO "%s: codec v%d attached and running\n",
 		ptr->name, ptr->version);

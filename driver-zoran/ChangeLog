@@ -9,6 +9,7 @@ Version 0.9.4 -> 0.9.5
 * VPX32XX->VPX3220
 * add LML33R10 PCI subvendor/-device ID
 * fix LML33R10
+* fix hang when open()/close() is called while waiting in a sync
 
 Version 0.9.3 -> 0.9.4
 ----------------------

@@ -1039,6 +1039,13 @@ zr36057_enable_jpg (struct zoran          *zr,
 
 		/* Take the JPEG codec and the VFE out of sleep */
 		jpeg_codec_sleep(zr, 0);
+		/* Setup the JPEG codec */
+		zr->codec->control(zr->codec, CODEC_S_JPEG_TDS_BYTE,
+				   sizeof(int), &field_size);
+		zr->codec->set_video(zr->codec, zr->timing, &cap,
+				     &zr->card.vfe_pol);
+		zr->codec->set_mode(zr->codec, CODEC_DO_COMPRESSION);
+
 		/* Setup the VFE */
 		if (zr->vfe) {
 			zr->vfe->control(zr->vfe, CODEC_S_JPEG_TDS_BYTE,
@@ -1047,12 +1054,6 @@ zr36057_enable_jpg (struct zoran          *zr,
 					   &zr->card.vfe_pol);
 			zr->vfe->set_mode(zr->vfe, CODEC_DO_COMPRESSION);
 		}
-		/* Setup the JPEG codec */
-		zr->codec->control(zr->codec, CODEC_S_JPEG_TDS_BYTE,
-				   sizeof(int), &field_size);
-		zr->codec->set_video(zr->codec, zr->timing, &cap,
-				     &zr->card.vfe_pol);
-		zr->codec->set_mode(zr->codec, CODEC_DO_COMPRESSION);
 
 		init_jpeg_queue(zr);
 		zr36057_set_jpg(zr, mode);	// \P_Reset, ... Video param, FIFO

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.10 2003-08-03 07:34:26 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.11 2003-08-03 14:54:53 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -139,9 +139,8 @@ zr36050_read_status1 (struct zr36050 *ptr)
 static u16
 zr36050_read_scalefactor (struct zr36050 *ptr)
 {
-	ptr->scalefact =
-	    (zr36050_read(ptr, ZR050_SF_HI) << 8) |
-	    (zr36050_read(ptr, ZR050_SF_LO) & 0xFF);
+	ptr->scalefact = (zr36050_read(ptr, ZR050_SF_HI) << 8) |
+			 (zr36050_read(ptr, ZR050_SF_LO) & 0xFF);
 
 	/* leave 0 selected for an eventually GO from master */
 	zr36050_read(ptr, 0);
@@ -467,7 +466,7 @@ zr36050_init (struct zr36050 *ptr)
 	if (ptr->mode == CODEC_DO_COMPRESSION) {
 		dprintk(2, "%s: COMPRESSION SETUP\n", ptr->name);
 
-		/* 050 communicates with 055 in master mode */
+		/* 050 communicates with 057 in master mode */
 		zr36050_write(ptr, ZR050_HARDWARE, ZR050_HW_MSTR);
 
 		/* encoding table preload for compression */
@@ -508,7 +507,7 @@ zr36050_init (struct zr36050 *ptr)
 		/* do the internal huffman table preload */
 		zr36050_write(ptr, ZR050_MARKERS_EN, ZR050_ME_DHTI);
 
-		zr36050_write(ptr, ZR050_GO, 0);	// launch codec
+		zr36050_write(ptr, ZR050_GO, 1);	// launch codec
 		zr36050_wait_end(ptr);
 		dprintk(2, "%s: Status after table preload: 0x%02x\n",
 			ptr->name, ptr->status1);
@@ -555,7 +554,7 @@ zr36050_init (struct zr36050 *ptr)
 		/* this headers seem to deliver "valid AVI" jpeg frames */
 		zr36050_write(ptr, ZR050_MARKERS_EN,
 			      ZR050_ME_APP | ZR050_ME_DQT | ZR050_ME_DHT |
-			      ZR050_ME_DHTI);
+			      ZR050_ME_COM);
 	} else {
 		dprintk(2, "%s: EXPANSION SETUP\n", ptr->name);
 
@@ -577,7 +576,7 @@ zr36050_init (struct zr36050 *ptr)
 		/* do the internal huffman table preload */
 		zr36050_write(ptr, ZR050_MARKERS_EN, ZR050_ME_DHTI);
 
-		zr36050_write(ptr, ZR050_GO, 0);	// launch codec
+		zr36050_write(ptr, ZR050_GO, 1);	// launch codec
 		zr36050_wait_end(ptr);
 		dprintk(2, "%s: Status after table preload: 0x%02x\n",
 			ptr->name, ptr->status1);
@@ -589,7 +588,6 @@ zr36050_init (struct zr36050 *ptr)
 		}
 
 		/* setup misc. data for expansion */
-
 		zr36050_write(ptr, ZR050_MODE, 0);
 		zr36050_write(ptr, ZR050_MARKERS_EN, 0);
 	}
@@ -632,14 +630,15 @@ zr36050_set_video (struct videocodec   *codec,
 {
 	struct zr36050 *ptr = (struct zr36050 *) codec->data;
 
-	dprintk(2, "%s: set_video %d.%d, %d/%d-%dx%d call\n", ptr->name,
-		norm->HStart, norm->VStart, cap->x, cap->y, cap->width,
-		cap->height);
+	dprintk(2, "%s: set_video %d.%d, %d/%d-%dx%d (0x%x) call\n",
+		ptr->name, norm->HStart, norm->VStart,
+		cap->x, cap->y, cap->width, cap->height,
+		cap->decimation);
 	/* if () return -EINVAL;
 	 * trust the master driver that it knows what it does - so
 	 * we allow invalid startx/y and norm for now ... */
-	ptr->width = cap->width;
-	ptr->height = cap->height;
+	ptr->width = cap->width / (cap->decimation & 0xff);
+	ptr->height = cap->height / ((cap->decimation >> 8) & 0xff);
 
 	return 0;
 }
