@@ -24,6 +24,7 @@ Version 0.9.4 -> 0.9.5
     <ds-fraser@comcast.net>)
 * use msleep() instead of schedule_timeout() (patch by Nishanth Aravamudan
     <nacc@us.ibm.com>)
+* fix JPEG COM/APP marker writeing in zr360[56]0
 
 Version 0.9.3 -> 0.9.4
 ----------------------

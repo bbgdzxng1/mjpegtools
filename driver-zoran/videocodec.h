@@ -6,7 +6,7 @@
  *
  * (c) 2002 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: videocodec.h,v 1.1.2.5 2004-02-26 16:35:22 rbultje Exp $
+ * $Id: videocodec.h,v 1.1.2.6 2004-09-01 20:22:02 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -246,6 +246,17 @@ struct vfe_settings {
 
 struct tvnorm {
 	u16 Wt, Wa, HStart, HSyncStart, Ht, Ha, VStart;
+};
+
+struct jpeg_com_marker {
+	int len; /* number of usable bytes in data */
+	char data[60];
+};
+
+struct jpeg_app_marker {
+	int appn; /* number app segment */
+	int len; /* number of usable bytes in data */
+	char data[60];
 };
 
 struct videocodec {

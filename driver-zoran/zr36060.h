@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.h,v 1.1.1.1.2.3 2003-01-14 21:18:47 rbultje Exp $
+ * $Id: zr36060.h,v 1.1.1.1.2.4 2004-09-01 20:22:03 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -26,6 +26,8 @@
 
 #ifndef ZR36060_H
 #define ZR36060_H
+
+#include "videocodec.h"
 
 /* data stored for each zoran jpeg codec chip */
 struct zr36060 {
@@ -51,6 +53,10 @@ struct zr36060 {
 	__u8 v_samp_ratio[8];
 	__u16 scalefact;
 	__u16 dri;
+
+	/* app/com marker data */
+	struct jpeg_app_marker app;
+	struct jpeg_com_marker com;
 };
 
 /* ZR36060 register addresses */

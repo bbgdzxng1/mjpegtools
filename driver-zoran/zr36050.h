@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.h,v 1.1.2.4 2004-02-23 20:00:44 rbultje Exp $
+ * $Id: zr36050.h,v 1.1.2.5 2004-09-01 20:22:03 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -26,6 +26,8 @@
 
 #ifndef ZR36050_H
 #define ZR36050_H
+
+#include "videocodec.h"
 
 /* data stored for each zoran jpeg codec chip */
 struct zr36050 {
@@ -51,6 +53,10 @@ struct zr36050 {
 	__u8 v_samp_ratio[8];
 	__u16 scalefact;
 	__u16 dri;
+
+	/* com/app marker */
+	struct jpeg_com_marker com;
+	struct jpeg_app_marker app;
 };
 
 /* zr36050 register addresses */
