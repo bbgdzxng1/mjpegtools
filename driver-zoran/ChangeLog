@@ -1,0 +1,24 @@
+Version 0.9.0 -> 0.9.1
+----------------------
+* Started ChangeLog
+* Fixed VIDIOCGCHAN bug: it always returned the first input
+* Fixed svideo channel bug in zoran.c
+* Renamed SVHS to S-Video
+* change initialization order for JPEG capture (DC10old/DC30)
+* Add some raw I2C commands to I2C clients for more efficient block writes
+* Fix up coding style in zoran.c
+* standardize all dmesg output by our driver
+* added a FAQ (to replace the current kernel documentation)
+* added semaphores
+* use pci_pci_problems instead of detecting PCI chipsets ourselves, and
+    remove triton/natoma insmod options
+* add a PCI device template, in preparation for moveover to new PCI subsystem
+* add video_nr insmod option
+* use get_zeroed_page() instead of get_free_page()
+* proper use of __init/__exit and related macros
+* proper use of module_init()/module_exit() for module initialization
+* removed XAWTV_HACK code (obsolete/unused)
+* removed videobus_enable() code (obsolete/unused)
+* use struct bla bla = { .item = value, }; for struct initialization instead
+    of struct bla bla = { item: value, };
+* many random fixes that don't matter at all
