@@ -84,13 +84,7 @@ typedef struct
   int show_fake_mode; /* Signals the lib that fake frames should be shown with frame size set to 1 byte
 			 (and not hidden in special handling) */
   int INFO_written; /* Internal: Signals movtarlib that the INFO file has been written */
-  int rtjpeg_mode; /* Signals if the movtar contains RTJPEG frames instead of "normal" JPEG frames */
-
-#ifdef	NEVER
   fpos_t writepos; /*to be able to measure the bytes the application has written */
-#else
-  size_t   writepos;
-#endif
 
   gint32 flags; /* This stores all the given flags that were passed in movtar_open */
 } movtar_t;
@@ -123,7 +117,6 @@ struct tarinfotype
    returned by movtar_getdatatype */
 #define MOVTAR_DATA_AUDIO   0x8000
 #define MOVTAR_DATA_VIDEO   0x0800
-#define MOVTAR_DATA_VIDEO_RTJPEG  0x0900
 #define MOVTAR_DATA_FAKE    0x0001
 #define MOVTAR_DATA_UNKNOWN 0x0000
 
@@ -209,9 +202,6 @@ int movtar_ignore_data(FILE *tarfile, struct tarinfotype *tarinfoptr);
 */
 //int movtar_ignore_file(movtar_t *tarfile, struct tarinfotype *tarinfoptr);
 
-
-void movtar_show_fake_frames(movtar_t *movtar, int yes);
-
 /* movtar_forward_frames
  * Hops times frames forward in the file. 
  * in: tarfile: The movtar file.
@@ -257,7 +247,6 @@ int movtar_track_channels(movtar_t *movtar);
 /* Other routines you might find useful for getting audio information are: */
 /* quicktime_audio_length gives you the total number of samples. The sample rate is samples per second. */
 gint64 movtar_audio_length(movtar_t *movtar);
-int movtar_audio_tracks(movtar_t *movtar);
 int movtar_sample_rate(movtar_t *movtar);
 
 /* The bits parameter returns the number of bits in an audio sample. */
@@ -270,12 +259,9 @@ int movtar_audio_bits(movtar_t *movtar);
   number of bits per pixel on disk but the number of bits per pixel in 
   the decompressed data returned by one of the
   video decoding routines. */
-int movtar_video_tracks(movtar_t *movtar);
 long movtar_video_length(movtar_t *movtar);
 int movtar_video_width(movtar_t *movtar);
 int movtar_video_height(movtar_t *movtar);
-int movtar_video_tracks(movtar_t *movtar);
-int movtar_audio_tracks(movtar_t *movtar);
 float movtar_frame_rate(movtar_t *movtar);
 // int movtar_video_depth(movtar_t *movtar); the movtar lib does NOT decompress video !
 
@@ -339,7 +325,6 @@ int movtar_set_audio(movtar_t *movtar, int channels, int sample_rate, int bits, 
 /* Likewise, don't call the video command if you're just going to save audio. */
 int movtar_set_video(movtar_t *movtar, int tracks, int frame_w, int frame_h, 
 		      float frame_rate, char *compressor, int interlaced); 
-void movtar_show_fake_frames(movtar_t *movtar, int yes);
 
 /* Now some of you are going to want to write frames directly to a file descriptor using another library like libjpeg or something. For every frame start by calling movtar_write_frame_init to initialize the output. */
 int movtar_write_frame_init(movtar_t *movtar); 

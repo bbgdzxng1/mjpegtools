@@ -1,3 +1,4 @@
+# Generated automatically from makefile.cfg by configure.
 # Makefile for Independent JPEG Group's software
 
 # makefile.cfg is edited by configure to produce a custom Makefile.
@@ -5,12 +6,11 @@
 # Read installation instructions before saying "make" !!
 
 # For compiling with source and object files in different directories.
-srcdir = @srcdir@
-VPATH = @srcdir@
+srcdir = .
 
 # Where to install the programs and man pages.
-prefix = @prefix@
-exec_prefix = @exec_prefix@
+prefix = /usr/local
+exec_prefix = ${prefix}
 bindir = $(exec_prefix)/bin
 libdir = $(exec_prefix)/lib
 includedir = $(prefix)/include
@@ -20,41 +20,41 @@ manext = 1
 mandir = $(prefix)/man/man$(manext)
 
 # The name of your C compiler:
-CC= @CC@
+CC= gcc
 
 # You may need to adjust these cc options:
-CFLAGS= @CFLAGS@ @CPPFLAGS@ @INCLUDEFLAGS@
+CFLAGS= -O6  -I$(srcdir)
 # Generally, we recommend defining any configuration symbols in jconfig.h,
 # NOT via -D switches here.
 # However, any special defines for ansi2knr.c may be included here:
-ANSI2KNRFLAGS= @ANSI2KNRFLAGS@
+ANSI2KNRFLAGS= 
 
 # Link-time cc options:
-LDFLAGS= @LDFLAGS@
+LDFLAGS= 
 
 # To link any special libraries, add the necessary -l commands here.
-LDLIBS= @LIBS@
+LDLIBS= 
 
 # If using GNU libtool, LIBTOOL references it; if not, LIBTOOL is empty.
-LIBTOOL = @LIBTOOL@
+LIBTOOL = 
 # $(O) expands to "lo" if using libtool, plain "o" if not.
 # Similarly, $(A) expands to "la" or "a".
-O = @O@
-A = @A@
+O = o
+A = a
 
 # Library version ID; libtool uses this for the shared library version number.
 # Note: we suggest this match the macro of the same name in jpeglib.h.
-JPEG_LIB_VERSION = @JPEG_LIB_VERSION@
+JPEG_LIB_VERSION = 62
 
 # Put here the object file name for the correct system-dependent memory
 # manager file.  For Unix this is usually jmemnobs.o, but you may want
 # to use jmemansi.o or jmemname.o if you have limited swap space.
-SYSDEPMEM= @MEMORYMGR@
+SYSDEPMEM= jmemnobs.$(O)
 
 # miscellaneous OS-dependent stuff
 SHELL= /bin/sh
 # linker
-LN= @LN@
+LN= $(CC)
 # file deletion command
 RM= rm -f
 # directory creation command
@@ -62,12 +62,12 @@ MKDIR= mkdir
 # library (.a) file creation command
 AR= ar rc
 # second step in .a creation (use "touch" if not needed)
-AR2= @RANLIB@
+AR2= ranlib
 # installation program
-INSTALL= @INSTALL@
-INSTALL_PROGRAM= @INSTALL_PROGRAM@
-INSTALL_LIB= @INSTALL_LIB@
-INSTALL_DATA= @INSTALL_DATA@
+INSTALL= /usr/bin/install -c
+INSTALL_PROGRAM= ${INSTALL}
+INSTALL_LIB= ${INSTALL} -m 644
+INSTALL_DATA= ${INSTALL} -m 644
 
 # End of configurable options.
 
@@ -133,26 +133,26 @@ DOBJECTS= djpeg.$(O) wrppm.$(O) wrgif.$(O) wrtarga.$(O) wrrle.$(O) \
 TROBJECTS= jpegtran.$(O) rdswitch.$(O) cdjpeg.$(O) transupp.$(O)
 
 
-all: @A2K_DEPS@ libjpeg.$(A) cjpeg djpeg jpegtran rdjpgcom wrjpgcom
+all:  libjpeg.$(A) cjpeg djpeg jpegtran rdjpgcom wrjpgcom
 
 # Special compilation rules to support ansi2knr and libtool.
 .SUFFIXES: .lo .la
 
 # How to compile with libtool.
-@COM_LT@.c.lo:
-@COM_LT@	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $(srcdir)/$*.c
+# .c.lo:
+# 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $(srcdir)/$*.c
 
 # How to use ansi2knr, when not using libtool.
-@COM_A2K@.c.o:
-@COM_A2K@	./ansi2knr $(srcdir)/$*.c knr/$*.c
-@COM_A2K@	$(CC) $(CFLAGS) -c knr/$*.c
-@COM_A2K@	$(RM) knr/$*.c
+# .c.o:
+# 	./ansi2knr $(srcdir)/$*.c knr/$*.c
+# 	$(CC) $(CFLAGS) -c knr/$*.c
+# 	$(RM) knr/$*.c
 
 # How to use ansi2knr AND libtool.
-@COM_A2K@.c.lo:
-@COM_A2K@	./ansi2knr $(srcdir)/$*.c knr/$*.c
-@COM_A2K@	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c knr/$*.c
-@COM_A2K@	$(RM) knr/$*.c
+# .c.lo:
+# 	./ansi2knr $(srcdir)/$*.c knr/$*.c
+# 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c knr/$*.c
+# 	$(RM) knr/$*.c
 
 ansi2knr: ansi2knr.c
 	$(CC) $(CFLAGS) $(ANSI2KNRFLAGS) -o ansi2knr $(srcdir)/ansi2knr.c
@@ -161,13 +161,13 @@ ansi2knr: ansi2knr.c
 # the library:
 
 # without libtool:
-libjpeg.a: @A2K_DEPS@ $(LIBOBJECTS)
+libjpeg.a:  $(LIBOBJECTS)
 	$(RM) libjpeg.a
 	$(AR) libjpeg.a  $(LIBOBJECTS)
 	$(AR2) libjpeg.a
 
 # with libtool:
-libjpeg.la: @A2K_DEPS@ $(LIBOBJECTS)
+libjpeg.la:  $(LIBOBJECTS)
 	$(LIBTOOL) --mode=link $(CC) -o libjpeg.la $(LIBOBJECTS) \
 		-rpath $(libdir) -version-info $(JPEG_LIB_VERSION)
 
@@ -190,7 +190,7 @@ wrjpgcom: wrjpgcom.$(O)
 
 # Installation rules:
 
-install: cjpeg djpeg jpegtran rdjpgcom wrjpgcom @FORCE_INSTALL_LIB@
+install: cjpeg djpeg jpegtran rdjpgcom wrjpgcom 
 	$(INSTALL_PROGRAM) cjpeg $(bindir)/$(binprefix)cjpeg
 	$(INSTALL_PROGRAM) djpeg $(bindir)/$(binprefix)djpeg
 	$(INSTALL_PROGRAM) jpegtran $(bindir)/$(binprefix)jpegtran

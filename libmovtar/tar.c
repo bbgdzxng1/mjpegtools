@@ -16,6 +16,7 @@
 #include <glib.h>
 
 #include <sys/types.h>
+#include <linux/types.h>
 
 #include "movtar.h"
 

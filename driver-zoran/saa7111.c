@@ -51,7 +51,7 @@
 
 #include <linux/video_decoder.h>
 
-#define DEBUG(x)     /* Debug driver */   
+#define DEBUG(x)       /* Debug driver */   
 
 /* ----------------------------------------------------------------------- */
 
@@ -132,42 +132,41 @@ static int saa7111_read(struct saa7111 * dev, unsigned char subaddr)
 
 /* ----------------------------------------------------------------------- */
 
-static const unsigned char init[] = {
-   0x00, 0x00,      /* 00 - ID byte */
-   0x01, 0x00,      /* 01 - reserved */
-
-   /*front end */
-   0x02, 0xd0,      /* 02 - FUSE=3, GUDL=2, MODE=0 */
-   0x03, 0x23,      /* 03 - HLNRS=0, VBSL=1, WPOFF=0, HOLDG=0, GAFIX=0, GAI1=256, GAI2=256 */
-   0x04, 0x00,      /* 04 - GAI1=256 */
-   0x05, 0x00,      /* 05 - GAI2=256 */
-
-   /* decoder */
-   0x06, 0xf3,      /* 06 - HSB at  13(50Hz) /  17(60Hz) pixels after end of last line */
-   /*0x07, 0x13,     * 07 - HSS at 113(50Hz) / 117(60Hz) pixels after end of last line */
-   0x07, 0xe8,      /* 07 - HSS seems to be needed to work with NTSC, too */
-   0x08, 0xc8,      /* 08 - AUFD=1, FSEL=1, EXFIL=0, VTRC=1, HPLL=0, VNOI=0 */
-   0x09, 0x01,      /* 09 - BYPS=0, PREF=0, BPSS=0, VBLB=0, UPTCV=0, APER=1 */
-   0x0a, 0x80,      /* 0a - BRIG=128 */
-   0x0b, 0x47,      /* 0b - CONT=1.109 */
-   0x0c, 0x40,      /* 0c - SATN=1.0 */
-   0x0d, 0x00,      /* 0d - HUE=0 */
-   0x0e, 0x01,      /* 0e - CDTO=0, CSTD=0, DCCF=0, FCTC=0, CHBW=1 */
-   0x0f, 0x00,      /* 0f - reserved */
-   0x10, 0x48,      /* 10 - OFTS=1, HDEL=0, VRLN=1, YDEL=0 */
-   0x11, 0x1c,      /* 11 - GPSW=0, CM99=0, FECO=0, COMPO=1, OEYC=1, OEHV=1, VIPB=0, COLO=0 */
-   0x12, 0x00,      /* 12 - output control 2 */
-   0x13, 0x00,      /* 13 - output control 3 */
-   0x14, 0x00,      /* 14 - reserved */
-   0x15, 0x00,      /* 15 - VBI */
-   0x16, 0x00,      /* 16 - VBI */
-   0x17, 0x00,      /* 17 - VBI */
-};
-
 static int saa7111_attach(struct i2c_device * device)
 {
    int i;
    struct saa7111 * decoder;
+
+   static const unsigned char init[] = {
+      0x00, 0x00,      /* 00 - ID byte */
+      0x01, 0x00,      /* 01 - reserved */
+
+      /*front end */
+      0x02, 0xd0,      /* 02 - FUSE=3, GUDL=2, MODE=0 */
+      0x03, 0x23,      /* 03 - HLNRS=0, VBSL=1, WPOFF=0, HOLDG=0, GAFIX=0, GAI1=256, GAI2=256 */
+      0x04, 0x00,      /* 04 - GAI1=256 */
+      0x05, 0x00,      /* 05 - GAI2=256 */
+
+      /* decoder */
+      0x06, 0xf3,      /* 06 - HSB at  13(50Hz) /  17(60Hz) pixels after end of last line */
+      0x07, 0x13,      /* 07 - HSS at 113(50Hz) / 117(60Hz) pixels after end of last line */
+      0x08, 0xc8,      /* 08 - AUFD=1, FSEL=1, EXFIL=0, VTRC=1, HPLL=0, VNOI=0 */
+      0x09, 0x01,      /* 09 - BYPS=0, PREF=0, BPSS=0, VBLB=0, UPTCV=0, APER=1 */
+      0x0a, 0x80,      /* 0a - BRIG=128 */
+      0x0b, 0x47,      /* 0b - CONT=1.109 */
+      0x0c, 0x40,      /* 0c - SATN=1.0 */
+      0x0d, 0x00,      /* 0d - HUE=0 */
+      0x0e, 0x01,      /* 0e - CDTO=0, CSTD=0, DCCF=0, FCTC=0, CHBW=1 */
+      0x0f, 0x00,      /* 0f - reserved */
+      0x10, 0x48,      /* 10 - OFTS=1, HDEL=0, VRLN=1, YDEL=0 */
+      0x11, 0x1c,      /* 11 - GPSW=0, CM99=0, FECO=0, COMPO=1, OEYC=1, OEHV=1, VIPB=0, COLO=0 */
+      0x12, 0x00,      /* 12 - output control 2 */
+      0x13, 0x00,      /* 13 - output control 3 */
+      0x14, 0x00,      /* 14 - reserved */
+      0x15, 0x00,      /* 15 - VBI */
+      0x16, 0x00,      /* 16 - VBI */
+      0x17, 0x00,      /* 17 - VBI */
+   };
 
    device->data = decoder = kmalloc(sizeof(struct saa7111), GFP_KERNEL);
    if (decoder == NULL) {
@@ -210,10 +209,6 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
    struct saa7111 * decoder = device->data;
 
    switch (cmd) {
-   
-   case 0:
-        saa7111_write_block(decoder, init, sizeof(init));
-        break;
 
 #if defined(DECODER_DUMP)
    case DECODER_DUMP:
@@ -223,7 +218,7 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          for (i = 0; i < 32; i += 16) {
             int j;
 
-            printk(KERN_DEBUG "%s: %03x", device->name, i);
+            printk("KERN_DEBUG %s: %03x", device->name, i);
             for (j = 0; j < 16; ++j) {
                printk(" %02x", saa7111_read(decoder, i + j));
             }
@@ -240,7 +235,6 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          cap->flags
             = VIDEO_DECODER_PAL
             | VIDEO_DECODER_NTSC
-            | VIDEO_DECODER_SECAM
             | VIDEO_DECODER_AUTO
             | VIDEO_DECODER_CCIR;
          cap->inputs = 8;
@@ -255,7 +249,6 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
          int res;
 
          status = saa7111_read(decoder, 0x1f);
-         DEBUG(printk(KERN_DEBUG "%s status: 0x%02x\n", device->name, status));
          res = 0;
          if ((status & (1 << 6)) == 0) {
             res |= DECODER_STATUS_GOOD;
@@ -266,9 +259,6 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
             break;
          case VIDEO_MODE_PAL:
             res |= DECODER_STATUS_PAL;
-            break;
-         case VIDEO_MODE_SECAM:
-            res |= DECODER_STATUS_SECAM;
             break;
          default:
          case VIDEO_MODE_AUTO:
@@ -294,24 +284,16 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
 
          case VIDEO_MODE_NTSC:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x40);
-            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
- 
+
          case VIDEO_MODE_PAL:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x00);
-            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
- 
-         case VIDEO_MODE_SECAM:
-             saa7111_write(decoder, 0x08, (decoder->reg[0x0e] & 0x3f) |0x00);
-             saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f) |0x50);
-            break;
- 
+
          case VIDEO_MODE_AUTO:
             saa7111_write(decoder, 0x08, (decoder->reg[0x08] & 0x3f) | 0x80);
-            saa7111_write(decoder, 0x0e, (decoder->reg[0x0e] & 0x8f));
             break;
-         
+
          default:
             return -EINVAL;
 
@@ -416,14 +398,13 @@ static int saa7111_command(struct i2c_device * device, unsigned int cmd, void * 
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_saa7111 = {
-   name:       "saa7111",      /* name */
-   id:         I2C_DRIVERID_VIDEODECODER,   /* ID */
-   addr_l:     I2C_SAA7111,
-   addr_h:     I2C_SAA7111+1,
+   "saa7111",      /* name */
+   I2C_DRIVERID_VIDEODECODER,   /* ID */
+   I2C_SAA7111, I2C_SAA7111+1,
 
-   attach:     saa7111_attach,
-   detach:     saa7111_detach,
-   command:    saa7111_command
+   saa7111_attach,
+   saa7111_detach,
+   saa7111_command
 };
 
 EXPORT_NO_SYMBOLS;

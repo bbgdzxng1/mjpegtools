@@ -40,6 +40,7 @@ movtar.c (part of libmovtar)
 #include <tar.h>
 #include <glib.h>
 #include <sys/types.h>
+#include <linux/types.h>
 
 #include "movtar.h"
 
@@ -76,7 +77,6 @@ static int movtar_debug;
 #define INFO_MOV_HEIGHT "1011"
 #define INFO_MOV_JPEGNUMFIELD "1012"
 #define INFO_MOV_FRAMERATE "1013"
-#define INFO_MOV_RTJPEG "1014"
 
 /* Then the sound section */
 #define INFO_SOUND_AVAIL "1500"
@@ -173,8 +173,6 @@ int movtar_datatype(struct tarinfotype *tarinfoptr)
     return MOVTAR_DATA_AUDIO;
   if (strncasecmp(filenamesearch, ".jpeg", 5) == 0)
     return MOVTAR_DATA_VIDEO;
-  if (strncasecmp(filenamesearch, ".rtjpeg", 5) == 0)
-    return MOVTAR_DATA_VIDEO_RTJPEG;
   if (strncasecmp(filenamesearch, ".jpg", 4) == 0)
     return MOVTAR_DATA_VIDEO;
   return MOVTAR_DATA_UNKNOWN;
@@ -263,10 +261,6 @@ int movtar_parse_info(movtar_t *movtar, const char *infobuffer)
       { splitline = g_strsplit(strings[i], ":", 0); found = TRUE;
         movtar->sound_avail = atoi(splitline[1]);
       };
-      if (strncmp(strings[i], INFO_MOV_RTJPEG, 4) == 0)
-      { splitline = g_strsplit(strings[i], ":", 0); found = TRUE;
-        movtar->rtjpeg_mode = atoi(splitline[1]);
-      };
       if (strncmp(strings[i], INFO_MOV_JPEGNUMFIELD, 4) == 0)
       { splitline = g_strsplit(strings[i], ":", 0); found = TRUE;
         movtar->mov_jpegnumfield = atoi(splitline[1]);
@@ -330,7 +324,6 @@ gchar *movtar_create_info_content(movtar_t *movtar)
 	  INFO_MOV_NORM "Norm : %s\n"
 	  INFO_MOV_JPEGNUMFIELD "Number of JPEG fields in a file : %d\n"
 	  INFO_MOV_FRAMERATE "Framerate (floating point, frames/second) : %f\n"
-	  INFO_MOV_RTJPEG "RTJPEG (needs a special codec) : %d\n"
 	  INFO_SOUND_AVAIL "Sound : %d\n%s" 
 	  INFO_EOF "\n",
 	  movtar->version, movtar->gen_author, movtar->gen_date, 
@@ -341,7 +334,6 @@ gchar *movtar_create_info_content(movtar_t *movtar)
 	  movtar_norm_string(movtar), 
 	  movtar->mov_jpegnumfield, 
 	  movtar->mov_framerate, 
-	  movtar->rtjpeg_mode, 	  
 	  movtar->sound_avail, soundstring);
 
   free(soundstring);
@@ -721,8 +713,6 @@ movtar_t *movtar_open(const char *movtarfilename, int read, int write, gint32 fl
 	  }
 	
 	tar_read_data(movtar->file,readbuffer,datasize);
-
-	movtar->rtjpeg_mode = 0; /* set to a default */
 	movtar_parse_info(movtar, readbuffer);
 	
 	if (movtar_find_index(movtar))
@@ -1300,11 +1290,7 @@ int movtar_write_frame_init(movtar_t *movtar)
 int movtar_write_frame_end(movtar_t *movtar)
 {
   struct tarinfotype frameinfo, frcopyinfo;
-#ifdef	NEVER
   fpos_t newpos, filesize;
-#else
-  size_t newpos, filesize;
-#endif
   gchar jpegname[255], jpegcopyname[255];
   movtar_video_frag_t video_frag;
   
@@ -1317,17 +1303,8 @@ int movtar_write_frame_end(movtar_t *movtar)
   if (newpos == movtar->writepos) /* fake frames have size 0 */
     {
       /* We have a fake frame here ! Trace back & create a symlink */
-      if (!movtar->rtjpeg_mode)
-	{
-	  sprintf(jpegcopyname, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
-	  sprintf(jpegname, "%s_%06ld.jpeg", movtar->name, movtar->latest_real_video_frag + 100000);
-	}
-      else
-	{
-	  sprintf(jpegcopyname, "%s_%06ld.rtjpeg", movtar->name, movtar->vidnr + 100000);
-	  sprintf(jpegname, "%s_%06ld.rtjpeg", movtar->name, movtar->latest_real_video_frag + 100000);
-	}
-
+      sprintf(jpegcopyname, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
+      sprintf(jpegname, "%s_%06ld.jpeg", movtar->name, movtar->latest_real_video_frag + 100000);
       tarblock_makedefault_symlink(&frcopyinfo, jpegcopyname, jpegname);
       fwrite(&frcopyinfo, 512, 1, movtar->file);
       fseek(movtar->file, newpos, SEEK_SET); /* return to the end of the file */
@@ -1346,10 +1323,7 @@ int movtar_write_frame_end(movtar_t *movtar)
       printf("%s: Filesize to store: %lld\n", __FUNCTION__, (gint64)filesize);
 
       /* create the new frame name */
-      if (!movtar->rtjpeg_mode)
-	g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
-      else
-	g_snprintf(jpegname, 99, "%s_%06ld.rtjpeg", movtar->name, movtar->vidnr + 100000);
+      g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
 
       tarblock_makedefault(&frameinfo, jpegname, filesize);
       fwrite(&frameinfo, 512, 1, movtar->file);
@@ -1391,16 +1365,8 @@ int movtar_write_frame(movtar_t *movtar, unsigned char *video_buffer, size_t byt
       if (bytes == 0) /* fake frames have size 0 */
 	{
 	  /* We have a fake frame here ! Trace back & create a symlink */
-	  if (!movtar->rtjpeg_mode)
-	    {
-	      g_snprintf(jpegcopyname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
-	      g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->latest_real_video_frag + 100000);
-	    }
-	  else
-	    {
-	      g_snprintf(jpegcopyname, 99, "%s_%06ld.rtjpeg", movtar->name, movtar->vidnr + 100000);
-	      g_snprintf(jpegname, 99, "%s_%06ld.rtjpeg", movtar->name, movtar->latest_real_video_frag + 100000);
-	    } 
+	  g_snprintf(jpegcopyname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
+	  g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->latest_real_video_frag + 100000);
 	  tarblock_makedefault_symlink(&frcopyinfo, jpegcopyname, jpegname);
 	  fwrite(&frcopyinfo, 512, 1, movtar->file);
 
@@ -1416,10 +1382,7 @@ int movtar_write_frame(movtar_t *movtar, unsigned char *video_buffer, size_t byt
 	  MDEBUG(printf("%s: Filesize to store: %d\n", __FUNCTION__, bytes));
 
 	  /* create the new frame name */
-	  if (!movtar->rtjpeg_mode)
-	      g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
-	  else
-	      g_snprintf(jpegname, 99, "%s_%06ld.rtjpeg", movtar->name, movtar->vidnr + 100000);
+	  g_snprintf(jpegname, 99, "%s_%06ld.jpeg", movtar->name, movtar->vidnr + 100000);
 
 	  tarblock_makedefault(&frameinfo, jpegname, bytes);
 	  

@@ -70,30 +70,12 @@
 #include <asm/spinlock.h>
 #include <linux/i2c.h>
 #define     ZORAN_HARDWARE  VID_HARDWARE_BT848
-#define     ZORAN_VID_TYPE  ( \
-                            VID_TYPE_CAPTURE | \
-                            VID_TYPE_OVERLAY | \
-                            VID_TYPE_CLIPPING | \
-                            VID_TYPE_FRAMERAM | \
-                            VID_TYPE_SCALES \
-                            )
-	    /* theoretically we could also flag VID_TYPE_SUBCAPTURE
-	       but this is not even implemented in the BTTV driver */
 #else
 #include <linux/spinlock.h>
 #include <linux/vmalloc.h>
 #include <linux/i2c-old.h>
 #define     MAP_NR(x)       virt_to_page(x)
 #define     ZORAN_HARDWARE  VID_HARDWARE_ZR36067
-#define     ZORAN_VID_TYPE  ( \
-                            VID_TYPE_CAPTURE | \
-                            VID_TYPE_OVERLAY | \
-                            VID_TYPE_CLIPPING | \
-                            VID_TYPE_FRAMERAM | \
-                            VID_TYPE_SCALES | \
-                            VID_TYPE_MJPEG_DECODER | \
-                            VID_TYPE_MJPEG_ENCODER \
-                            )
 #endif
 
 #if LINUX_VERSION_CODE < 0x20212
@@ -177,7 +159,7 @@ SAA7111A
 */
 
 #define MAJOR_VERSION 0		/* driver major version */
-#define MINOR_VERSION 9		/* driver minor version */
+#define MINOR_VERSION 7		/* driver minor version */
 
 #define ZORAN_NAME    "ZORAN"	/* name of the device */
 
@@ -600,25 +582,6 @@ static void jpg_fbuffer_free(struct zoran *zr)
 
 /* ----------------------------------------------------------------------- */
 
-// GPIO pins of ZR36057/67
-
-static void GPIO(struct zoran *zr, unsigned bit, unsigned value)
-{
-	u32 reg;
-	u32 mask;
-
-	mask = 1 << (24 + bit);
-	reg = btread(ZR36057_GPPGCR1) & ~mask;
-	if (value) {
-		reg |= mask;
-	}
-	btwrite(reg, ZR36057_GPPGCR1);
-	udelay(1);
-}
-
-
-/* ----------------------------------------------------------------------- */
-
 /* I2C functions                                                           */
 
 #define I2C_DELAY   10
@@ -676,57 +639,20 @@ static void detach_inform(struct i2c_bus *bus, int id)
 }
 
 static struct i2c_bus zoran_i2c_bus_template = {
-	name:               "zr36057",
-	id:                 I2C_BUSID_BUZ,
-	data:               NULL,
+	"zr36057",
+	I2C_BUSID_BT848,
+	NULL,
 
-#if LINUX_VERSION_CODE >= 0x020100
-	bus_lock:           SPIN_LOCK_UNLOCKED,
-#endif
+	SPIN_LOCK_UNLOCKED,
 
-	attach_inform:      attach_inform,
-	detach_inform:      detach_inform,
+	attach_inform,
+	detach_inform,
 
-	i2c_setlines:       i2c_setlines,
-	i2c_getdataline:    i2c_getdataline,
-	i2c_read:           NULL,
-	i2c_write:          NULL,
+	i2c_setlines,
+	i2c_getdataline,
+	NULL,
+	NULL,
 };
-
-static int zoran_register_i2c (struct zoran *zr)
-{
-	memcpy(&zr->i2c, &zoran_i2c_bus_template, sizeof(struct i2c_bus));
-	strcpy(zr->i2c.name, zr->name);
-	zr->i2c.data = zr;
-        return i2c_register_bus(&zr->i2c);
-}
-
-static inline void zoran_unregister_i2c (struct zoran *zr)
-{
-        i2c_unregister_bus((&zr->i2c));
-}
-
-// Interface to decoder and encoder chips using i2c bus
-
-static inline int decoder_command(struct zoran *zr, int cmd, void *data)
-{
-        int res;
-        if (zr->card == LML33 && (cmd == DECODER_SET_NORM || DECODER_SET_INPUT)) {
-                // Bt819 needs to reset its FIFO buffer using #FRST pin and
-                // LML33 card uses GPIO(7) for that.
-                GPIO(zr, 7, 0); 
-                res = i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, cmd, data);
-                // Pull #FRST high.
-                GPIO(zr, 7, 1);
-                return res;
-        } else
-                return i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, cmd, data);
-}
-
-static inline int encoder_command(struct zoran *zr, int cmd, void *data)
-{
-        return i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, cmd, data);
-}
 
 /*
  *   Set the registers for the size we have specified. Don't bother
@@ -762,7 +688,7 @@ static struct tvnorm *lml33norms[] = {
 static struct tvnorm *buznorms[] = {
 	&f50ccir601,       /* PAL-BDGHI */
 	&f60ccir601,       /* NTSC      */
-	&f50ccir601,       /* SECAM     */
+	NULL,              /* SECAM     */
 };
 
 static struct tvnorm *unsupported[] = {
@@ -1453,6 +1379,23 @@ static u32 zr36060_read_8(struct zoran *zr, unsigned reg)
 	return post_office_read(zr, 0, 3) & 0xFF;
 }
 
+/* ----------------------------------------------------------------------- */
+
+static void GPIO(struct zoran *zr, unsigned bit, unsigned value)
+{
+	u32 reg;
+	u32 mask;
+
+	mask = 1 << (24 + bit);
+	reg = btread(ZR36057_GPPGCR1) & ~mask;
+	if (value) {
+		reg |= mask;
+	}
+	btwrite(reg, ZR36057_GPPGCR1);
+	udelay(1);
+}
+
+
 static void zr36060_sleep(struct zoran *zr, int sleep)
 {
 	switch(zr->card) {
@@ -1523,6 +1466,20 @@ static void set_videobus_dir(struct zoran *zr, int val)
                         else
                                 GPIO(zr, 5, 1);
                         break;
+                case BUZ:
+                default:
+                        break;
+        }
+}
+
+static void set_videobus_enable(struct zoran *zr, int val)
+{
+	switch(zr->card) {
+                case LML33:
+                        GPIO(zr, 7, val);
+                        break;
+                case DC10:
+                case DC10plus:
                 case BUZ:
                 default:
                         break;
@@ -2158,10 +2115,7 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 
 	case BUZ_MODE_STILL_COMPRESS:
 	case BUZ_MODE_MOTION_COMPRESS:
-		if (zr->card != BUZ)
-                        reg = 140;
-                else
-                        reg = 60;
+		reg = 140;
 		break;
 
 	case BUZ_MODE_STILL_DECOMPRESS:
@@ -2366,11 +2320,11 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	switch (mode) {
 
 	case BUZ_MODE_MOTION_COMPRESS:
-		// set_videobus_enable(zr, 0);
+		set_videobus_enable(zr, 0);
                 set_videobus_dir(zr, 0); // GPIO(zr, 1, 0);
-		decoder_command(zr, DECODER_ENABLE_OUTPUT, &one);
-		encoder_command(zr, ENCODER_SET_INPUT, &zero);
-		// set_videobus_enable(zr, 1);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_ENABLE_OUTPUT, &one);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_INPUT, &zero);
+		set_videobus_enable(zr, 1);
 		zr36060_sleep(zr, 0);
 		zr36060_set_cap(zr, mode);	// Load ZR36060
 		init_jpeg_queue(zr);
@@ -2381,11 +2335,11 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 		break;
 
 	case BUZ_MODE_MOTION_DECOMPRESS:
-		// set_videobus_enable(zr, 0);
-		decoder_command(zr, DECODER_ENABLE_OUTPUT, &zero);
+		set_videobus_enable(zr, 0);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_ENABLE_OUTPUT, &zero);
 		set_videobus_dir(zr, 1); // GPIO(zr, 1, 1);
-		encoder_command(zr, ENCODER_SET_INPUT, &one);
-		// set_videobus_enable(zr, 1);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_INPUT, &one);
+		set_videobus_enable(zr, 1);
 		zr36060_sleep(zr, 0);
 		zr36060_set_cap(zr, mode);	// Load ZR36060
 		init_jpeg_queue(zr);
@@ -2415,10 +2369,10 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 		zr36060_reset(zr);
 		zr36060_sleep(zr, 1);
 		zr36057_adjust_vfe(zr, mode);
-		// set_videobus_enable(zr, 0);
-		decoder_command(zr, DECODER_ENABLE_OUTPUT, &one);
-		encoder_command(zr, ENCODER_SET_INPUT, &zero);
-		// set_videobus_enable(zr, 1);
+		set_videobus_enable(zr, 0);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_ENABLE_OUTPUT, &one);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_INPUT, &zero);
+		set_videobus_enable(zr, 1);
 		DEBUG1(printk(KERN_INFO "%s: enable_jpg IDLE\n", zr->name));
 		break;
 
@@ -2746,7 +2700,7 @@ static void error_handler(struct zoran *zr, u32 astat, u32 stat)
 
 		status = 0;
 		if (zr->codec_mode == BUZ_MODE_MOTION_COMPRESS)
-			decoder_command(zr, DECODER_GET_STATUS, &status);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_GET_STATUS, &status);
 		if (zr->codec_mode == BUZ_MODE_MOTION_DECOMPRESS || (status & DECODER_STATUS_GOOD)) {
 	    /********** RESTART code *************/
 			zr36060_reset(zr);
@@ -3088,8 +3042,16 @@ static void zoran_open_init_params(struct zoran *zr)
 
 	/* User must explicitly set a window */
 
-	memset(&zr->window, 0, sizeof(struct video_window));
-        zr->window_set = 0;
+	zr->window_set = 0;
+
+	zr->window.x = 0;
+	zr->window.y = 0;
+	zr->window.width = 0;
+	zr->window.height = 0;
+	zr->window.chromakey = 0;
+	zr->window.flags = 0;
+	zr->window.clips = NULL;
+	zr->window.clipcount = 0;
 
 	zr->video_interlace = 0;
 
@@ -3145,96 +3107,6 @@ static void zoran_open_init_params(struct zoran *zr)
 	zr->testing = 0;
 }
 
-static void zr36057_restart (struct zoran *zr)
-{
-        btwrite(0, ZR36057_SPGPPCR);
-	mdelay(1);
-	btwrite(ZR36057_SPGPPCR_SoftReset, ZR36057_SPGPPCR);
-	mdelay(1);
-
-	/* assert P_Reset */
-	btwrite(0, ZR36057_JPC);
-	/* set up GPIO direction - all output */
-	btwrite(ZR36057_SPGPPCR_SoftReset | 0, ZR36057_SPGPPCR);
-
-	/* set up GPIO pins and guest bus timing */
-        btwrite((0x81 << 24) | 0x8888, ZR36057_GPPGCR1);
-}
-
-/*
- * initialize video front end
- */
-static void zr36057_init_vfe(struct zoran *zr)
-{
-	u32 reg;
-	reg = btread(ZR36057_VFESPFR);
-	reg |= ZR36057_VFESPFR_LittleEndian;
-	reg &= ~ZR36057_VFESPFR_VCLKPol;
-	reg |= ZR36057_VFESPFR_ExtFl;
-	reg |= ZR36057_VFESPFR_TopField;
-	btwrite(reg, ZR36057_VFESPFR);
-	reg = btread(ZR36057_VDCR);
-        if (triton || zr->revision <= 1)
-		reg &= ~ZR36057_VDCR_Triton;
-	else
-		reg |= ZR36057_VDCR_Triton;
-	btwrite(reg, ZR36057_VDCR);
-}
-
-static void zoran_set_pci_master(struct zoran *zr, int set_master)
-{
-        u16  command;
-        if (set_master) {
-                pci_set_master(zr->pci_dev);
-        } else {
-		pci_read_config_word(zr->pci_dev, PCI_COMMAND, &command);
-		command &= ~PCI_COMMAND_MASTER;
-		pci_write_config_word(zr->pci_dev, PCI_COMMAND, command);
-        }
-}
-
-static void zoran_init_hardware (struct zoran *zr)
-{
-        int j, zero = 0;
-        /* Enable bus-mastering */
-	zoran_set_pci_master(zr, 1);
-
-        if (zr->card == LML33) {
-                GPIO(zr, 2, 1); // Set composite output
-        }
-
-        if (zr->card == BUZ)
-	    j = zr->params.input == 0 ? 3 : 7;
-        else
-	    j = zr->params.input == 0 ? 0 : 7;
-        
-        decoder_command(zr, 0, NULL);
-	decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
-	decoder_command(zr, DECODER_SET_INPUT, &j);
-        
-        encoder_command(zr, 0, NULL);
-	encoder_command(zr, ENCODER_SET_NORM, &zr->params.norm);
-	encoder_command(zr, ENCODER_SET_INPUT, &zero);
-
-	/* toggle JPEG codec sleep to sync PLL */
-	zr36060_sleep(zr, 1);
-	zr36060_sleep(zr, 0);
-
-	/* set individual interrupt enables (without GIRQ1)
-	   but don't global enable until zoran_open() */
-
-	//btwrite(IRQ_MASK & ~ZR36057_ISR_GIRQ1, ZR36057_ICR);  // SW
-	// It looks like using only JPEGRepIRQEn is not always reliable,
-	// may be when JPEG codec crashes it won't generate IRQ? So,
-	btwrite(IRQ_MASK, ZR36057_ICR);	// Enable Vsync interrupts too. SM
-
-	zr36057_init_vfe(zr);
-
-	zr36057_enable_jpg(zr, BUZ_MODE_IDLE);
-	
-        btwrite(IRQ_MASK, ZR36057_ISR);	// Clears interrupts
-}
-
 /*
  *   Open a zoran card. Right now the flags stuff is just playing
  */
@@ -3264,10 +3136,11 @@ static int zoran_open(struct video_device *dev, int flags)
 		/* default setup */
 
 		if (zr->user == 1) {	/* First device open */
-                        zr36057_restart(zr);
 			zoran_open_init_params(zr);
-                        zoran_init_hardware(zr);
 
+			zr36057_enable_jpg(zr, BUZ_MODE_IDLE);
+
+			btwrite(IRQ_MASK, ZR36057_ISR);	// Clears interrupts
 			btor(ZR36057_ICR_IntPinEn, ZR36057_ICR);
 			dev->busy = 0;	/* Allow second open */
 		}
@@ -3310,13 +3183,12 @@ static void zoran_close(struct video_device *dev)
 		if (zr->v4l_overlay_active)
 			zr36057_overlay(zr, 0);
 		v4l_fbuffer_free(zr);
-                zoran_set_pci_master(zr, 0);
-                
+
 		if (!pass_through) {	/* Switch to color bar */
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_ENABLE_OUTPUT, &zero);
-			encoder_command(zr, ENCODER_SET_INPUT, &two);
-		        // set_videobus_enable(zr, 1);
+		        set_videobus_enable(zr, 0);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_ENABLE_OUTPUT, &zero);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_INPUT, &two);
+		        set_videobus_enable(zr, 1);
 		}
 	}
 
@@ -3354,7 +3226,9 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			DEBUG2(printk("%s: ioctl VIDIOCGCAP\n", zr->name));
 
 			strncpy(b.name, zr->video_dev.name, sizeof(b.name));
-			b.type = ZORAN_VID_TYPE;
+			b.type = VID_TYPE_CAPTURE | VID_TYPE_OVERLAY | VID_TYPE_CLIPPING | VID_TYPE_FRAMERAM | VID_TYPE_SCALES;
+			/* theoretically we could also flag VID_TYPE_SUBCAPTURE
+			   but this is not even implemented in the BTTV driver */
 
 			if(zr->card == DC10 || zr->card == DC10plus) {
 			        b.channels = 3;	/* composite, svhs, internal */
@@ -3489,11 +3363,11 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			if (on)
 				zr36057_overlay(zr, 0);
 
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_INPUT, &input);
-			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
-			encoder_command(zr, ENCODER_SET_NORM, &encoder_norm);
-		        // set_videobus_enable(zr, 1);
+		        set_videobus_enable(zr, 0);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_INPUT, &input);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_NORM, &zr->params.norm);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_NORM, &encoder_norm);
+		        set_videobus_enable(zr, 1);
 
 			if (on)
 				zr36057_overlay(zr, 1);
@@ -3559,7 +3433,7 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			if (copy_from_user(&p, arg, sizeof(p))) {
 				return -EFAULT;
 			}
-			decoder_command(zr, DECODER_SET_PICTURE, &p);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_PICTURE, &p);
 			DEBUG2(printk("%s: ioctl VIDIOCSPICT bri=%d hue=%d col=%d con=%d dep=%d pal=%d\n",
 				      zr->name, p.brightness, p.hue, p.colour, p.contrast, p.depth, p.palette));
 			/* The depth and palette values have no meaning to us,
@@ -4083,10 +3957,10 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			/* Set video norm to VIDEO_MODE_AUTO */
 
 			norm = VIDEO_MODE_AUTO;
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_INPUT, &input);
-			decoder_command(zr, DECODER_SET_NORM, &norm);
-		        // set_videobus_enable(zr, 1);
+		        set_videobus_enable(zr, 0);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_INPUT, &input);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_NORM, &norm);
+		        set_videobus_enable(zr, 1);
 
 			/* sleep 1 second */
 
@@ -4096,7 +3970,7 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 
 			/* Get status of video decoder */
 
-			decoder_command(zr, DECODER_GET_STATUS, &status);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_GET_STATUS, &status);
 			bs.signal = (status & DECODER_STATUS_GOOD) ? 1 : 0;
 
 			if (status & DECODER_STATUS_NTSC)
@@ -4113,10 +3987,10 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			    input = zr->params.input == 0 ? 3 : 7;
                         else
 			    input = zr->params.input == 0 ? 0 : 7;
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_INPUT, &input);
-			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
-		        // set_videobus_enable(zr, 1);
+		        set_videobus_enable(zr, 0);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_INPUT, &input);
+			i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_NORM, &zr->params.norm);
+		        set_videobus_enable(zr, 1);
 
 			if (copy_to_user(arg, &bs, sizeof(bs))) {
 				return -EFAULT;
@@ -4226,26 +4100,42 @@ static int zoran_init_done(struct video_device *dev)
 	return 0;
 }
 
-static struct video_device zoran_template =
-{
-#if LINUX_VERSION_CODE >= 0x020403
-	owner:		THIS_MODULE,
-#endif
-	name:		ZORAN_NAME,
-	type:		ZORAN_VID_TYPE,
-	hardware:	ZORAN_HARDWARE,
-	open:		zoran_open,
-	close:		zoran_close,
-	read:		zoran_read,
-	write:		zoran_write,
-	poll:		NULL,
-	ioctl:		zoran_ioctl,
-	mmap:		zoran_mmap,
-	initialize:	zoran_init_done,
-	priv:		NULL,
-	busy:		0,
-	minor:		0
+static struct video_device zoran_template = {
+	ZORAN_NAME,
+	VID_TYPE_CAPTURE | VID_TYPE_OVERLAY | VID_TYPE_CLIPPING | VID_TYPE_FRAMERAM | VID_TYPE_SCALES | VID_TYPE_SUBCAPTURE,
+	ZORAN_HARDWARE,
+	zoran_open,
+	zoran_close,
+	zoran_read,
+	zoran_write,
+	NULL,
+	zoran_ioctl,
+	zoran_mmap,
+	zoran_init_done,
+	NULL,
+	0,
+	0
 };
+
+/*
+ * initialize video front end
+ */
+static void zr36057_init_vfe(struct zoran *zr)
+{
+	u32 reg;
+	reg = btread(ZR36057_VFESPFR);
+	reg |= ZR36057_VFESPFR_LittleEndian;
+	reg &= ~ZR36057_VFESPFR_VCLKPol;
+	reg |= ZR36057_VFESPFR_ExtFl;
+	reg |= ZR36057_VFESPFR_TopField;
+	btwrite(reg, ZR36057_VFESPFR);
+	reg = btread(ZR36057_VDCR);
+        if (triton || zr->revision <= 1)
+		reg &= ~ZR36057_VDCR_Triton;
+	else
+		reg |= ZR36057_VDCR_Triton;
+	btwrite(reg, ZR36057_VDCR);
+}
 
 static void test_interrupts(struct zoran *zr)
 {
@@ -4267,16 +4157,6 @@ static void test_interrupts(struct zoran *zr)
 	btwrite(icr, ZR36057_ICR);
 }
 
-static struct video_picture picture_template = {
-        brightness: 32768,
-        hue:        32768,
-        colour:     32768,
-        contrast:   32768,
-        whiteness:  0,
-        depth:      0,
-        palette:    0,
-};
-
 static int zr36057_init(int i)
 {
 	struct zoran *zr = &zoran[i];
@@ -4290,24 +4170,24 @@ static int zr36057_init(int i)
 
 	/* default setup of all parameters which will persist beetween opens */
 
-	// zr->user = 0; Cleared my find_zr36057
+	zr->user = 0;
         
         init_waitqueue_head(&zr->v4l_capq);
         init_waitqueue_head(&zr->jpg_capq);
         init_waitqueue_head(&zr->test_q);
 
-// 	zr->map_mjpeg_buffers = 0;	/* Map V4L buffers by default */
-// 
-// 	zr->jpg_nbufs = 0;
-// 	zr->jpg_bufsize = 0;
-// 	zr->jpg_buffers_allocated = 0;
-// 
-// 	zr->buffer_set = 0;	/* Flag if frame buffer has been set */
+	zr->map_mjpeg_buffers = 0;	/* Map V4L buffers by default */
+
+	zr->jpg_nbufs = 0;
+	zr->jpg_bufsize = 0;
+	zr->jpg_buffers_allocated = 0;
+
+	zr->buffer_set = 0;	/* Flag if frame buffer has been set */
 	zr->buffer.base = (void *) vidmem;
-// 	zr->buffer.width = 0;
-// 	zr->buffer.height = 0;
-// 	zr->buffer.depth = 0;
-// 	zr->buffer.bytesperline = 0;
+	zr->buffer.width = 0;
+	zr->buffer.height = 0;
+	zr->buffer.depth = 0;
+	zr->buffer.bytesperline = 0;
 
 	zr->params.norm = default_norm = (default_norm < 3 ? default_norm : VIDEO_MODE_PAL);	/* Avoid nonsense settings from user */
 	if(!(zr->timing = cardnorms[zr->card][zr->params.norm])) {
@@ -4316,19 +4196,25 @@ static int zr36057_init(int i)
                 zr->timing = cardnorms[zr->card][zr->params.norm];
         }
         zr->params.input = default_input = (default_input ? 1 : 0);	/* Avoid nonsense settings from user */
-// 	zr->video_interlace = 0;
+	zr->video_interlace = 0;
 
 	/* Should the following be reset at every open ? */
 
-	zr->picture = picture_template;
+	zr->picture.colour = 32768;
+	zr->picture.brightness = 32768;
+	zr->picture.hue = 32768;
+	zr->picture.contrast = 32768;
+	zr->picture.whiteness = 0;
+	zr->picture.depth = 0;
+	zr->picture.palette = 0;
 
-// 	for (j = 0; j < VIDEO_MAX_FRAME; j++) {
-// 		zr->v4l_gbuf[i].fbuffer = 0;
-// 		zr->v4l_gbuf[i].fbuffer_phys = 0;
-// 		zr->v4l_gbuf[i].fbuffer_bus = 0;
-// 	}
-// 
-// 	zr->stat_com = 0;
+	for (j = 0; j < VIDEO_MAX_FRAME; j++) {
+		zr->v4l_gbuf[i].fbuffer = 0;
+		zr->v4l_gbuf[i].fbuffer_phys = 0;
+		zr->v4l_gbuf[i].fbuffer_bus = 0;
+	}
+
+	zr->stat_com = 0;
 
 	/* default setup (will be repeated at every open) */
 
@@ -4366,39 +4252,62 @@ static int zr36057_init(int i)
 	 */
 	memcpy(&zr->video_dev, &zoran_template, sizeof(zoran_template));
 	strcpy(zr->video_dev.name, zr->name);
-#if LINUX_VERSION_CODE < 0x20405
 	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER) < 0) {
-#else
-	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER, -1) < 0) {
-#endif
-		zoran_unregister_i2c(zr);
+		i2c_unregister_bus(&zr->i2c);
 		kfree((void *) zr->stat_com);
 		return -1;
 	}
 
-	zoran_init_hardware(zr);
+	/* Enable bus-mastering */
+	pci_set_master(zr->pci_dev);
+
+        if (zr->card == BUZ)
+	    j = zr->params.input == 0 ? 3 : 7;
+        else
+	    j = zr->params.input == 0 ? 0 : 7;
+	set_videobus_enable(zr, 0);
+	i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_INPUT, &j);
+	i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_SET_NORM, &zr->params.norm);
+	i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_NORM, &zr->params.norm);
+	set_videobus_enable(zr, 1);
+
+	/* toggle JPEG codec sleep to sync PLL */
+	zr36060_sleep(zr, 1);
+	zr36060_sleep(zr, 0);
+
+	/* set individual interrupt enables (without GIRQ1)
+	   but don't global enable until zoran_open() */
+
+	//btwrite(IRQ_MASK & ~ZR36057_ISR_GIRQ1, ZR36057_ICR);  // SW
+	// It looks like using only JPEGRepIRQEn is not always reliable,
+	// may be when JPEG codec crashes it won't generate IRQ? So,
+	btwrite(IRQ_MASK, ZR36057_ICR);	// Enable Vsync interrupts too. SM
+
+	zr36057_init_vfe(zr);
+
+	zr->zoran_proc = NULL;
+	zr->initialized = 1;
+
+	zr36057_enable_jpg(zr, BUZ_MODE_IDLE);
 #if (DEBUGLEVEL > 2)
 	detect_guest_activity(zr);
 #endif
 	test_interrupts(zr);
-	//btwrite(IRQ_MASK, ZR36057_ICR);	// Enable Vsync interrupts too. SM
-        if (!pass_through) {
-	        // set_videobus_enable(zr, 0);
-		decoder_command(zr, DECODER_ENABLE_OUTPUT, &zero);
-		encoder_command(zr, ENCODER_SET_INPUT, &two);
-	        // set_videobus_enable(zr, 1);
+	btwrite(IRQ_MASK, ZR36057_ICR);	// Enable Vsync interrupts too. SM
+	if (!pass_through) {
+	        set_videobus_enable(zr, 0);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, DECODER_ENABLE_OUTPUT, &zero);
+		i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, ENCODER_SET_INPUT, &two);
+	        set_videobus_enable(zr, 1);
 	}
-	
-        zr->zoran_proc = NULL;
-	zr->initialized = 1;
-
 	return 0;
 }
 
 #include "zoran_procfs.c"
 
-static void zoran_release(void)
+static void release_dc10(void)
 {
+	u8 command;
 	int i;
 	struct zoran *zr;
 
@@ -4408,11 +4317,13 @@ static void zoran_release(void)
 		if (!zr->initialized)
 			continue;
 
-		/* unregister i2c bus */
-                zoran_unregister_i2c(zr);
+		/* unregister i2c_bus */
+		i2c_unregister_bus((&zr->i2c));
 
 		/* disable PCI bus-mastering */
-                zoran_set_pci_master(zr, 0);
+		pci_read_config_byte(zr->pci_dev, PCI_COMMAND, &command);
+		command &= ~PCI_COMMAND_MASTER;
+		pci_write_config_byte(zr->pci_dev, PCI_COMMAND, command);
 
 		/* put chip into reset */
 		btwrite(0, ZR36057_SPGPPCR);
@@ -4446,9 +4357,8 @@ static int find_zr36057(void)
 
 	while (zoran_num < BUZ_MAX && (dev = pci_find_device(PCI_VENDOR_ID_ZORAN, PCI_DEVICE_ID_ZORAN_36057, dev)) != NULL) {
 		zr = &zoran[zoran_num];
-		memset(zr, 0, sizeof(struct zoran));    // Just in case if previous cycle failed
-                zr->pci_dev = dev;
-		//zr->zr36057_mem = NULL;
+		zr->pci_dev = dev;
+		zr->zr36057_mem = NULL;
 		zr->id = zoran_num;
 		sprintf(zr->name, "MJPEG[%u]", zr->id);
 
@@ -4483,21 +4393,22 @@ static int find_zr36057(void)
 		zr->zr36057_mem = ioremap_nocache(zr->zr36057_adr, 0x1000);
                 if (!zr->zr36057_mem) {
                         printk(KERN_ERR "%s: ioremap failed\n", zr->name);
-                        continue;
+                        /* XXX handle error */
                 }
 
 		result = request_irq(zr->pci_dev->irq, zoran_irq, SA_SHIRQ | SA_INTERRUPT, zr->name, (void *) zr);
 		if (result < 0) {
-                	if (result == -EINVAL) {
+			if (result == -EINVAL) {
 				printk(KERN_ERR "%s: Bad irq number or handler\n", zr->name);
 			} else if (result == -EBUSY) {
 				printk(KERN_ERR "%s: IRQ %d busy, change your PnP config in BIOS\n", zr->name, zr->pci_dev->irq);
 			} else {
 				printk(KERN_ERR "%s: Can't assign irq, error code %d\n", zr->name, result);
 			}
-                        goto zr_unmap;
-                }
-                
+			iounmap(zr->zr36057_mem);
+			continue;
+		}
+
 		/* set PCI latency timer */
 		pci_read_config_byte(zr->pci_dev, PCI_LATENCY_TIMER, &latency);
 		need_latency = zr->revision > 1 ? 32 : 48;
@@ -4506,22 +4417,45 @@ static int find_zr36057(void)
 			pci_write_config_byte(zr->pci_dev, PCI_LATENCY_TIMER, need_latency);
 		}
 
-	        zr36057_restart(zr);
+	        btwrite(0, ZR36057_SPGPPCR);
+	        mdelay(1);
+	        btwrite(ZR36057_SPGPPCR_SoftReset, ZR36057_SPGPPCR);
+	        mdelay(1);
+
+	        /* assert P_Reset */
+	        btwrite(0, ZR36057_JPC);
+
+	        /* set up GPIO direction - all output */
+	        btwrite(ZR36057_SPGPPCR_SoftReset | 0, ZR36057_SPGPPCR);
+                btwrite((0x81 << 24) | 0x8888, ZR36057_GPPGCR1);
 
 	        /* i2c */
+	        memcpy(&zr->i2c, &zoran_i2c_bus_template, sizeof(struct i2c_bus));
+	        strcpy(zr->i2c.name, zr->name);
+	        zr->i2c.data = zr;
                 printk(KERN_INFO "%s: Initializing i2c bus...\n", zr->name);
-	        if (zoran_register_i2c(zr) < 0) {
+	        if (i2c_register_bus(&zr->i2c) < 0) {
+		        /* put chip into reset */
+		        btwrite(0, ZR36057_SPGPPCR);
+		        free_irq(zr->pci_dev->irq, zr);
+			iounmap(zr->zr36057_mem);
                         printk(KERN_ERR "%s: Can't initialize i2c bus\n", zr->name);
-		        goto zr_free_irq;
+		        continue;
 	        }
                 
                 if (zr->card != DC10 && zr->card != DC10plus && zr->card != LML33 && zr->card != BUZ) {
+		        /* unregister i2c_bus */
+		        i2c_unregister_bus((&zr->i2c));
+		        /* put chip into reset */
+		        btwrite(0, ZR36057_SPGPPCR);
+		        free_irq(zr->pci_dev->irq, zr);
+			iounmap(zr->zr36057_mem);
                         printk(KERN_ERR "%s: Card not supported\n", zr->name);
-                        goto zr_unreg_i2c;
+                        continue;
                 }
                 printk(KERN_INFO "%s card detected\n", zr->name);
                 if (zr->card == LML33) {
-                        GPIO(zr, 2, 1); // Set Composite input/output
+                    GPIO(zr, 2, 1); // Set Composite input/output
                 }
 
 	        /* reset JPEG codec */
@@ -4534,28 +4468,17 @@ static int find_zr36057(void)
 	        if (zr36060_read_8(zr, 0x022) == 0x33) {
 		        printk(KERN_INFO "%s: Zoran ZR36060 (rev %d)\n", zr->name, zr36060_read_8(zr, 0x023));
 	        } else {
+		        /* unregister i2c_bus */
+		        i2c_unregister_bus((&zr->i2c));
+		        /* put chip into reset */
+		        btwrite(0, ZR36057_SPGPPCR);
+		        free_irq(zr->pci_dev->irq, zr);
+			iounmap(zr->zr36057_mem);
 		        printk(KERN_ERR "%s: Zoran ZR36060 not found\n", zr->name);
-                        goto zr_unreg_i2c;
+		        continue;
 	        }
 
 		zoran_num++;
-                continue;
-        
-                // Init errors
-                zr_unreg_i2c:
-		        
-                        zoran_unregister_i2c(zr);
-                        
-                zr_free_irq:
-                        
-                        btwrite(0, ZR36057_SPGPPCR);
-		        free_irq(zr->pci_dev->irq, zr);
-                        
-                zr_unmap:
-		        
-                        iounmap(zr->zr36057_mem);
-
-                continue;
 	}
 	if (zoran_num == 0) {
 		printk(KERN_INFO "No known MJPEG cards found.\n");
@@ -4641,20 +4564,20 @@ int init_dc10_cards(struct video_init *unused)
 		if (natoma && zoran[i].revision <= 1) {
 			zoran[i].need_contiguous = 1;
 			printk(KERN_INFO "%s: ZR36057/Natoma bug, max. buffer size is 128K\n", zoran[i].name);
-		} // else {
-		//	zoran[i].need_contiguous = 0; Cleared by memset in find_zr36057()
-		//}
+		} else {
+			zoran[i].need_contiguous = 0;
+		}
 	}
 
-	/* initialize the cards */
+	/* initialize the Buzs */
 
 	/* We have to know which ones must be released if an error occurs */
-	//for (i = 0; i < zoran_num; i++)
-	//	zoran[i].initialized = 0; Cleared by memset in find_zr36057()
+	for (i = 0; i < zoran_num; i++)
+		zoran[i].initialized = 0;
 
 	for (i = 0; i < zoran_num; i++) {
 		if (zr36057_init(i) < 0) {
-			zoran_release();
+			release_dc10();
 			return -EIO;
 		}
 		zoran_proc_init(i);
@@ -4667,7 +4590,7 @@ int init_dc10_cards(struct video_init *unused)
 
 void cleanup_module(void)
 {
-	zoran_release();
+	release_dc10();
 }
 
 #endif
