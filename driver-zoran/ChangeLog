@@ -11,10 +11,10 @@ Version 0.9.4 -> 0.9.5
 * fix LML33R10
 * fix hang when open()/close() is called while waiting in a sync
 * fix MJPEG recording on zr36016/zr36050 cards. -d4 doesn't work,
-    field order is reversed and there's ~64 lines of noise at the top...
 * s/debug/zr_debug/ to fix symbol conflict for in-kernel code
 * Add pci_disable_device() in card release function
 * fix memleaks in i2c client error cases
+* fix DC30 field order problem and +/- 64 lines noise at top
 
 Version 0.9.3 -> 0.9.4
 ----------------------

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.h,v 1.1.2.3 2003-01-14 21:18:07 rbultje Exp $
+ * $Id: zr36016.h,v 1.1.2.4 2003-09-01 20:34:55 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -90,7 +90,7 @@ struct zr36016 {
 #define ZR016_YUV422         0x40
 
 #define ZR016_COMPRESSION    0x80
-#define ZR016_EXPANSION      0x80
+#define ZR016_EXPANSION      0x00
 
 /* possible values for setup 1 register */
 #define ZR016_CKRT           0x80

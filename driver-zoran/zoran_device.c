@@ -830,6 +830,10 @@ zr36057_set_jpg (struct zoran          *zr,
 	else
 		reg = 0;
 
+	/* hm, field order swappage in DC10old/DC30? */
+	if (zr->vfe != NULL)
+		reg ^= ZR36057_FPP_Odd_Even;
+
 	btwrite(reg, ZR36057_FPP);
 
 	/* Set proper VCLK Polarity, else colors will be wrong during playback */
