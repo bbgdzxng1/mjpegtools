@@ -154,7 +154,7 @@ static int saa7111_command(struct i2c_client *client, unsigned int cmd, void * a
    switch (cmd) {
    
    case 0:
-        saa7111_write_block(client, init, sizeof(init));
+        //saa7111_write_block(client, init, sizeof(init));
         break;
 
 #if defined(DECODER_DUMP)
