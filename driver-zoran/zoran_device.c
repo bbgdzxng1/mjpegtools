@@ -58,11 +58,11 @@
 extern const struct zoran_format zoran_formats[];
 extern const int zoran_num_formats;
 
-extern int debug;
+extern int *zr_debug;
 
 #define dprintk(num, format, args...) \
 	do { \
-		if (debug >= num) \
+		if (*zr_debug >= num) \
 			printk(format, ##args); \
 	} while (0)
 
@@ -170,7 +170,7 @@ post_office_read (struct zoran *zr,
 static void
 dump_guests (struct zoran *zr)
 {
-	if (debug > 2) {
+	if (*zr_debug > 2) {
 		int i, guest[8];
 
 		for (i = 1; i < 8; i++) {	// Don't read jpeg codec here
@@ -1272,7 +1272,7 @@ error_handler (struct zoran *zr,
 		zr->num_errors++;
 
 		/* Report error */
-		if (debug > 1 && zr->num_errors <= 8) {
+		if (*zr_debug > 1 && zr->num_errors <= 8) {
 			long frame;
 			frame =
 			    zr->jpg_pend[zr->jpg_dma_tail & BUZ_MASK_FRAME];
@@ -1459,38 +1459,25 @@ zoran_irq (int             irq,
 					    0) {
 						/* it is finished, notify the user */
 
-						zr->v4l_buffers.buffer[zr->
-								       v4l_grab_frame].
-						    state = BUZ_STATE_DONE;
-						zr->v4l_buffers.buffer[zr->
-								       v4l_grab_frame].
-						    bs.seq =
-						    zr->v4l_grab_seq;
-						do_gettimeofday(&zr->
-								v4l_buffers.
-								buffer[zr->
-								       v4l_grab_frame].
-								bs.
-								timestamp);
-						zr->v4l_grab_frame =
-						    NO_GRAB_ACTIVE;
+						zr->v4l_buffers.buffer[zr->v4l_grab_frame].state = BUZ_STATE_DONE;
+						zr->v4l_buffers.buffer[zr->v4l_grab_frame].bs.seq = zr->v4l_grab_seq;
+						do_gettimeofday(&zr->v4l_buffers.
+								buffer[zr->v4l_grab_frame].
+								bs.timestamp);
+						zr->v4l_grab_frame = NO_GRAB_ACTIVE;
 						zr->v4l_pend_tail++;
 					}
 				}
 
 				if (zr->v4l_grab_frame == NO_GRAB_ACTIVE)
-					wake_up_interruptible(&zr->
-							      v4l_capq);
+					wake_up_interruptible(&zr->v4l_capq);
 
 				/* Check if there is another grab queued */
 
 				if (zr->v4l_grab_frame == NO_GRAB_ACTIVE &&
-				    zr->v4l_pend_tail !=
-				    zr->v4l_pend_head) {
+				    zr->v4l_pend_tail != zr->v4l_pend_head) {
 
-					int frame =
-					    zr->v4l_pend[zr->
-							 v4l_pend_tail &
+					int frame = zr->v4l_pend[zr->v4l_pend_tail &
 							 V4L_MASK_FRAME];
 					u32 reg;
 
@@ -1550,7 +1537,7 @@ zoran_irq (int             irq,
 
 			if (zr->codec_mode == BUZ_MODE_MOTION_DECOMPRESS ||
 			    zr->codec_mode == BUZ_MODE_MOTION_COMPRESS) {
-				if (debug > 1 &&
+				if (*zr_debug > 1 &&
 				    (!zr->frame_num || zr->JPEG_error)) {
 					printk(KERN_INFO
 					       "%s: first frame ready: state=0x%08x odd_even=%d field_per_buff=%d delay=%d\n",
@@ -1565,11 +1552,8 @@ zoran_irq (int             irq,
 						int i;
 						strcpy(sv, sc);
 						for (i = 0; i < 4; i++) {
-							if (zr->
-							    stat_com[i] &
-							    1)
-								sv[i] =
-								    '1';
+							if (zr->stat_com[i] & 1)
+								sv[i] = '1';
 						}
 						sv[4] = 0;
 						printk(KERN_INFO
@@ -1590,7 +1574,7 @@ zoran_irq (int             irq,
 						    zr->JPEG_missed;
 				}
 
-				if (debug > 2 && zr->frame_num < 6) {
+				if (*zr_debug > 2 && zr->frame_num < 6) {
 					int i;
 					printk("%s: seq=%ld stat_com:",
 					       ZR_DEVNAME(zr), zr->jpg_seq_num);
