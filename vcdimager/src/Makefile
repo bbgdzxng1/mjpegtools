@@ -11,7 +11,7 @@
 # even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.
 
-# $Id: Makefile,v 1.1 2000-11-06 23:46:15 mikebern Exp $
+# $Id: Makefile,v 1.2 2000-11-28 02:52:17 mikebern Exp $
 
 
 SHELL = /bin/sh
@@ -85,7 +85,7 @@ logging.o main.o mpeg.o salloc.o transfer.o vcdfiles.o
 vcdimager_LDADD = $(LDADD)
 vcdimager_DEPENDENCIES = 
 vcdimager_LDFLAGS = 
-CFLAGS = -g -O2 -DCDIDIR=\"${prefix}/share/cdi\" -ansi -I/usr/lib/glib/include -Wall -ansi -Wmissing-prototypes -Wunused
+CFLAGS = -g -O2 -DCDIDIR=\"no\" -ansi -I/usr/lib/glib/include -Wall -ansi -Wmissing-prototypes -Wunused
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
