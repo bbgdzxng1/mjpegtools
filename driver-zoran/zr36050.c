@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.13 2004-02-23 20:00:44 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.14 2004-02-23 20:07:38 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -629,7 +629,7 @@ zr36050_set_video (struct videocodec   *codec,
 		   struct vfe_polarity *pol)
 {
 	struct zr36050 *ptr = (struct zr36050 *) codec->data;
-        int size;
+	int size;
 
 	dprintk(2, "%s: set_video %d.%d, %d/%d-%dx%d (0x%x) q%d call\n",
 		ptr->name, norm->HStart, norm->VStart,
