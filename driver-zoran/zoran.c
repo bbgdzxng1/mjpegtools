@@ -187,7 +187,7 @@ static const struct zoran_format zoran_formats[] = {
 		name: "Hardware-encoded Motion-JPEG",
 		palette: -1,
 #ifdef HAVE_V4L2
-		fourcc: V4L2_PIX_FMT_JPEG,
+		fourcc: V4L2_PIX_FMT_MJPEG,
 #endif
 		depth: 0,
 		flags: ZORAN_FORMAT_COMPRESSED,
@@ -319,10 +319,12 @@ static __u32
 zoran_v4l2_calc_bufsize (struct zoran_jpg_settings *settings)
 {
 	__u32 result = 1;
-	__u32 num = ((512 * 1024) / (settings->VerDcm *
+	__u32 num = (((512 * 1024) / (settings->VerDcm *
 		settings->HorDcm * settings->TmpDcm)) *
-		(settings->jpg_comp.quality / 100);
+		settings->jpg_comp.quality) / 100;
 
+	if (num < 8192)
+		num = 8192;
 	num--; /* 2^n nums have one extra bit set */
 	while(num)
 	{
@@ -4192,7 +4194,7 @@ zoran_do_ioctl (struct inode *inode,
 					if (!fh->jpg_buffers.allocated)
 						fh->jpg_buffers.buffer_size = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
 					fmt->fmt.pix.sizeimage = fh->jpg_buffers.buffer_size;
-					fmt->fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
+					fmt->fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
 					if (fh->jpg_settings.TmpDcm == 1)
 						fmt->fmt.pix.flags |= V4L2_FMT_FLAG_INTERLACED; /* as above - which field is first? */
 					else
@@ -4276,8 +4278,8 @@ zoran_do_ioctl (struct inode *inode,
 						printk(KERN_ERR "%s: ioctl VIDIOC_S_FMT: cannot change capture mode\n", zr->name);
 						return -EBUSY;
 					}
-					if (fmt->fmt.pix.pixelformat != V4L2_PIX_FMT_JPEG) {
-						printk(KERN_ERR "%s: only pixelformat V4L2_PIX_FMT_JPEG (fourcc: JPEG) supported\n", zr->name);
+					if (fmt->fmt.pix.pixelformat != V4L2_PIX_FMT_MJPEG) {
+						printk(KERN_ERR "%s: only pixelformat V4L2_PIX_FMT_MJPEG (fourcc: MJPG) supported\n", zr->name);
 						return -EINVAL;
 					}
 
@@ -4487,6 +4489,7 @@ zoran_do_ioctl (struct inode *inode,
 					/* we need to calculate size ourselves now */
 					fh->jpg_buffers.num_buffers = req->count;
 					fh->jpg_buffers.buffer_size = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
+
 					if (jpg_fbuffer_alloc(file))
 						return -ENOMEM;
 
