@@ -18,6 +18,8 @@ Version 0.9.4 -> 0.9.5
 * fix DC30 quality (by Kieran Morrissey <linux@mgpenguin.net>)
 * fix module counting in videocodec modules (patch by Christoph Hellwig
     <hch@lst.de>) and add some sort of emulation of module_put/get for 2.4.x
+* fix potential integer overflow (bug detected by Ken Ashcraft
+    <kash@stanford.edu>)
 
 Version 0.9.3 -> 0.9.4
 ----------------------
