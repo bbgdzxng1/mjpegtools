@@ -65,7 +65,7 @@ struct vpx3220 {
 	int sat;
 };
 
-static char *inputs[] = { "internal", "svideo", "composite" };
+static char *inputs[] = { "internal", "composite", "svideo" };
 
 /* ----------------------------------------------------------------------- */
 static inline int
@@ -205,66 +205,48 @@ static const unsigned short init_ntsc[] = {
 	0x8b, 000,		/* Horizontal begin */
 	0x8c, 640,		/* Horizontal length */
 	0x8d, 640,		/* Number of pixels */
-	0x8f, 000,		/* Disable window 2 */
+	0x8f, 0xc00,		/* Disable window 2 */
 	0xf0, 0x173,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x13,		/* NTSC M, composite input */
-	0xe7, 0x20a,		/* Enable vertical standard
+	0xe7, 0x1e1,		/* Enable vertical standard
 				 * locking @ 240 lines */
 };
 
 static const unsigned short init_pal[] = {
 	0x88, 23  - 16,		/* Window 1 vertical begin */
-	0x89, 288 + 16 + 512,	/* Vertical lines in (16 lines
-				 * skipped by the VFE)
-				 * 512 flags for even fields only */
+	0x89, 288 + 16,		/* Vertical lines in (16 lines
+				 * skipped by the VFE) */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
 	0x8b, 16,		/* Horizontal begin */
 	0x8c, 768,		/* Horizontal length */
 	0x8d, 784, 		/* Number of pixels
 				 * Must be >= Horizontal begin + Horizontal length */
-	0x8e, 336 - 16,		/* Window 2 vertical begin */
-	0x8f, 288 + 16 + 1024,	/* Vertical lines in (16 lines
-				 * skipped by the VFE)
-				 * 1024 flags for odd fields only */
-	0x90, 288 + 16,		/* Vertical lines out (16 lines
-				 * skipped by the VFE) */
-	0x91, 16,		/* Horizontal begin */
-	0x92, 768,		/* Horizontal length */
-	0x93, 784,		/* Number of pixels
-				 * Must be >= Horizontal begin + Horizontal length */
+	0x8f, 0xc00,		/* Disable window 2 */
 	0xf0, 0x177,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x3d1,		/* PAL B,G,H,I, composite input */
-	0xe7, 0x4c1,		/* PAL/SECAM 608 lines set to 0x481 for 576 lines */
+	0xe7, 0x261,		/* PAL/SECAM set to 288 + 16 lines 
+				 * change to 0x241 for 288 lines */
 };
 
 static const unsigned short init_secam[] = {
-	0x88, 23 - 16,		/* Window 1 vertical begin */
-	0x89, 288 + 16 + 512,	/* Vertical lines in (16 lines
-				 * skipped by the VFE)
-				 * flags for even fields only */
+	0x88, 23  - 16,		/* Window 1 vertical begin */
+	0x89, 288 + 16,		/* Vertical lines in (16 lines
+				 * skipped by the VFE) */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
 	0x8b, 16,		/* Horizontal begin */
 	0x8c, 768,		/* Horizontal length */
 	0x8d, 784,		/* Number of pixels
 				 * Must be >= Horizontal begin + Horizontal length */
-	0x8e, 338 - 16,		/* Window 2 vertical begin */
-	0x89, 288 + 16 + 1024,	/* Vertical lines in (16 lines
-				 * skipped by the VFE)
-				 * 1024 flags for odd fields only */
-	0x8a, 288 + 16,		/* Vertical lines out (16 lines
-				 * skipped by the VFE) */
-	0x91, 16,		/* Horizontal begin */
-	0x92, 768,		/* Horizontal length */
-	0x93, 784,		/* Number of pixels 
-				 * Must be >= Horizontal begin + Horizontal length */
+	0x8f, 0xc00,		/* Disable window 2 */
 	0xf0, 0x177,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x3d5,		/* SECAM, composite input */
-	0xe7, 0x4c1,		/* PAL/SECAM */
+	0xe7, 0x261,		/* PAL/SECAM set to 288 + 16 lines 
+				 * change to 0x241 for 288 lines */
 };
 
 static const unsigned char init_common[] = {
@@ -287,7 +269,7 @@ static const unsigned char init_common[] = {
 				 * ... (p.32) */
 	0xea, 0x18,		/* LLC2 connected, output FIFO
 				 * reset with VACTintern */
-	0xf0, 0x4a,		/* Half full level to 10, bus
+	0xf0, 0x8a,		/* Half full level to 10, bus
 				 * shuffler [7:0, 23:16, 15:8] */
 	0xf1, 0x18,		/* Single clock, sync mode, no
 				 * FE delay, no HLEN counter */
