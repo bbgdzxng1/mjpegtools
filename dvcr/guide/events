@@ -1,8 +1,0 @@
-#!/usr/bin/python
-
-from events import *
-
-root = Tk()
-test = EventList(root)
-test.display_events(None)
-
