@@ -446,22 +446,6 @@ saa7110_command (struct i2c_client *client,
 
 /* ----------------------------------------------------------------------- */
 
-static void
-saa7110_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-saa7110_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -476,7 +460,7 @@ static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 I2C_CLIENT_INSMOD;
 
 static int saa7110_i2c_id = 0;
-struct i2c_driver i2c_driver_saa7110;
+static struct i2c_driver i2c_driver_saa7110;
 
 static int
 saa7110_detect_client (struct i2c_adapter *adapter,
@@ -560,6 +544,9 @@ saa7110_detect_client (struct i2c_adapter *adapter,
 	//saa7110_selmux(client,0);
 	//determine_norm(client);
 	/* setup and implicit mode 0 select has been performed */
+
+	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -587,12 +574,14 @@ saa7110_detach_client (struct i2c_client *client)
 	kfree(decoder);
 	kfree(client);
 
+	MOD_DEC_USE_COUNT;
+
 	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
-struct i2c_driver i2c_driver_saa7110 = {
+static struct i2c_driver i2c_driver_saa7110 = {
 	.name = "saa7110",
 
 	.id = I2C_DRIVERID_SAA7110,
@@ -601,11 +590,7 @@ struct i2c_driver i2c_driver_saa7110 = {
 	.attach_adapter = saa7110_attach_adapter,
 	.detach_client = saa7110_detach_client,
 	.command = saa7110_command,
-	.inc_use = saa7110_inc_use,
-	.dec_use = saa7110_dec_use,
 };
-
-EXPORT_NO_SYMBOLS;
 
 static int __init
 saa7110_init (void)

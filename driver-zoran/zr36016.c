@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.6 2003-01-14 21:17:59 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.7 2003-03-21 22:23:09 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -57,9 +57,6 @@
 
 /* amount of chips attached via this driver */
 static int zr36016_codecs = 0;
-
-/* this are the API (de-)initializers */
-EXPORT_NO_SYMBOLS;
 
 /* debugging is available via module parameter */
 
@@ -417,7 +414,7 @@ zr36016_dec_use (void)
    Deinitializes Zoran's JPEG processor
    ========================================================================= */
 
-int
+static int
 zr36016_unset (struct videocodec *codec)
 {
 	struct zr36016 *ptr = codec->data;
@@ -448,7 +445,7 @@ zr36016_unset (struct videocodec *codec)
    (the given size is determined by the processor with the video interface)
    ========================================================================= */
 
-int
+static int
 zr36016_setup (struct videocodec *codec)
 {
 	struct zr36016 *ptr;

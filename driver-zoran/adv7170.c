@@ -382,22 +382,6 @@ adv7170_command (struct i2c_client *client,
 
 /* ----------------------------------------------------------------------- */
 
-static void
-adv7170_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-adv7170_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -412,7 +396,7 @@ static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 I2C_CLIENT_INSMOD;
 
 static int adv7170_i2c_id = 0;
-struct i2c_driver i2c_driver_adv7170;
+static struct i2c_driver i2c_driver_adv7170;
 
 static int
 adv7170_detect_client (struct i2c_adapter *adapter,
@@ -486,6 +470,8 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 		       client->name, i);
 	}
 
+	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -512,12 +498,15 @@ adv7170_detach_client (struct i2c_client *client)
 
 	kfree(encoder);
 	kfree(client);
+
+	MOD_DEC_USE_COUNT;
+
 	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
-struct i2c_driver i2c_driver_adv7170 = {
+static struct i2c_driver i2c_driver_adv7170 = {
 	.name = "adv7170",	/* name */
 
 	.id = I2C_DRIVERID_ADV7170,
@@ -526,11 +515,7 @@ struct i2c_driver i2c_driver_adv7170 = {
 	.attach_adapter = adv7170_attach_adapter,
 	.detach_client = adv7170_detach_client,
 	.command = adv7170_command,
-	.inc_use = adv7170_inc_use,
-	.dec_use = adv7170_dec_use,
 };
-
-EXPORT_NO_SYMBOLS;
 
 static int __init
 adv7170_init (void)

@@ -44,6 +44,7 @@
 #include <linux/kmod.h>
 
 #include <linux/pci.h>
+#include <linux/interrupt.h>
 #include <linux/video_decoder.h>
 #include <linux/video_encoder.h>
 
@@ -691,22 +692,6 @@ zoran_i2c_setscl (void *data,
 	btwrite(zr->i2cbr, ZR36057_I2CBR);
 }
 
-static void
-zoran_i2c_inc_use (struct i2c_adapter *adapter)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-zoran_i2c_dec_use (struct i2c_adapter *adapter)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 static int
 zoran_i2c_client_register (struct i2c_client *client)
 {
@@ -778,8 +763,6 @@ static struct i2c_adapter zoran_i2c_adapter_template = {
 	.name = "zr36057",
 	.id = I2C_HW_B_ZR36067,
 	.algo = NULL,
-	.inc_use = zoran_i2c_inc_use,
-	.dec_use = zoran_i2c_dec_use,
 	.client_register = zoran_i2c_client_register,
 	.client_unregister = zoran_i2c_client_unregister,
 };

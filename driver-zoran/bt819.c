@@ -490,22 +490,6 @@ bt819_command (struct i2c_client *client,
 
 /* ----------------------------------------------------------------------- */
 
-static void
-bt819_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-bt819_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -519,7 +503,7 @@ static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 I2C_CLIENT_INSMOD;
 
 static int bt819_i2c_id = 0;
-struct i2c_driver i2c_driver_bt819;
+static struct i2c_driver i2c_driver_bt819;
 
 static int
 bt819_detect_client (struct i2c_adapter *adapter,
@@ -609,6 +593,8 @@ bt819_detect_client (struct i2c_adapter *adapter,
 			client->addr << 1);
 	}
 
+	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -631,12 +617,15 @@ bt819_detach_client (struct i2c_client *client)
 
 	kfree(decoder);
 	kfree(client);
+
+	MOD_DEC_USE_COUNT;
+
 	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
-struct i2c_driver i2c_driver_bt819 = {
+static struct i2c_driver i2c_driver_bt819 = {
 	.name = "bt819",
 
 	.id = I2C_DRIVERID_BT819,
@@ -645,11 +634,7 @@ struct i2c_driver i2c_driver_bt819 = {
 	.attach_adapter = bt819_attach_adapter,
 	.detach_client = bt819_detach_client,
 	.command = bt819_command,
-	.inc_use = bt819_inc_use,
-	.dec_use = bt819_dec_use,
 };
-
-EXPORT_NO_SYMBOLS;
 
 static int __init
 bt819_init_module (void)

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.6 2003-01-14 21:18:12 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.7 2003-03-21 22:23:09 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -54,9 +54,6 @@
 
 /* amount of chips attached via this driver */
 static int zr36050_codecs = 0;
-
-/* this are the API (de-)initializers */
-EXPORT_NO_SYMBOLS;
 
 /* debugging is available via module parameter */
 
@@ -250,7 +247,7 @@ zr36050_pushit (struct zr36050 *ptr,
    it and initalize from there, as e.g. the linux zr36057/60 driver does it.
    ========================================================================= */
 
-const char zr36050_dqt[0x86] = {
+static const char zr36050_dqt[0x86] = {
 	0xff, 0xdb,		//Marker: DQT
 	0x00, 0x84,		//Length: 2*65+2
 	0x00,			//Pq,Tq first table
@@ -273,7 +270,7 @@ const char zr36050_dqt[0x86] = {
 	0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63, 0x63
 };
 
-const char zr36050_dht[0x1a4] = {
+static const char zr36050_dht[0x1a4] = {
 	0xff, 0xc4,		//Marker: DHT
 	0x01, 0xa2,		//Length: 2*AC, 2*DC
 	0x00,			//DC first table
@@ -330,7 +327,7 @@ const char zr36050_dht[0x1a4] = {
 	0xF9, 0xFA
 };
 
-const char zr36050_app[0x40] = {
+static const char zr36050_app[0x40] = {
 	0xff, 0xe0,		//Marker: APP0
 	0x00, 0x3e,		//Length: 60+2
 	' ', 'A', 'V', 'I', '1', 0, 0, 0,	// 'AVI' field
@@ -343,7 +340,7 @@ const char zr36050_app[0x40] = {
 	0, 0, 0, 0
 };
 
-const char zr36050_com[0x40] = {
+static const char zr36050_com[0x40] = {
 	0xff, 0xfe,		//Marker: COM
 	0x00, 0x3e,		//Length: 60+2
 	' ', 'C', 'O', 'M', 0, 0, 0, 0,	// 'COM' field
@@ -751,7 +748,7 @@ zr36050_dec_use (void)
    Deinitializes Zoran's JPEG processor
    ========================================================================= */
 
-int
+static int
 zr36050_unset (struct videocodec *codec)
 {
 	struct zr36050 *ptr = codec->data;
@@ -782,7 +779,7 @@ zr36050_unset (struct videocodec *codec)
    (the given size is determined by the processor with the video interface)
    ========================================================================= */
 
-int
+static int
 zr36050_setup (struct videocodec *codec)
 {
 	struct zr36050 *ptr;

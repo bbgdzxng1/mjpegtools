@@ -99,8 +99,13 @@ vpx3220_fp_status (struct i2c_client *client)
 
 		udelay(10);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		if (current->need_resched)
 			schedule();
+#else
+		if (need_resched())
+			cond_resched();
+#endif
 	}
 
 	return -1;
@@ -571,22 +576,6 @@ vpx3220_init_client (struct i2c_client *client)
  * Client managment code
  */
 
-static void
-vpx3220_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-vpx3220_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -613,6 +602,9 @@ vpx3220_detach_client (struct i2c_client *client)
 	}
 
 	kfree(client);
+
+	MOD_DEC_USE_COUNT;
+
 	return 0;
 }
 
@@ -717,6 +709,8 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 
 	vpx3220_init_client(client);
 
+	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -742,11 +736,7 @@ static struct i2c_driver vpx3220_i2c_driver = {
 	.attach_adapter = vpx3220_attach_adapter,
 	.detach_client = vpx3220_detach_client,
 	.command = vpx3220_command,
-	.inc_use = vpx3220_inc_use,
-	.dec_use = vpx3220_dec_use,
 };
-
-EXPORT_NO_SYMBOLS;
 
 static int __init
 vpx3220_init (void)

@@ -282,22 +282,6 @@ bt856_command (struct i2c_client *client,
 
 /* ----------------------------------------------------------------------- */
 
-static void
-bt856_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-bt856_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -308,7 +292,7 @@ static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 I2C_CLIENT_INSMOD;
 
 static int bt856_i2c_id = 0;
-struct i2c_driver i2c_driver_bt856;
+static struct i2c_driver i2c_driver_bt856;
 
 static int
 bt856_detect_client (struct i2c_adapter *adapter,
@@ -386,6 +370,8 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", client->name,
 		client->addr << 1);
 
+	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -412,12 +398,15 @@ bt856_detach_client (struct i2c_client *client)
 
 	kfree(encoder);
 	kfree(client);
+
+	MOD_DEC_USE_COUNT;
+
 	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
-struct i2c_driver i2c_driver_bt856 = {
+static struct i2c_driver i2c_driver_bt856 = {
 	.name = "bt856",
 
 	.id = I2C_DRIVERID_BT856,
@@ -426,11 +415,7 @@ struct i2c_driver i2c_driver_bt856 = {
 	.attach_adapter = bt856_attach_adapter,
 	.detach_client = bt856_detach_client,
 	.command = bt856_command,
-	.inc_use = bt856_inc_use,
-	.dec_use = bt856_dec_use,
 };
-
-EXPORT_NO_SYMBOLS;
 
 static int __init
 bt856_init (void)

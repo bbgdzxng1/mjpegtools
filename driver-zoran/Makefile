@@ -1,15 +1,12 @@
 #################################################
-# config
-
-# where the kernel sources are located
-KERNEL_LOCATION=/usr/src/linux
-TOPDIR=/usr/src/linux
-#################################################
 # some magic for using linux kernel settings
 # when compiling module(s)
 
 EXTRA_CFLAGS = -DEXPORT_SYMTAB # -save-temps
 CURRENT = $(shell uname -r)
+KERNEL_LOCATION = /lib/modules/$(CURRENT)/build
+PWD = $(shell pwd)
+DEST = /lib/modules/$(CURRENT)/kernel/drivers/media/video
 
 MAJ=$(shell grep "\#define MAJOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
 MIN=$(shell grep "\#define MINOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
@@ -18,7 +15,7 @@ DIR=driver-zoran-$(MAJ).$(MIN).$(REL)
 
 here:
 	@echo "Making Unified Zoran (zr360x7) driver for $(CURRENT) kernel..."
-	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
+	@(cd $(KERNEL_LOCATION) && make -C $(KERNEL_LOCATION) SUBDIRS=$(PWD) modules)
 
 obj-m      := zoran.o \
 		saa7111.o saa7110.o saa7185.o saa7114.o \
@@ -32,11 +29,16 @@ zoran-objs := zoran_procfs.o zoran_device.o zoran_driver.o zoran_card.o
 zoran.o: $(zoran-objs)
 	$(LD) $(LD_RFLAG) -r -o $@ $(zoran-objs)
 
+ifneq (,$(findstring 2.4.,$(CURRENT)))
 install:
-	su -c "cp -v $(obj-m) /lib/modules/$(CURRENT)/kernel/drivers/media/video/;/sbin/depmod -a"
+	su -c "cp -v $(obj-m) $(DEST) && /sbin/depmod -a"
+else
+install:
+	su -c "cp -v *.ko $(DEST) && /sbin/depmod -a"
+endif
 
 clean:
-	-rm -f $(obj-m) $(zoran-objs)
+	-rm -f *.o *.ko .*.cmd .*.flags *.mod.c
 
 release:
 	mkdir $(DIR)
@@ -44,4 +46,4 @@ release:
 	tar -zcf $(DIR).tar.gz $(DIR)
 	rm -fr $(DIR)
 
-include $(KERNEL_LOCATION)/Rules.make
+-include $(KERNEL_LOCATION)/Rules.make

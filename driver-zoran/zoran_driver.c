@@ -65,6 +65,7 @@
 #include <linux/types.h>
 #include <linux/wrapper.h>
 
+#include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 
 #include <linux/spinlock.h>
@@ -1334,9 +1335,6 @@ zoran_open (struct inode *inode,
 	if (zr->user++ == 0)
 		first_open = 1;
 
-	i2c_inc_use_client(zr->decoder);
-	if (zr->encoder)
-		i2c_inc_use_client(zr->encoder);
 	up(&zr->resource_lock);
 
 	/* default setup - TODO: look at flags */
@@ -1415,9 +1413,6 @@ zoran_close (struct inode *inode,
 	kfree(fh->overlay_mask);
 	kfree(fh);
 
-	i2c_dec_use_client(zr->decoder);
-	if (zr->encoder)
-		i2c_dec_use_client(zr->encoder);
 	up(&zr->resource_lock);
 	MOD_DEC_USE_COUNT;
 
@@ -1468,6 +1463,7 @@ setup_fbuffer (struct file               *file,
 	if (!bytesperline)
 		bytesperline = width * ((fmt->depth + 7) & ~7) / 8;
 
+#if 0
 	if (zr->overlay_active) {
 		/* dzjee... stupid users... don't even bother to turn off
 		 * overlay before changing the memory location...
@@ -1481,6 +1477,7 @@ setup_fbuffer (struct file               *file,
 			zr->name);
 		zr36057_overlay(zr, 0);
 	}
+#endif
 
 	if (!(fmt->flags & ZORAN_FORMAT_OVERLAY)) {
 		dprintk(1,
@@ -4410,6 +4407,12 @@ static struct vm_operations_struct zoran_vm_ops = {
 	.close = zoran_vm_close,
 };
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+#define zr_remap_page_range(a,b,c,d,e) remap_page_range(b,c,d,e)
+#else
+#define zr_remap_page_range(a,b,c,d,e) remap_page_range(a,b,c,d,e)
+#endif
+
 static int
 zoran_mmap (struct file           *file,
 	    struct vm_area_struct *vma)
@@ -4510,8 +4513,8 @@ zoran_mmap (struct file           *file,
 				    (unsigned long) fh->jpg_buffers.
 				    buffer[i].frag_tab[2 * j];
 				page = virt_to_phys(bus_to_virt(pos));	/* should just be pos on i386 */
-				if (remap_page_range
-				    (start, page, todo, PAGE_SHARED)) {
+				if (zr_remap_page_range
+				    (vma, start, page, todo, PAGE_SHARED)) {
 					dprintk(1,
 						KERN_ERR
 						"%s: zoran_mmap(V4L) - remap_page_range failed\n",
@@ -4595,8 +4598,8 @@ zoran_mmap (struct file           *file,
 			if (todo > fh->v4l_buffers.buffer_size)
 				todo = fh->v4l_buffers.buffer_size;
 			page = fh->v4l_buffers.buffer[i].fbuffer_phys;
-			if (remap_page_range
-			    (start, page, todo, PAGE_SHARED)) {
+			if (zr_remap_page_range
+			    (vma, start, page, todo, PAGE_SHARED)) {
 				dprintk(1,
 					KERN_ERR
 					"%s: zoran_mmap(V4L)i - remap_page_range failed\n",
