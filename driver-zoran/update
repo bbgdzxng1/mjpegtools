@@ -56,49 +56,63 @@ $SUDO /sbin/insmod ./videocodec.o
 
 incompat=""
 cards=""
+cardnum=""
+
+function addcardnum {
+    if test x$cardnum = x; then
+        cardnum="$1"
+    else
+        cardnum="$cardnum,$1"
+    fi
+}
 
 while [ "$1" != "" ]
 do
     case "$1" in
     
-        'dc10new'|'dc10plus')
+        'dc10new')
             $SUDO /sbin/insmod ./saa7110.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
+            addcardnum 1
+            ;;
+        'dc10plus')
+            $SUDO /sbin/insmod ./saa7110.o
+            $SUDO /sbin/insmod ./adv7175.o
+            $SUDO /sbin/insmod ./zr36060.o
+            cards="$cards $1"
+            addcardnum 2
             ;;
         'lml33')
-            if [ "$incompat" = "buz" ]
-            then
-                echo "Using of Buz and LML33 cards in the same system is not yet supported"
-                echo "Installation aborted."
-                exit 1
-            fi
             $SUDO /sbin/insmod ./bt819.o
             $SUDO /sbin/insmod ./bt856.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
-            incompat="lml33"
+            addcardnum 5
             ;;
         'buz')
-            if [ "$incompat" = "lml33" ]
-            then
-                echo "Using of Buz and LML33 cards in the same system is not yet supported"
-                echo "Installation aborted."
-                exit 1
-            fi
             $SUDO /sbin/insmod ./saa7111.o
             $SUDO /sbin/insmod ./saa7185.o
             $SUDO /sbin/insmod ./zr36060.o low_bitrate=1
             cards="$cards $1"
-            incompat="buz"
+            addcardnum 7
             ;;
-        'dc30'|'dc30plus')
+        'dc30')
             $SUDO /sbin/insmod ./vpx32xx.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
+            addcardnum 3
+            ;;
+        'dc30plus')
+            $SUDO /sbin/insmod ./vpx32xx.o
+            $SUDO /sbin/insmod ./adv7175.o
+            $SUDO /sbin/insmod ./zr36016.o
+            $SUDO /sbin/insmod ./zr36050.o
+            cards="$cards $1"
+            addcardnum 4
             ;;
         'dc10old')
             $SUDO /sbin/insmod ./vpx3220.o
@@ -107,12 +121,14 @@ do
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
+            addcardnum 0
             ;;
         'lml33r10')
             $SUDO /sbin/insmod ./saa7114.o
             $SUDO /sbin/insmod ./adv7170.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
+            addcardnum 6
             ;;
         'PAL'|'SECAM'|'NTSC')
             norm=$1
@@ -150,6 +166,6 @@ case "$norm" in
         exit 1
         ;;
 esac
-$SUDO /sbin/insmod ./zoran.o debug=3 default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
+$SUDO /sbin/insmod ./zoran.o debug=3 card=$cardnum default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
 sync;sync
 echo "Drivers for '$cards' with norm '$norm' loaded"
