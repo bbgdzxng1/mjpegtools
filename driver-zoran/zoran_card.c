@@ -59,10 +59,6 @@
 #warning Using temporary hack for missing I2C driver-ID for adv7175
 #define I2C_DRIVERID_ADV7175 48	/* same as in 2.5.x */
 #endif
-#ifndef I2C_DRIVERID_MSE3000
-#warning Using temporary hack for missing I2C driver-ID for mse3000
-#define I2C_DRIVERID_MSE3000 I2C_DRIVERID_EXP0
-#endif
 #ifndef I2C_DRIVERID_SAA7114
 #warning Using temporary hack for missing I2C driver-ID for saa7114
 #define I2C_DRIVERID_SAA7114 I2C_DRIVERID_EXP1
@@ -70,6 +66,10 @@
 #ifndef I2C_DRIVERID_ADV7170
 #warning Using temporary hack for missing I2C driver-ID for adv7170
 #define I2C_DRIVERID_ADV7170 I2C_DRIVERID_EXP2
+#endif
+#ifndef I2C_DRIVERID_VPX3220
+#warning Using temporary hack for missing I2C driver-ID for vpx3220
+#define I2C_DRIVERID_VPX3220 I2C_DRIVERID_VPX32XX
 #endif
 #ifndef I2C_HW_B_ZR36067
 #warning Using temporary hack for missing I2C adapter-ID for zr36067
@@ -365,7 +365,7 @@ i2cid_to_modulename (u16 i2c_id)
 	case I2C_DRIVERID_BT856:
 		name = "bt856";
 		break;
-	case I2C_DRIVERID_VPX32XX:
+	case I2C_DRIVERID_VPX3220:
 		name = "vpx3220";
 		break;
 /*	case I2C_DRIVERID_VPX3224:
@@ -429,8 +429,8 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 	{
 		.type = DC10_old,
 		.name = "DC10(old)",
-		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_encoder = I2C_DRIVERID_MSE3000,
+		.i2c_decoder = I2C_DRIVERID_VPX3220,
+		/*.i2c_encoder = I2C_DRIVERID_MSE3000,*/
 		.video_codec = CODEC_TYPE_ZR36050,
 		.video_vfe = CODEC_TYPE_ZR36016,
 
@@ -512,7 +512,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 	}, {
 		.type = DC30,
 		.name = "DC30",
-		.i2c_decoder = I2C_DRIVERID_VPX32XX,
+		.i2c_decoder = I2C_DRIVERID_VPX3220,
 		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36050,
 		.video_vfe = CODEC_TYPE_ZR36016,
@@ -542,7 +542,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.name = "DC30plus",
 		.vendor_id = PCI_VENDOR_ID_MIRO,
 		.device_id = PCI_DEVICE_ID_MIRO_DC30PLUS,
-		.i2c_decoder = I2C_DRIVERID_VPX32XX,
+		.i2c_decoder = I2C_DRIVERID_VPX3220,
 		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36050,
 		.video_vfe = CODEC_TYPE_ZR36016,

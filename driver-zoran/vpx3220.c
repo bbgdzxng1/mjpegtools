@@ -33,6 +33,11 @@
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
+#ifndef I2C_DRIVERID_VPX3220
+#warning Using temporary hack for missing I2C driver-ID for vpx3220
+#define I2C_DRIVERID_VPX3220 I2C_DRIVERID_VPX32XX
+#endif
+
 #include <linux/videodev.h>
 #include <linux/video_decoder.h>
 
@@ -573,7 +578,25 @@ static unsigned short normal_i2c[] =
 };
 static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 I2C_CLIENT_INSMOD;
+#else
+static unsigned short probe[2] = { I2C_CLIENT_END, I2C_CLIENT_END };
+static unsigned short probe_range[2] = { I2C_CLIENT_END, I2C_CLIENT_END };
+static unsigned short ignore[2] = { I2C_CLIENT_END, I2C_CLIENT_END };
+static unsigned short ignore_range[2] = { I2C_CLIENT_END, I2C_CLIENT_END };
+static unsigned short force[2] = { I2C_CLIENT_END , I2C_CLIENT_END };
+                                                                                
+static struct i2c_client_address_data addr_data = {
+	.normal_i2c		= normal_i2c,
+	.normal_i2c_range	= normal_i2c_range,
+	.probe			= probe,
+	.probe_range		= probe_range,
+	.ignore			= ignore,
+	.ignore_range		= ignore_range,
+	.force			= force
+};
+#endif
 
 static int vpx3220_i2c_id = 0;
 static struct i2c_driver vpx3220_i2c_driver;
@@ -732,7 +755,7 @@ static struct i2c_driver vpx3220_i2c_driver = {
 #endif
 	.name = "vpx3220",
 
-	.id = I2C_DRIVERID_VPX32XX,
+	.id = I2C_DRIVERID_VPX3220,
 	.flags = I2C_DF_NOTIFY,
 
 	.attach_adapter = vpx3220_attach_adapter,
