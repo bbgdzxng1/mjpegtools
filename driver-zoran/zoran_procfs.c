@@ -215,7 +215,10 @@ zoran_write_proc (struct file   *file,
 			ZR_DEVNAME(zr));
 		return -ENOMEM;
 	}
-	memcpy(string, buffer, count);
+	if (copy_from_user(string, buffer, count)) {
+		vfree (string);
+		return -EFAULT;
+	}
 	string[count] = 0;
 	dprintk(4, KERN_INFO "%s: write_proc: name=%s count=%lu data=%x\n",
 		ZR_DEVNAME(zr), file->f_dentry->d_name.name, count, (int) data);
