@@ -35,7 +35,7 @@ LIBLDFLAGS = -release $(VERSION)
 bin_PROGRAMS = yuvfilter
 yuvfilter_SOURCES =\
  yuvfilter.c yuvfilter_static.c yuvfilter_static.h
-yuvfilter_LDADD = $(YSTLIBRARIES) -L$(top_srcdir)/utils -lmjpegutils -ldl
+yuvfilter_LDADD = $(YSTLIBRARIES) -L$(top_srcdir)/utils -lmjpegutils @LIBGETOPT_LIB@ -ldl
 yuvfilter_LDFLAGS = -export-dynamic
 
 pkglib_LTLIBRARIES = $(YUVFILTER)
