@@ -2210,8 +2210,8 @@ static void jpeg_start(struct zoran *zr)
         if (zr->card->type == DC10 || zr->card->type == DC30plus)
 	{
             /* Enable processing on the ZR36016 */
-//            zr36016_write(zr, 0, 1);  // Why does this never return ?
-            post_office_write(zr, 2, 0, 1);
+	    if ( zr->vfe )
+                zr36016_write(zr->vfe, 0, 1);
 
             /* load the address of the GO register in the ZR36050 latch */
             post_office_write(zr, 0, 0, 0);

@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36050.c,v 1.1.2.4 2002-12-27 13:27:37 rbultje Exp $
+   $Id: zr36050.c,v 1.1.2.5 2002-12-30 10:57:09 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -585,17 +585,17 @@ static int zr36050_set_mode(struct videocodec *codec, int mode)
 }
 
 /* set picture size (norm is ignored as the codec doesn't know about it) */
-static int zr36050_set_video(struct videocodec *codec, __u16 norm,
-                             int xstart, int ystart, int width, int height)
+static int zr36050_set_video(struct videocodec *codec, struct tvnorm *norm,
+                             struct vfe_settings *cap, struct vfe_polarity *pol)
 {       struct zr36050 *ptr = (struct zr36050 *)codec->data;
 
-        DEBUG1("%s: set_video %d, %d/%d-%dx%d call\n",ptr->name,
-               norm, xstart, ystart, width, height);
+        DEBUG1("%s: set_video %d.%d, %d/%d-%dx%d call\n",ptr->name,
+               norm->HStart, norm->VStart, cap->x, cap->y, cap->width, cap->height);
         /* if () return -EINVAL;
            trust the master driver that it knows what it does - so
            we allow invalid startx/y and norm for now ... */
-        ptr->width=width;
-        ptr->height=height;
+        ptr->width=cap->width;
+        ptr->height=cap->height;
 
         return 0;
 }

@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36016.c,v 1.1.2.4 2002-12-27 13:27:37 rbultje Exp $
+   $Id: zr36016.c,v 1.1.2.5 2002-12-30 10:57:09 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -104,7 +104,7 @@ static void zr36016_write(struct zr36016 *ptr, __u16 reg, __u8 value)
 }
 
 /* indirect read and write functions */
-/* the 016 supports auto-addr-increment, but writing it all time cost not much and is saver... */
+/* the 016 supports auto-addr-increment, but writing it all time cost not much and is safer... */
 static __u8 zr36016_readi(struct zr36016 *ptr, __u16 reg)
 {       __u8 value = 0;
 
@@ -229,19 +229,20 @@ static void zr36016_init(struct zr36016 *ptr)
                                                             ZR016_EXPANSION));
 	// Window setup
         // (no extra offset for now, norm defines offset, default width height)
-        zr36016_write(ptr, ZR016I_PAX_HI, ptr->width>>8);
-        zr36016_write(ptr, ZR016I_PAX_LO, ptr->width&0xFF);
-        zr36016_write(ptr, ZR016I_PAY_HI, ptr->height>>8);
-        zr36016_write(ptr, ZR016I_PAY_LO, ptr->height&0xFF);
-        zr36016_write(ptr, ZR016I_NAX_HI, zr016_xoff[ptr->norm]>>8);
-        zr36016_write(ptr, ZR016I_NAX_LO, zr016_xoff[ptr->norm]&0xFF);
-        zr36016_write(ptr, ZR016I_NAY_HI, zr016_yoff[ptr->norm]>>8);
-        zr36016_write(ptr, ZR016I_NAY_LO, zr016_yoff[ptr->norm]&0xFF);
+        zr36016_writei(ptr, ZR016I_PAX_HI, ptr->width>>8);
+        zr36016_writei(ptr, ZR016I_PAX_LO, ptr->width&0xFF);
+        zr36016_writei(ptr, ZR016I_PAY_HI, ptr->height>>8);
+        zr36016_writei(ptr, ZR016I_PAY_LO, ptr->height&0xFF);
+        zr36016_writei(ptr, ZR016I_NAX_HI, ptr->xoff>>8);
+        zr36016_writei(ptr, ZR016I_NAX_LO, ptr->xoff&0xFF);
+        zr36016_writei(ptr, ZR016I_NAY_HI, ptr->yoff>>8);
+        zr36016_writei(ptr, ZR016I_NAY_LO, ptr->yoff&0xFF);
 
 	// misc setup
-        zr36016_write(ptr, ZR016I_SETUP1, (ptr->ydec?ZR016_HRFL|ZR016_HORZ:0) |
-                                          (ptr->xdec?ZR016_VERT:0)| ZR016_CKRT );
-        zr36016_write(ptr, ZR016I_SETUP2, ZR016_SIGN | ZR016_CCIR );
+        zr36016_writei(ptr, ZR016I_SETUP1, (ptr->ydec?ZR016_HRFL|ZR016_HORZ:0) |
+                                           (ptr->xdec?ZR016_VERT:0)| ZR016_CNTI );
+//        zr36016_writei(ptr, ZR016I_SETUP2, ZR016_SIGN | ZR016_CCIR );
+        zr36016_writei(ptr, ZR016I_SETUP2, ZR016_CCIR );
 }
 
 
@@ -268,22 +269,20 @@ static int zr36016_set_mode(struct videocodec *codec, int mode)
 }
 
 /* set picture size */
-static int zr36016_set_video(struct videocodec *codec, __u16 norm,
-                             int xstart, int ystart, int width, int height)
+static int zr36016_set_video(struct videocodec *codec, struct tvnorm *norm,
+                             struct vfe_settings *cap, struct vfe_polarity *pol )
 {       struct zr36016 *ptr = (struct zr36016 *)codec->data;
 
-        DEBUG1("%s: set_video %d, %d/%d-%dx%d call\n",ptr->name,
-               norm, xstart, ystart, width, height);
+        DEBUG1("%s: set_video %d.%d, %d/%d-%dx%d call\n",ptr->name,
+               norm->HStart, norm->VStart, cap->x, cap->y, cap->width, cap->height);
 
-        if ( (norm!=VIDEO_MODE_PAL) &&
-             (norm!=VIDEO_MODE_NTSC) ) return -EINVAL;
         /* if () return -EINVAL;
            trust the master driver that it knows what it does - so
-           we allow invalid startx/y for now ...
-           norm is checked as it would segfault above [] with wrong values */
-        ptr->width = width;
-        ptr->height = height;
-        ptr->norm = norm;
+           we allow invalid startx/y for now ... */
+        ptr->width = cap->width;
+        ptr->height = cap->height;
+        ptr->xoff = norm->HStart;
+        ptr->yoff = norm->VStart;
         zr36016_init(ptr);
 
         return 0;

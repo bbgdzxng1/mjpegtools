@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36016.h,v 1.1.2.1 2002-08-01 11:05:44 rbultje Exp $
+   $Id: zr36016.h,v 1.1.2.2 2002-12-30 10:57:09 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -38,7 +38,8 @@ struct zr36016 {
     // actual coder setup
     int                   mode;
 
-    __u16                 norm;
+    __u16                 xoff;
+    __u16                 yoff;
     __u16                 width;
     __u16                 height;
     __u16                 xdec;
