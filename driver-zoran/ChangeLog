@@ -4,6 +4,9 @@ Version 0.9.4 -> 0.9.5
 * call videocodec_unregister() no matter what on module unload
 * remove duplicate MOD_INC/DEC_USE_COUNT from i2c clients (oops)
 * a successful call to try_module_get() returns 1, not 0
+* change I2C ID probing/scanning to what's used in 2.5.x
+* some small documentation updates
+* VPX32XX->VPX3220
 
 Version 0.9.3 -> 0.9.4
 ----------------------
