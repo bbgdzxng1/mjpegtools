@@ -4,6 +4,8 @@ subject: unified zoran driver (zr360x7, zoran, buz, dc10(+), dc30(+), lml33)
 website: http://mjpeg.sourceforge.net/driver-zoran/
 
 1. What cards are supported
+1.1 What the TV decoder can do an what not
+1.2 What the TV encoder can do an what not
 2. How do I get this damn thing to work
 3. What mainboard should I use (or why doesn't my card work)
 4. Programming interface
@@ -38,7 +40,7 @@ Linux Media Labs LML33:
 * Brooktree bt856 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, bt819, bt856, zr36060, zoran
-Inputss/outputs: Composite and S-video
+Inputs/outputs: Composite and S-video
 Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 Card number: 5
 
@@ -117,6 +119,114 @@ Note: DC10(old)/DC30/DC30+ don't work 100% yet (no interrupts)
 Note: use encoder=X or decoder=X for non-default i2c chips (see i2c-id.h)
 
 ===========================
+
+1.1 What the TV decoder can do an what not
+
+The best know TV standards are NTSC/PAL/SECAM. but for decoding a frame that
+information is not enough. There are several formats of the TV standards.
+And not every TV decoder is able to handle every format. Also the every 
+combination is supported by the driver. There are currently 11 different 
+tv broadcast formats all aver the world. 
+
+The CCIR defines parameters needed for broadcasting the signal. 
+The CCIR has defined different standards: A,B,D,E,F,G,D,H,I,K,K1,L,M,N,...
+The CCIR says not much about about the colorsystem used !!!
+And talking about a colorsystem says not to much about how it is broadcast.
+
+The CCIR standards A,E,F are not used any more.
+
+When you speak about NTSC, you usually mean the standard: CCIR - M using
+the NTSC colorsystem which is used in the USA, Japan, Mexico, Canada
+and a few others. 
+
+When you talk about PAL, you usually mean: CCIR - B/G using the PAL
+colorsystem which is used in many Countries. 
+
+When you talk about SECAM, you mean: CCIR - L using the SECAM Colorsystem 
+which is used in France, and a few others.
+
+There the other version of SECAM, CCIR - D/K is used in Bulgaria, China,
+Slovakai, Hungary, Korea (Rep.), Poland, Rumania and a others. 
+
+The CCIR - H uses the PAL colorsystem (sometimes SECAM) and is used in 
+Egypt, Libya, Sri Lanka, Syrain Arab. Rep.
+
+The CCIR - I uses the PAL colorsystem, and is used in Great Britain, Hong Kong,
+Ireland, Nigeria, South Africa.
+
+The CCIR - N uses the PAL colorsystem and PAL frame size but the NTSC framerate,
+and is used in Argentinia, Uruguay, an a few others
+
+We do not talk about how the audio is broadcast !
+
+A rather good sites about the TV standards are: 
+http://www.sony.jp/ServiceArea/Voltage_map/
+http://info.electronicwerkstatt.de/bereiche/fernsehtechnik/frequenzen_und_normen/Fernsehnormen/
+and http://www.cabl.com/restaurant/channel.html
+
+Other weird things around: NTSC 4.43 is a modificated NTSC, which is mainly
+used in PAL VCR's that are able to play back NTSC. PAL 60 seems to be the same
+as NTSC 4.43 . The Datasheets also talk about NTSC 44, It seems as if it would 
+be the same as NTSC 4.43. 
+NTSC Combs seems to be a decoder mode where the decoder uses a comb filter
+to split coma and luma instead of a Delay line.
+
+But I did not defiantly find out what NTSC Comb is.
+
+Philips saa7111 TV decoder
+was introduced in 1997, is used in the BUZ and 
+can handle: PAL B/G/H/I, PAL N, PAL M, NTSC M, NTSC N, NTSC 4.43 and SECAM 
+
+Philips saa7110a TV decoder
+was introduced in 1995, is used in the Pinnacle/Miro DC10(new), DC10+ and
+can handle: PAL B/G, NTSC M and SECAM 
+
+Philips saa7114 TV decoder
+was introduced in 2000, is used in the LML33R10 and  
+can handle: PAL B/G/D/H/I/N, PAL N, PAL M, NTSC M, NTSC 4.43 and SECAM
+
+Brooktree bt819 TV decoder
+was introduced in 1996, and is used in the LML33 and
+can handle: PAL B/D/G/H/I, NTSC M
+
+Micronas vpx3220a TV decoder
+was introduced in 1996, is used in the DC30 and DC30+ and
+can handle: PAL B/G/H/I, PAL N, PAL M, NTSC M, NTSC 44, PAL 60, SECAM,NTSC Comb
+
+===========================
+
+1.2 What the TV encoder can do an what not
+
+The TV encoder are doing the "same" as the decoder, but in the oder direction.
+You feed them digital data and the generate a Composite or SVHS signal.
+For information about the colorsystems and TV norm take a look in the
+TV decoder section.
+
+Philips saa7185 TV Encoder
+was introduced in 1996, is used in the BUZ
+can generate: PAL B/G, NTSC M
+
+Brooktree bt856 TV Encoder
+was introduced in 1994, is used in the LML33 
+can generate: PAL B/D/G/H/I/N, PAL M, NTSC M, PAL-N (Argentina)
+
+Analog Devices adv7170 TV Encoder
+was introduced in 2000, is used in the LML300R10
+can generate: PAL B/D/G/H/I/N, PAL M, NTSC M, PAL 60
+
+Analog Devices adv7175 TV Encoder
+was introduced in 1996, is used in the DC10, DC10+, DC10 old, DC30, DC30+
+can generate: PAL B/D/G/H/I/N, PAL M, NTSC M
+
+ITT mse3000 TV encoder
+was introduced in 1991, is used in the DC10 old
+can generate: PAL , NTSC , SECAM
+
+The adv717x, should be able to produce PAL N. But you find nothing PAL N 
+specific in the the registers. Seem that you have to reuse a other standard
+to generate PAL N, maybe it would work if you use the PAL M settings. 
+
+==========================
 
 2. How do I get this damn thing to work
 
@@ -392,7 +502,7 @@ proven by the Buz.
 
 Make sure that the card has its own interrupts (see /proc/interrupts), check
 the output of dmesg at high verbosity (load zoran.o/zr36067.o with debug=2,
-load all other modules with debug=1). Check that your mainboard is favourable
+load all other modules with debug=1). Check that your mainboard is favorable
 (see question 2) and if not, test the card in another computer. Also see the
 notes given in question 3 and try lowering quality/buffersize/capturesize
 if recording fails after a period of time.
@@ -400,7 +510,7 @@ if recording fails after a period of time.
 If all this doesn't help, give a clear description of the problem including
 detailed hardware information (memory+brand, mainboard+chipset+brand, which
 MJPEG card, processor, other PCI cards that might be of interest), give the
-system PnP infomation (/proc/interrupts, /proc/dma, /proc/devices), and give
+system PnP information (/proc/interrupts, /proc/dma, /proc/devices), and give
 the kernel version, driver version, glibc version, gcc version and any other
 information that might possibly be of interest. Also provide the dmesg output
 at high verbosity. See 'Contacting' on how to contact the developers.
