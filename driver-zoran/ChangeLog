@@ -1,6 +1,8 @@
 Version 0.9.3 -> 0.9.4
 ----------------------
 * Add YUY2 overlay (fullscreen/hardware-scaled)
+* use __stringify() for array insmod options
+* fix stupid flaw in open() logic (could result in oops)
 
 Version 0.9.2 -> 0.9.3
 ----------------------
