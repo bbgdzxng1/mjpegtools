@@ -318,16 +318,12 @@ static struct zoran zoran[BUZ_MAX];
 static __u32
 zoran_v4l2_calc_bufsize (struct zoran_jpg_settings *settings)
 {
-	__u32 result = 1;
-	__u32 num = (((512 * 1024) / (settings->VerDcm *
-		settings->HorDcm * settings->TmpDcm)) *
-		settings->jpg_comp.quality) / 100;
+	__u8 div = settings->VerDcm * settings->HorDcm * settings->TmpDcm;
+	__u32 num = (1024 * 512) / (div);
+	__u32 result = 2;
 
-	if (num < 8192)
-		num = 8192;
-	num--; /* 2^n nums have one extra bit set */
-	while(num)
-	{
+	num--;
+	while (num) {
 		num >>= 1;
 		result <<= 1;
 	}
