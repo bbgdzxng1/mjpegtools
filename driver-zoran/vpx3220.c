@@ -53,11 +53,28 @@ MODULE_PARM_DESC(debug, "Debug level (0-1)");
 
 /* ----------------------------------------------------------------------- */
 
+struct vpx3220 {
+	unsigned char reg[255];
+
+	int norm;
+	int input;
+	int enable;
+	int bright;
+	int contrast;
+	int hue;
+	int sat;
+};
+
+static char *inputs[] = { "internal", "svideo", "composite" };
+
+/* ----------------------------------------------------------------------- */
 static inline int
 vpx3220_write (struct i2c_client *client,
 	       u8                 reg,
 	       u8                 value)
 {
+	struct vpx3220 *decoder = client->data;
+	decoder->reg[reg] = value;
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
 
@@ -148,7 +165,7 @@ vpx3220_write_block (struct i2c_client *client,
 	while (len >= 2) {
 		reg = *data++;
 		if ((ret =
-		     i2c_smbus_write_byte_data(client, reg, *data++)) < 0)
+		     vpx3220_write(client, reg, *data++)) < 0)
 			break;
 		len -= 2;
 	}
@@ -192,49 +209,57 @@ static const unsigned short init_ntsc[] = {
 };
 
 static const unsigned short init_pal[] = {
-	0x88, 5,		/* Window 1 vertical begin */
-	0x89, 288 + 16,		/* Vertical lines in (16 lines
-				 * skipped by the VFE) */
+	0x88, 23  - 16,		/* Window 1 vertical begin */
+	0x89, 288 + 16 + 512,	/* Vertical lines in (16 lines
+				 * skipped by the VFE)
+				 * 512 flags for even fields only */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
-	0x8b, 10,		/* Horizontal begin */
+	0x8b, 16,		/* Horizontal begin */
 	0x8c, 768,		/* Horizontal length */
-	0x8d, 768,		/* Number of pixels */
-	0x8e, 318,		/* Window 2 vertical begin */
-	0x89, 288 + 16,		/* Vertical lines in (16 lines
+	0x8d, 784, 		/* Number of pixels
+				 * Must be >= Horizontal begin + Horizontal length */
+	0x8e, 336 - 16,		/* Window 2 vertical begin */
+	0x8f, 288 + 16 + 1024,	/* Vertical lines in (16 lines
+				 * skipped by the VFE)
+				 * 1024 flags for odd fields only */
+	0x90, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
-	0x8a, 288 + 16,		/* Vertical lines out (16 lines
-				 * skipped by the VFE) */
-	0x91, 10,		/* Horizontal begin */
+	0x91, 16,		/* Horizontal begin */
 	0x92, 768,		/* Horizontal length */
-	0x93, 768,		/* Number of pixels */
-	0xf0, 0x173,		/* 13.5 MHz transport, Forced
+	0x93, 784,		/* Number of pixels
+				 * Must be >= Horizontal begin + Horizontal length */
+	0xf0, 0x177,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x3d1,		/* PAL B,G,H,I, composite input */
-	0xe7, 0x26e,		/* PAL/SECAM */
+	0xe7, 0x4c1,		/* PAL/SECAM 608 lines set to 0x481 for 576 lines */
 };
 
 static const unsigned short init_secam[] = {
-	0x88, 5,		/* Window 1 vertical begin */
-	0x89, 288 + 16,		/* Vertical lines in (16 lines
-				 * skipped by the VFE) */
+	0x88, 23 - 16,		/* Window 1 vertical begin */
+	0x89, 288 + 16 + 512,	/* Vertical lines in (16 lines
+				 * skipped by the VFE)
+				 * flags for even fields only */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
-	0x8b, 10,		/* Horizontal begin */
+	0x8b, 16,		/* Horizontal begin */
 	0x8c, 768,		/* Horizontal length */
-	0x8d, 768,		/* Number of pixels */
-	0x8e, 318,		/* Window 2 vertical begin */
-	0x89, 288 + 16,		/* Vertical lines in (16 lines
-				 * skipped by the VFE) */
+	0x8d, 784,		/* Number of pixels
+				 * Must be >= Horizontal begin + Horizontal length */
+	0x8e, 338 - 16,		/* Window 2 vertical begin */
+	0x89, 288 + 16 + 1024,	/* Vertical lines in (16 lines
+				 * skipped by the VFE)
+				 * 1024 flags for odd fields only */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
 				 * skipped by the VFE) */
-	0x91, 10,		/* Horizontal begin */
+	0x91, 16,		/* Horizontal begin */
 	0x92, 768,		/* Horizontal length */
-	0x93, 768,		/* Number of pixels */
-	0xf0, 0x173,		/* 13.5 MHz transport, Forced
+	0x93, 784,		/* Number of pixels 
+				 * Must be >= Horizontal begin + Horizontal length */
+	0xf0, 0x177,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x3d5,		/* SECAM, composite input */
-	0xe7, 0x26e,		/* PAL/SECAM */
+	0xe7, 0x4c1,		/* PAL/SECAM */
 };
 
 static const unsigned char init_common[] = {
@@ -251,8 +276,8 @@ static const unsigned char init_common[] = {
 	0xe4, 0x7f,
 	0xe5, 0x80,
 	0xe6, 0x00,		/* Brightness set to 0 */
-	0xe7, 0x20,		/* Contrast to 1.0, noise shaping
-				 * 9 to 8 1-bit rounding */
+	0xe7, 0xe0,		/* Contrast to 1.0, noise shaping
+				 * 10 to 8 2-bit error diffusion */
 	0xe8, 0xf8,		/* YUV422, CbCr binary offset,
 				 * ... (p.32) */
 	0xea, 0x18,		/* LLC2 connected, output FIFO
@@ -268,6 +293,7 @@ static const unsigned char init_common[] = {
 };
 
 static const unsigned short init_fp[] = {
+	0x59, 0,
 	0xa0, 2070,		/* ACC reference */
 	0xa3, 0,
 	0xa4, 0,
@@ -276,7 +302,7 @@ static const unsigned short init_fp[] = {
 	0xbe, 27,
 	0x58, 0,
 	0x26, 0,
-	0x4b, 0x29c,		/* PLL gain */
+	0x4b, 0x298,		/* PLL gain */
 };
 
 static void
@@ -298,6 +324,8 @@ vpx3220_command (struct i2c_client *client,
 		 unsigned int       cmd,
 		 void              *arg)
 {
+	struct vpx3220 *decoder = client->data;
+
 	switch (cmd) {
 	case 0:
 	{
@@ -305,9 +333,27 @@ vpx3220_command (struct i2c_client *client,
 				    sizeof(init_common));
 		vpx3220_write_fp_block(client, init_fp,
 				       sizeof(init_fp) >> 1);
-		/* Default to PAL */
-		vpx3220_write_fp_block(client, init_pal,
-				       sizeof(init_pal) >> 1);
+		switch (decoder->norm) {
+			
+		case VIDEO_MODE_NTSC:
+			vpx3220_write_fp_block(client, init_ntsc,
+					       sizeof(init_ntsc) >> 1);
+			break;
+
+		case VIDEO_MODE_PAL:
+			vpx3220_write_fp_block(client, init_pal,
+				       	       sizeof(init_pal) >> 1);
+			break;
+		default:
+			vpx3220_write_fp_block(client, init_pal,
+				       	       sizeof(init_pal) >> 1);
+		}
+	}		
+		break;
+
+	case DECODER_DUMP:
+	{
+		vpx3220_dump_i2c(client);
 	}
 		break;
 
@@ -381,29 +427,38 @@ vpx3220_command (struct i2c_client *client,
 
 		case VIDEO_MODE_NTSC:
 			vpx3220_write_fp_block(client, init_ntsc,
-					       sizeof(init_ntsc) > 1);
+					       sizeof(init_ntsc) >> 1);
+			dprintk(1, KERN_INFO "%s: norm switched to NTSC\n",
+				client->name);
 			break;
 
 		case VIDEO_MODE_PAL:
 			vpx3220_write_fp_block(client, init_pal,
-					       sizeof(init_pal) > 1);
+					       sizeof(init_pal) >> 1);
+			dprintk(1, KERN_INFO "%s: norm switched to PAL\n",
+				client->name);
 			break;
 
 		case VIDEO_MODE_SECAM:
 			vpx3220_write_fp_block(client, init_secam,
-					       sizeof(init_secam) > 1);
+					       sizeof(init_secam) >> 1);
+			dprintk(1, KERN_INFO "%s: norm switched to SECAM\n",
+				client->name);
 			break;
 
 		case VIDEO_MODE_AUTO:
 			/* FIXME This is only preliminary support */
 			data = vpx3220_fp_read(client, 0xf2) & 0x20;
 			vpx3220_fp_write(client, 0xf2, 0x00c0 | data);
+			dprintk(1, KERN_INFO "%s: norm switched to Auto\n",
+				client->name);
 			break;
 
 		default:
 			return -EINVAL;
 
 		}
+		decoder->norm = *iarg;
 	}
 		break;
 
@@ -421,19 +476,20 @@ vpx3220_command (struct i2c_client *client,
 			{0x0e, 1}
 		};
 
-		dprintk(1, KERN_DEBUG "%s: DECODER_SET_INPUT %d\n",
-			client->name, *iarg);
-
 		if (*iarg < 0 || *iarg > 2)
 			return -EINVAL;
+
+		dprintk(1, KERN_INFO "%s: input switched to %s\n",
+			client->name, inputs[*iarg]);
 
 		vpx3220_write(client, 0x33, input[*iarg][0]);
 
 		data = vpx3220_fp_read(client, 0xf2) & ~(0x0020);
 		if (data < 0)
 			return data;
+		/* 0x0010 is required to latch the setting */
 		vpx3220_fp_write(client, 0xf2,
-				 data | (input[*iarg][1] << 5));
+				 data | (input[*iarg][1] << 5) | 0x0010);
 
 		udelay(10);
 	}
@@ -461,9 +517,35 @@ vpx3220_command (struct i2c_client *client,
 	}
 		break;
 
-	case DECODER_DUMP:
+	case DECODER_SET_PICTURE:
 	{
-		vpx3220_dump_i2c(client);
+		struct video_picture *pic = arg;
+
+		if (decoder->bright != pic->brightness) {
+			/* We want -128 to 128 we get 0-65535 */
+			decoder->bright = pic->brightness;
+			vpx3220_write(client, 0xe6,
+				      (decoder->bright - 32768) >> 8);
+		}
+		if (decoder->contrast != pic->contrast) {
+			/* We want 0 to 64 we get 0-65535 */
+			/* Bit 7 and 8 is for noise shaping */
+			decoder->contrast = pic->contrast;
+			vpx3220_write(client, 0xe7,
+				      (decoder->contrast >> 10) + 192);
+		}
+		if (decoder->sat != pic->colour) {
+			/* We want 0 to 4096 we get 0-65535 */
+			decoder->sat = pic->colour;
+			vpx3220_fp_write(client, 0xa0,
+					 decoder->sat >> 4);
+		}
+		if (decoder->hue != pic->hue) {
+			/* We want -512 to 512 we get 0-65535 */
+			decoder->hue = pic->hue;
+			vpx3220_fp_write(client, 0x1c,
+					 ((decoder->hue - 32768) >> 6) & 0xFFF);
+		}
 	}
 		break;
 
@@ -542,6 +624,7 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 {
 	int err;
 	struct i2c_client *client;
+	struct vpx3220 *decoder;
 
 	dprintk(1, VPX3220_DEBUG "%s\n", __func__);
 
@@ -555,11 +638,13 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 		return -ENOMEM;
 	}
 
+        memset(client, 0, sizeof(struct i2c_client));
+
 	client->addr = address;
-	client->data = NULL;
 	client->adapter = adapter;
 	client->driver = &vpx3220_i2c_driver;
 	client->flags = I2C_CLIENT_ALLOW_USE;
+	client->id = vpx3220_i2c_id++;
 
 	/* Check for manufacture ID and part number */
 	if (kind < 0) {
@@ -580,13 +665,16 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 		    vpx3220_read(client, 0x01);
 		switch (pn) {
 		case 0x4680:
-			strcpy(client->name, "vpx3220a");
+			snprintf(client->name, sizeof(client->name) - 1,
+				 "vpx3220a[%d]", client->id);
 			break;
 		case 0x4260:
-			strcpy(client->name, "vpx32xx");
+			snprintf(client->name, sizeof(client->name) - 1,
+				 "vpx3216b[%d]", client->id);
 			break;
 		case 0x4280:
-			strcpy(client->name, "vpx3214c");
+			snprintf(client->name, sizeof(client->name) - 1,
+				 "vpx3214c[%d]", client->id);
 			break;
 		default:
 			dprintk(1,
@@ -597,19 +685,35 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 			return 0;
 		}
 	} else {
-		strcpy(client->name, "forced vpx32xx");
+		snprintf(client->name, sizeof(client->name) - 1,
+			 "forced vpx32xx[%d]",
+		client->id);
 	}
 
-	client->id = vpx3220_i2c_id++;
+	client->data = decoder =
+	    kmalloc(sizeof(struct vpx3220), GFP_KERNEL);
+	if (decoder == NULL) {
+		kfree(client);
+		return -ENOMEM;
+	}
+	memset(decoder, 0, sizeof(struct vpx3220));
+	decoder->norm = VIDEO_MODE_PAL;
+	decoder->input = 0;
+	decoder->enable = 1;
+	decoder->bright = 32768;
+	decoder->contrast = 32768;
+	decoder->hue = 32768;
+	decoder->sat = 32768;
 
 	err = i2c_attach_client(client);
 	if (err) {
 		kfree(client);
+		kfree(decoder);
 		return err;
 	}
 
-	dprintk(1, KERN_INFO "%s: %s found at 0x%02x\n",
-		__func__, client->name, client->addr << 1);
+	dprintk(1, KERN_INFO "%s: vpx32xx client found at address 0x%02x\n",
+		client->name, client->addr << 1);
 
 	vpx3220_init_client(client);
 
@@ -647,12 +751,7 @@ EXPORT_NO_SYMBOLS;
 static int __init
 vpx3220_init (void)
 {
-	int res = 0;
-
-	res = i2c_add_driver(&vpx3220_i2c_driver);
-	dprintk(1, KERN_INFO "i2c_register_driver returned %d\n", res);
-
-	return res;
+	return i2c_add_driver(&vpx3220_i2c_driver);
 }
 
 static void __exit
