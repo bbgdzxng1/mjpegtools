@@ -78,6 +78,7 @@
 #include <linux/video_decoder.h>
 #include <linux/video_encoder.h>
 #include "zoran.h"
+#include "zoran-i2c-compat.h"
 #include "zoran_device.h"
 #include "zoran_card.h"
 

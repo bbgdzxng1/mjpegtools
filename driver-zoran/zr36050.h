@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.h,v 1.1.2.2 2003-01-14 21:18:22 rbultje Exp $
+ * $Id: zr36050.h,v 1.1.2.3 2004-02-23 19:57:26 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -44,6 +44,7 @@ struct zr36050 {
 	__u16 bitrate_ctrl;
 
 	__u32 total_code_vol;
+        __u32 real_code_vol;
 	__u16 max_block_vol;
 
 	__u8 h_samp_ratio[8];
