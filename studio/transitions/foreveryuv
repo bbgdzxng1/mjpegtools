@@ -1,7 +1,0 @@
-#!/bin/sh
-echo "YUV4MPEG $1 $2 $3"
-while true
-do
-	echo FRAME
-	cat $4
-done
