@@ -1,4 +1,4 @@
-.TH "mplex" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "mplex" "1" "2 June 2001" "MJPEG Tools Team" "MJPEG tools manual"
 
 .SH "NAME"
 .LP 
@@ -7,11 +7,15 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .br 
 .SH "SYNOPSIS"
 .B mplex
-.RB [ -v|--vervose
+.RB [ -v|--verbose
 .IR num ]
 .RB [ -m|--mpeg\ 1 | 2 ]
 .RB [ -b|--video-buffer
-.IR video_buffer_size_kB ]
+.IR video_buffer_size_kB [,
+.IR video_buffer_size_kB ...] ]
+.RB [ -L|--lpcm-params
+.IR params [,
+.IR params ... ] ]
 .RB [ -r|--muxed-bitrate
 .IR muxed_bitrate_kbps ]
 .RB [ -l|--mux-limit 
@@ -30,7 +34,8 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .IR output_filesize_limit_MB ]
 .RB [ -M|--split-segment]
 .RB [ -?|--help ]
-.BI -o|--output \ output_filename_pattern input_file...
+.BI -o|--output \ output_filename_pattern \ input_file...
+
 .SH "DESCRIPTION"
 Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
 It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
@@ -84,22 +89,38 @@ manually.
  6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
 	 multiplexed are supported).
  7 - SVCD Stills stream.
- 8 - DVD. Don't get too excited.  This is really a very minimal 
-	 mux format.   It includes empty versions of the peculiar GOP start
-	 sectors DVD VOB's include.   This is enough to persuade some hardware
-	 players to play the stream but is a long way from full DVD authoring.
+ 8 - DVD (with NAV sectors). Don't get too excited.  This is really a
+ very minimal mux format.  It includes empty versions of the peculiar
+ VOBU start sectors DVD VOB's include.  This is enough to persuade some
+ hardware players to play the stream but is a long way from full DVD authoring.
+ 9 - DVD.  As above but without the empty VOBU sectors.
 .TP
 .BI -r|--mux-bitrate \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
 Bits/sec. If unspecified and not set by a preset it is automatically
 calculated from the input stream.
 .TP
-.BI -b|--video-buffer \ num
-The size of the video input buffer available in the target decoder.
-The default is 46KB the (tiny) size specified for VCD.  The
-size to use for SVCD is the (more reasonable) 230KB.  If you are
+.BI -b|--video-buffer \ numlist
+A comma-seperateed list of video decoder buffer sizes in KB for the
+video streams (given in the order the video streams appear on the
+command line).  The default is 46KB the (tiny) size specified for VCD.
+The size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
+.TP
+.BI -L|--lpcm-params
+.I samples_per_sec:channels:bits_per_sample
+.br
+[,
+.I samples_per_sec:channels:bits_per_sample
+...]
+.br
+A comma-seperated list of paramter sets for the lpcm audio streams
+(given in the order the lpcm streams appear on the command line).
+Each parameter set comprises the sampling rate in Hz, the number of
+channels, and the number of bits per sample seperated by colons.  For
+example, the default 48kHz two-channel 16-bit audio would be specified
+as 48000:2:16.
 .TP
 .BI -l|--mux-limit \ num
 Multiplex limit.  Multiplex only the specified number of sectors.  Useful
@@ -122,17 +143,17 @@ This option specifies the sector size of the output stream in bytes.
 This option specifies the number of packets per pack in the output stream.
 .TP
 .BI -S|--max-segment-size \ num
-This option specifies the maximum size of output files in MBytes (2^10).
-The default is 2000 Mbytes (splitting output before 2G limits can hit).
+This option specifies the maximum size of output files in MBytes (2^10)
+The default is 2000 Mbytes for the DVD profile and otherwise unlimited.
 When the limit is reached a  new file is started.
 .IP
 Note: This option is 
 .I not
-suitable for splitting a long video across multiple VCD's or SVCD's.
+for splitting a long video across multiple VCD's or SVCD's.
 
 It simply splits a single long sequence into in a way that prevents
 bits of a video GOP(group of pictures) or audio frame being split
-between chunks.  frame reasonable. This is fine for formats like that
+between chunks.  This is fine for formats like that
 used for DVDs where all stream parameters appear every GOP.  However,
 for VCD / SVCD it won't work as the players expect each file to start a 
 new MPEG sequence.
@@ -147,9 +168,10 @@ MPEG video encoder to introduce sequence splits at the right points
 .B -M|--split-segment
 When splitting a long stream in files based on -S mplex does a certain
 amount of careful "running out" to prevent a GOP or audio frame being
-split. This is wasteful for continuous bit-rate streams. If the files
-are simply going to be concatenated for playback this "run out" is
-superfluous and -M turns it off.
+split.  If the files are simply going to be concatenated for playback
+this "run out" is superfluous and makes it harder for the player to 
+maintain audio/video sync. This flag allows the run-out to be turned
+off.  The DVD profile turns this option on automatically.
 .TP
 .B -h|--system-headers
 A system header is generated in every pack rather than just in the first.
