@@ -1850,7 +1850,7 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 
 	tvn = zr->timing;
 
-	/* assert P_Reset */
+	/* assert P_Reset, disable code transfer, deassert Active */
 	btwrite(0, ZR36057_JPC);
 
 	/* MJPEG compression mode */
@@ -2099,28 +2099,45 @@ static void jpeg_start(struct zoran *zr)
 {
 	int reg;
 	zr->frame_num = 0;
-	
-        btwrite(ZR36057_JPC_P_Reset, ZR36057_JPC);      // /P_Reset
-	btand(~ZR36057_MCTCR_CFlush, ZR36057_MCTCR);	// \CFlush
-	btor(ZR36057_JPC_CodTrnsEn, ZR36057_JPC);       // /CodTrnsEn
-	btwrite(IRQ_MASK, ZR36057_ISR);	                        // Clear IRQs
-//	btwrite(IRQ_MASK | ZR36057_ICR_IntPinEn, ZR36057_ICR);	// Enable IRQs
-/*CP*/	btwrite(zr->card->jpeg_int | ZR36057_ICR_JPEGRepIRQ | ZR36057_ICR_IntPinEn, ZR36057_ICR);	// Enable IRQs
+
+        /* deassert P_reset, disable code transfer, deassert Active */
+        btwrite(ZR36057_JPC_P_Reset, ZR36057_JPC);
+	/* stop flushing the internal code buffer */
+	btand(~ZR36057_MCTCR_CFlush, ZR36057_MCTCR);
+	/* enable code transfer */
+	btor(ZR36057_JPC_CodTrnsEn, ZR36057_JPC);
+
+        /* clear IRQs */
+	btwrite(IRQ_MASK, ZR36057_ISR);
+	/* enable the JPEG IRQs */
+	btwrite(zr->card->jpeg_int | ZR36057_ICR_JPEGRepIRQ | ZR36057_ICR_IntPinEn, ZR36057_ICR);
 
 	set_frame(zr, 0);                                       // \FRAME
 
-	/* JPEG codec guest ID */
-///*CP*/	post_office_write(zr, 2, 0, 1);
-///*CP*/	reg = (0 << ZR36057_JCGI_JPEGuestID) | (0 << ZR36057_JCGI_JPEGuestReg);
-	reg = (1 << ZR36057_JCGI_JPEGuestID) | (0 << ZR36057_JCGI_JPEGuestReg);
+	/* set the JPEG codec guest ID */
+	reg = (zr->card->gpcs[1] << ZR36057_JCGI_JPEGuestID) | (0 << ZR36057_JCGI_JPEGuestReg);
 	btwrite(reg, ZR36057_JCGI);
 
-	btor(ZR36057_JPC_Active, ZR36057_JPC);          // /Active
-///*CP*/	post_office_write(zr, 0, 0, 0);
-	btor(ZR36057_JMC_Go_en, ZR36057_JMC);           // /Go_en
+        if (zr->card->type == DC10 || zr->card->type == DC30plus)
+	{
+            /* Enable processing on the ZR36016 */
+//            zr36016_write(zr, 0, 1);  // Why does this never return ?
+            post_office_write(zr, 2, 0, 1);
+
+            /* load the address of the GO register in the ZR36050 latch */
+            post_office_write(zr, 0, 0, 0);
+        }
+
+        /* assert Active */
+	btor(ZR36057_JPC_Active, ZR36057_JPC);
+
+        /* enable the Go generation */
+	btor(ZR36057_JMC_Go_en, ZR36057_JMC);
 	udelay(30);
+
 	set_frame(zr, 1);                               // /FRAME
-///*CP*/	btor(ZR36057_JPC_Active, ZR36057_JPC);          // /Active
+
+        dprintk(2, KERN_DEBUG "%s: jpeg_start\n", zr->name);
 }
 
 static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
