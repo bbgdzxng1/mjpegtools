@@ -2224,6 +2224,7 @@ zoran_do_ioctl (struct inode *inode,
 		vmbuf->size =
 		    fh->v4l_buffers.num_buffers *
 		    fh->v4l_buffers.buffer_size;
+		vmbuf->frames = fh->v4l_buffers.num_buffers;
 		for (i = 0; i < vmbuf->frames; i++) {
 			vmbuf->offsets[i] =
 			    i * fh->v4l_buffers.buffer_size;
