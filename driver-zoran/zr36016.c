@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.13 2003-08-04 19:27:21 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.14 2003-08-20 19:46:55 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -345,7 +345,7 @@ zr36016_set_video (struct videocodec   *codec,
 	 * VStart too high will cause the codec to 'not work'. I
 	 * really don't get it. values of 16 (VStart) already break
 	 * it here. Just '0' seems to work. More testing needed! */
-	ptr->yoff = /*norm->VStart +*/ cap->y; // + 68;
+	ptr->yoff = norm->VStart + cap->y;
 	/* (Ronald) dzjeeh, can't this thing do hor_decimation = 4? */
 	ptr->xdec = ((cap->decimation & 0xff) == 1) ? 0 : 1;
 	ptr->ydec = (((cap->decimation >> 8) & 0xff) == 1) ? 0 : 1;
