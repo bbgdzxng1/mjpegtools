@@ -1,6 +1,7 @@
 Frequently Asked Questions:
 ===========================
 subject: unified zoran driver (zr360x7, zoran, buz, dc10(+), dc30(+), lml33)
+website: http://mjpeg.sourceforge.net/driver-zoran/
 
 1. What cards are supported
 2. How do I get this damn thing to work
@@ -26,7 +27,7 @@ Iomega Buz:
 * Philips saa7185 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, saa7111, saa7185, zr36060, zoran
-Inputs: Composite and S-video
+Inputs/outputs: Composite and S-video
 Norms: PAL, SECAM (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 Card number: 7
 
@@ -37,7 +38,7 @@ Linux Media Labs LML33:
 * Brooktree bt856 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, bt819, bt856, zr36060, zoran
-Inputs: Composite and S-video
+Inputss/outputs: Composite and S-video
 Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 Card number: 5
 
@@ -48,7 +49,7 @@ Linux Media Labs LML33R10:
 * Analog Devices adv7170 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, saa7114, adv7170, zr36060, zoran
-Inputs: Composite and S-video
+Inputs/outputs: Composite and S-video
 Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 Card number: 6
 
@@ -59,7 +60,7 @@ Pinnacle/Miro DC10(new):
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, saa7110, adv7175, zr36060, zoran
-Inputs: Composite, S-video and Internal
+Inputs/outputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 1
 
@@ -70,7 +71,7 @@ Pinnacle/Miro DC10+:
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
 		videocodec, sa7110, adv7175, zr36060, zoran
-Inputs: Composite, S-video and Internal
+Inputs/outputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 2
 
@@ -82,7 +83,7 @@ Pinnacle/Miro DC10(old): *
 * mse3000 TV encoder or Analog Devices adv7176 TV encoder *
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, vpx3220, mse3000/adv7175, zr36050, zr36016, zoran
-Inputs: Composite, S-video and Internal
+Inputs/outputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 0
 
@@ -94,7 +95,7 @@ Pinnacle/Miro DC30: *
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, vpx3220/vpx3224, adv7175, zr36050, zr36016, zoran
-Inputs: Composite, S-video and Internal
+Inputs/outputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 3
 
@@ -106,7 +107,7 @@ Pinnacle/Miro DC30+: *
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
 		videocodec, vpx3220/vpx3224, adv7175, zr36050, zr36015, zoran
-Inputs: Composite, S-video and Internal
+Inputs/outputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 4
 
@@ -150,24 +151,35 @@ based on a different chipset. Here's some notes from Andrew Stevens:
 Here's my experience of using LML33 and Buz on various motherboards:
 
 VIA MVP3
-        Forget it.  Pointless.  Doesn't work.
-Intel 430FX (Pentium 200)   
-        LML33 perfect, Buz tolerable (3 or 4 frames dropped per movie)
-Intel 440BX (early stepping) 
-        LML33 tolerable.  Buz starting to get annoying (6-10 frames/hour)
+	Forget it. Pointless. Doesn't work.
+Intel 430FX (Pentium 200) 
+	LML33 perfect, Buz tolerable (3 or 4 frames dropped per movie)
+Intel 440BX (early stepping)
+	LML33 tolerable. Buz starting to get annoying (6-10 frames/hour)
 Intel 440BX (late stepping)
-        Buz tolerable, LML3 almost perfect (occasional single frame drops)
+	Buz tolerable, LML3 almost perfect (occasional single frame drops)
 SiS735
-        LML33 perfect, Buz tolerable.
+	LML33 perfect, Buz tolerable.
 VIA KT133(*)
-        LML33 starting to get annoying, Buz poor enough that I have up.
+	LML33 starting to get annoying, Buz poor enough that I have up.
 
 Both 440BX boards were dual CPU versions.
+--
+Bernhard Praschinger later added:
+--
+AMD 751
+	Buz perfect-tolerable
+AMD 760
+	Buz perfect-tolerable
 --
 In general, people on the user mailinglist won't give you much of a chance
 if you have a VIA-based motherboard. They may be cheap, but sometimes, you'd
 rather want to spend some more money on better boards. In general, VIA
 mainboard's IDE/PCI performance will also suck badly compared to others.
+You'll noticed the DC10+/DC30+ aren't mentioned anywhere in the overview.
+Basically, you can assume that if the Buz works, the LML33 will work too. If
+the LML33 works, the DC10+/DC30+ will work too. They're most tolerant to
+different mainboard chipsets from all of the supported cards.
 
 If you experience timeouts during capture, buy a better mainboard or lower
 the quality/buffersize during capture (see 'Concerning buffer sizes, quality,
@@ -187,14 +199,17 @@ details (structs/ioctls).
 
 Information - video4linux:
 http://roadrunner.swansea.linux.org.uk/v4lapi.shtml
+/usr/src/linux/Documentation/video4linux/API.html
 /usr/include/linux/videodev.h
 
 Information - video4linux/mjpeg extensions:
 ./zoran.h
+(also see below)
 
 Information - video4linux2:
 http://www.thedirks.org/v4l2/
 /usr/include/linux/videodev2.h
+http://www.bytesex.org/v4l/
 
 More information on the video4linux/mjpeg extensions, by Serguei
 Miridonovi and Rainer Johanni:
@@ -256,6 +271,9 @@ Additional notes for software developers:
    settings of a variety of TV capture cards which may work in ITU or
    square pixel format. Remember that users now can lock the norm to
    avoid any ambiguity.
+--
+Please note that lavplay/lavrec are also included in the MJPEG-tools
+(http://mjpeg.sf.net/).
 
 ===========================
 
@@ -279,7 +297,7 @@ General raw capture:
 * probably any application that supports video4linux or video4linux2
 
 Video editing:
-* Broadcast 2000/Cinelerra
+* Cinelerra
 * MainActor
 * mjpegtools (or Linux Video Studio)
 
@@ -295,9 +313,9 @@ With 1:4, it'll mostly work. If you have a Buz, use 'low_bitrate=1' to go into
 1:4 max. compression mode.
 
 100% JPEG quality is thus 1:2 compression in practice. So for a full PAL frame
-(size 768x576). The JPEG fields are stored in YUY2 format, so the size of the
-fields are 768x288x16/2 bits/field (2 fields/frame) = 221184 bytes/field x 2 =
-442368 bytes/frame (add some more bytes for headers and DHT (huffman)/DQT
+(size 720x576). The JPEG fields are stored in YUY2 format, so the size of the
+fields are 720x288x16/2 bits/field (2 fields/frame) = 207360 bytes/field x 2 =
+414720 bytes/frame (add some more bytes for headers and DHT (huffman)/DQT
 (quantization) tables, and you'll get to something like 512kB per frame for
 1:2 compression. For 1:4 compression, you'd have frames of half this size.
 
@@ -400,7 +418,8 @@ help programming), send an email to <mjpeg-developer@lists.sf.net>. See
 http://www.sf.net/projects/mjpeg/ for subscription information.
 
 For bug reports, be sure to include all the information as described in
-the section 'It hangs/crashes/fails/whatevers! Help!'.
+the section 'It hangs/crashes/fails/whatevers! Help!'. Please make sure
+you're using the latest version (http://mjpeg.sf.net/driver-zoran/).
 
 Previous maintainers/developers of this driver include Serguei Miridonov
 <mirsev@cicese.mx>, Wolfgang Scherr <scherr@net4you.net>, Dave Perks
