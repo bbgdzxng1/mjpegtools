@@ -64,9 +64,20 @@
 	* Man pages.
 	
 	* Binary packages.
+
+2001-06-15 Andrew Stevens (andrew.stevens@planet-interkom.de)
+
+	* 1.4.1 Release Tag: Rel1_4_1
+
+	* Bug fixes: rare segfault in motion compensation, and bit-rate
+	      overshoot.  Bad progressive_frame flag. Minor portability issues.
+	
 	
 CVS log:
 $Log: not supported by cvs2svn $
+Revision 1.12  2001/05/26 12:37:50  wackston
+Tidying doco for packaging...
+
 Revision 1.11  2001/05/10 19:52:36  wackston
 Tidyings and fixing up to the 1.4 release.
 
