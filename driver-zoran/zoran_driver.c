@@ -3157,6 +3157,14 @@ zoran_do_ioctl (struct inode *inode,
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_REQBUFS - type=%d\n",
 			ZR_DEVNAME(zr), req->type);
 
+		if (req->memory != V4L2_MEMORY_MMAP) {
+			dprintk(1,
+				KERN_ERR
+				"%s: only MEMORY_MMAP capture is supported, not %d\n",
+				ZR_DEVNAME(zr), req->memory);
+			return -EINVAL;
+		}
+
 		down(&zr->resource_lock);
 
 		if (fh->v4l_buffers.allocated || fh->jpg_buffers.allocated) {
@@ -3171,7 +3179,13 @@ zoran_do_ioctl (struct inode *inode,
 		if (fh->map_mode == ZORAN_MAP_MODE_RAW &&
 		    req->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 
-			req->count = fh->v4l_buffers.num_buffers;
+			/* control user input */
+			if (req->count < 2)
+				req->count = 2;
+			if (req->count > v4l_nbufs)
+				req->count = v4l_nbufs;
+			fh->v4l_buffers.num_buffers = req->count;
+
 			if (v4l_fbuffer_alloc(file)) {
 				res = -ENOMEM;
 				goto v4l2reqbuf_unlock_and_return;
@@ -3184,7 +3198,11 @@ zoran_do_ioctl (struct inode *inode,
 			   fh->map_mode == ZORAN_MAP_MODE_JPG_PLAY) {
 
 			/* we need to calculate size ourselves now */
-			req->count = fh->jpg_buffers.num_buffers;
+			if (req->count < 4)
+				req->count = 4;
+			if (req->count > jpg_nbufs)
+				req->count = jpg_nbufs;
+			fh->jpg_buffers.num_buffers = req->count;
 			fh->jpg_buffers.buffer_size =
 			    zoran_v4l2_calc_bufsize(&fh->jpg_settings);
 
@@ -3343,9 +3361,9 @@ zoran_do_ioctl (struct inode *inode,
 			res = v4l_sync(file, num);
 			if (res)
 				goto dqbuf_unlock_and_return;
-			res = zoran_v4l2_buffer_status(file, buf, num);
-			if (!res)
+			else
 				zr->v4l_sync_tail++;
+			res = zoran_v4l2_buffer_status(file, buf, num);
 			break;
 
 		case ZORAN_MAP_MODE_JPG_REC:
@@ -4212,94 +4230,6 @@ zoran_do_ioctl (struct inode *inode,
 		}
 
 		return 0;
-	}
-		break;
-
-	case VIDIOC_G_PARM:
-	{
-		struct v4l2_streamparm *parm = arg;
-		int type = parm->type, res = 0;
-
-		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_PARM - type=%d\n",
-			ZR_DEVNAME(zr), parm->type);
-
-		memset(parm, 0, sizeof(*parm));
-		parm->type = type;
-
-		down(&zr->resource_lock);
-
-		if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE &&
-		    fh->map_mode == ZORAN_MAP_MODE_RAW) {
-			parm->parm.capture.readbuffers =
-			    fh->v4l_buffers.num_buffers;
-		} else if (type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-			parm->parm.capture.readbuffers =
-			    fh->jpg_buffers.num_buffers;
-		} else if (type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
-			parm->parm.output.writebuffers =
-			    fh->jpg_buffers.num_buffers;
-		} else {
-			dprintk(1, KERN_ERR "%s: invalid type %d\n",
-				ZR_DEVNAME(zr), parm->type);
-			res = -EINVAL;
-			goto gparm_unlock_and_return;
-		}
-	gparm_unlock_and_return:
-		up(&zr->resource_lock);
-		return res;
-	}
-		break;
-
-	case VIDIOC_S_PARM:
-	{
-		struct v4l2_streamparm *parm = arg;
-		int res = 0;
-
-		dprintk(3, KERN_DEBUG "%s: VIDIOC_S_PARM - type=%d\n",
-			ZR_DEVNAME(zr), parm->type);
-
-		down(&zr->resource_lock);
-
-		if (fh->v4l_buffers.allocated || fh->jpg_buffers.allocated) {
-			dprintk(1,
-				KERN_ERR
-				"%s: VIDIOC_S_PARM - buffers already allocated\n",
-				ZR_DEVNAME(zr));
-			res = -EBUSY;
-			goto sparm_unlock_and_return;
-		}
-
-		if (parm->type == V4L2_BUF_TYPE_VIDEO_CAPTURE &&
-		    fh->map_mode == ZORAN_MAP_MODE_RAW) {
-			if (parm->parm.capture.readbuffers < 2)
-				parm->parm.capture.readbuffers = 2;
-			if (parm->parm.capture.readbuffers > v4l_nbufs)
-				parm->parm.capture.readbuffers = v4l_nbufs;
-			fh->v4l_buffers.num_buffers =
-			    parm->parm.capture.readbuffers;
-		} else if (parm->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-			if (parm->parm.capture.readbuffers < 4)
-				parm->parm.capture.readbuffers = 4;
-			if (parm->parm.capture.readbuffers > jpg_nbufs)
-				parm->parm.capture.readbuffers = jpg_nbufs;
-			fh->jpg_buffers.num_buffers =
-			    parm->parm.capture.readbuffers;
-		} else if (parm->type == V4L2_BUF_TYPE_VIDEO_OUTPUT) {
-			if (parm->parm.output.writebuffers < 4)
-				parm->parm.output.writebuffers = 4;
-			if (parm->parm.output.writebuffers > jpg_nbufs)
-				parm->parm.output.writebuffers = jpg_nbufs;
-			fh->jpg_buffers.num_buffers =
-			    parm->parm.output.writebuffers;
-		} else {
-			dprintk(1, KERN_ERR "%s: invalid type %d\n",
-				ZR_DEVNAME(zr), parm->type);
-			res = -EINVAL;
-			goto sparm_unlock_and_return;
-		}
-	sparm_unlock_and_return:
-		up(&zr->resource_lock);
-		return res;
 	}
 		break;
 

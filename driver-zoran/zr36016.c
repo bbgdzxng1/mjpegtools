@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.9 2003-03-29 07:16:05 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.10 2003-08-03 07:34:26 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -265,12 +265,9 @@ zr36016_init (struct zr36016 *ptr)
 
 	// mode setup (yuv422 in and out, compression/expansuon due to mode)
 	zr36016_write(ptr, ZR016_MODE,
-		      ZR016_YUV422 | ZR016_YUV422_YUV422 | (ptr->mode ==
-							    CODEC_DO_COMPRESSION
-							    ?
-							    ZR016_COMPRESSION
-							    :
-							    ZR016_EXPANSION));
+		      ZR016_YUV422 | ZR016_YUV422_YUV422 |
+		      (ptr->mode == CODEC_DO_COMPRESSION ?
+		       ZR016_COMPRESSION : ZR016_EXPANSION));
 	// Window setup
 	// (no extra offset for now, norm defines offset, default width height)
 	zr36016_writei(ptr, ZR016I_PAX_HI, ptr->width >> 8);
@@ -284,11 +281,8 @@ zr36016_init (struct zr36016 *ptr)
 
 	// misc setup
 	zr36016_writei(ptr, ZR016I_SETUP1,
-		       (ptr->ydec ? ZR016_HRFL | ZR016_HORZ : 0) | (ptr->
-								    xdec ?
-								    ZR016_VERT
-								    : 0) |
-		       ZR016_CNTI);
+		       (ptr->ydec ? ZR016_HRFL | ZR016_HORZ : 0) |
+		       (ptr->xdec ? ZR016_VERT : 0) | ZR016_CNTI);
 //        zr36016_writei(ptr, ZR016I_SETUP2, ZR016_SIGN | ZR016_CCIR );
 	zr36016_writei(ptr, ZR016I_SETUP2, ZR016_CCIR);
 }

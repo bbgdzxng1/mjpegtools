@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.9 2003-03-29 07:16:05 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.10 2003-08-03 07:34:26 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -82,9 +82,8 @@ zr36050_read (struct zr36050 *ptr,
 
 	// just in case something is wrong...
 	if (ptr->codec->master_data->readreg)
-		value =
-		    (ptr->codec->master_data->
-		     readreg(ptr->codec, reg)) & 0xFF;
+		value = (ptr->codec->master_data->readreg(ptr->codec,
+							  reg)) & 0xFF;
 	else
 		dprintk(1,
 			KERN_ERR "%s: invalid I/O setup, nothing read!\n",
@@ -497,18 +496,14 @@ zr36050_init (struct zr36050 *ptr)
 		/* setup the fixed jpeg tables - maybe variable, though -
 		 * (see table init section above) */
 		dprintk(3, "%s: write DQT, DHT, APP\n", ptr->name);
-		sum +=
-		    zr36050_pushit(ptr, ZR050_DQT_IDX, sizeof(zr36050_dqt),
-				   zr36050_dqt);
-		sum +=
-		    zr36050_pushit(ptr, ZR050_DHT_IDX, sizeof(zr36050_dht),
-				   zr36050_dht);
-		sum +=
-		    zr36050_pushit(ptr, ZR050_APP_IDX, sizeof(zr36050_app),
-				   zr36050_app);
-		sum +=
-		    zr36050_pushit(ptr, ZR050_COM_IDX, sizeof(zr36050_com),
-				   zr36050_com);
+		sum += zr36050_pushit(ptr, ZR050_DQT_IDX,
+				      sizeof(zr36050_dqt), zr36050_dqt);
+		sum += zr36050_pushit(ptr, ZR050_DHT_IDX,
+				      sizeof(zr36050_dht), zr36050_dht);
+		sum += zr36050_pushit(ptr, ZR050_APP_IDX,
+				      sizeof(zr36050_app), zr36050_app);
+		sum += zr36050_pushit(ptr, ZR050_COM_IDX,
+				      sizeof(zr36050_com), zr36050_com);
 
 		/* do the internal huffman table preload */
 		zr36050_write(ptr, ZR050_MARKERS_EN, ZR050_ME_DHTI);
@@ -554,11 +549,8 @@ zr36050_init (struct zr36050 *ptr)
 
 		/* compression setup with or without bitrate control */
 		zr36050_write(ptr, ZR050_MODE,
-			      ZR050_MO_COMP | ZR050_MO_PASS2 | (ptr->
-								bitrate_ctrl
-								?
-								ZR050_MO_BRC
-								: 0));
+			      ZR050_MO_COMP | ZR050_MO_PASS2 |
+			      (ptr->bitrate_ctrl ? ZR050_MO_BRC : 0));
 
 		/* this headers seem to deliver "valid AVI" jpeg frames */
 		zr36050_write(ptr, ZR050_MARKERS_EN,
