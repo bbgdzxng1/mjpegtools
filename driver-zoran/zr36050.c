@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.14 2004-02-23 20:07:38 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.15 2004-02-23 20:10:40 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -645,20 +645,20 @@ zr36050_set_video (struct videocodec   *codec,
 	size = ptr->width * ptr->height;
 	size *= 16; /* size in bits */
 	/* apply quality setting */
-        size = size * cap->quality / 200;
+	size = size * cap->quality / 200;
 
-        /* Minimum: 1kb */
-        if (size < 8192)
+	/* Minimum: 1kb */
+	if (size < 8192)
 		size = 8192;
 	/* Maximum: 7/8 of code buffer */
-        if (size > ptr->total_code_vol * 7)
+	if (size > ptr->total_code_vol * 7)
 		size = ptr->total_code_vol * 7;
 
-        ptr->real_code_vol = size >> 3; /* in bytes */        
+	ptr->real_code_vol = size >> 3; /* in bytes */        
         
 	/* Set max_block_vol here (previously in zr36050_init, moved
 	 * here for consistency with zr36060 code */
-        zr36050_write(ptr, ZR050_MBCV, ptr->max_block_vol);
+	zr36050_write(ptr, ZR050_MBCV, ptr->max_block_vol);
 
 	return 0;
 }
@@ -719,7 +719,7 @@ zr36050_control (struct videocodec *codec,
 		ptr->total_code_vol = *ival;
 		/* (Kieran Morrissey)
 		 * code copied from zr36060.c to ensure proper bitrate */
-                ptr->real_code_vol = (ptr->total_code_vol * 6) >> 3;
+		ptr->real_code_vol = (ptr->total_code_vol * 6) >> 3;
 		break;
 
 	case CODEC_G_JPEG_SCALE:	/* get scaling factor */
