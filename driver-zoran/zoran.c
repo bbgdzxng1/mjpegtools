@@ -550,7 +550,6 @@ v4l_fbuffer_alloc (struct file *file)
 	}
 
 	fh->v4l_buffers.allocated = 1;
-	fh->v4l_buffers.secretly_allocated = 0;
 
 	return 0;
 }
@@ -584,7 +583,6 @@ v4l_fbuffer_free (struct file *file)
 	}
 
 	fh->v4l_buffers.allocated = 0;
-	fh->v4l_buffers.secretly_allocated = 0;
 }
 
 /*
@@ -680,7 +678,6 @@ jpg_fbuffer_alloc (struct file *file)
 			   fh->jpg_buffers.buffer_size) >> 10);
 
 	fh->jpg_buffers.allocated = 1;
-	fh->jpg_buffers.secretly_allocated = 0;
 
 	return 0;
 }
@@ -730,7 +727,6 @@ static void jpg_fbuffer_free(struct file *file)
 		fh->jpg_buffers.buffer[i].frag_tab = NULL;
 	}
 	fh->jpg_buffers.allocated = 0;
-	fh->jpg_buffers.secretly_allocated = 0;
 }
 
 
@@ -3309,14 +3305,12 @@ zoran_open_init_params (struct zoran *zr)
 		zr->v4l_buffers.buffer[i].state = BUZ_STATE_USER;	/* nothing going on */
 	}
 	zr->v4l_buffers.allocated = 0;
-	zr->v4l_buffers.secretly_allocated = 0;
 
 	for (i = 0; i < BUZ_MAX_FRAME; i++) {
 		zr->jpg_buffers.buffer[i].state = BUZ_STATE_USER;	/* nothing going on */
 	}
 	zr->jpg_buffers.active = ZORAN_FREE;
 	zr->jpg_buffers.allocated = 0;
-	zr->jpg_buffers.secretly_allocated = 0;
 
 	/* Set necessary params and call zoran_check_jpg_settings to set the defaults */
 	zr->jpg_settings.decimation = 1;
@@ -3370,7 +3364,6 @@ zoran_open_init_session (struct file *file)
 		fh->v4l_buffers.buffer[i].bs.frame = i;
 	}
 	fh->v4l_buffers.allocated = 0;
-	fh->v4l_buffers.secretly_allocated = 0;
 	fh->v4l_buffers.active = ZORAN_FREE;
 	fh->v4l_buffers.buffer_size = v4l_bufsize;
 	fh->v4l_buffers.num_buffers = v4l_nbufs;
@@ -3386,7 +3379,6 @@ zoran_open_init_session (struct file *file)
 	}
 	fh->jpg_buffers.need_contiguous = zr->jpg_buffers.need_contiguous;
 	fh->jpg_buffers.allocated = 0;
-	fh->jpg_buffers.secretly_allocated = 0;
 	fh->jpg_buffers.active = ZORAN_FREE;
 }
 
@@ -3413,7 +3405,7 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* v4l buffers */
-	if (fh->v4l_buffers.allocated || fh->v4l_buffers.secretly_allocated) {
+	if (fh->v4l_buffers.allocated) {
 		v4l_fbuffer_free(file);
 	}
 
@@ -3425,7 +3417,7 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* jpg buffers */
-	if (fh->jpg_buffers.allocated || fh->jpg_buffers.secretly_allocated) {
+	if (fh->jpg_buffers.allocated) {
 		jpg_fbuffer_free(file);
 	}
 }
@@ -4406,7 +4398,7 @@ schan_unlock_and_return:
 	case VIDIOCGMBUF:
 		{
 			struct video_mbuf *vmbuf = arg;
-			int i, do_alloc = 1, res = 0;
+			int i, res = 0;
 
 			dprintk(2, KERN_DEBUG "%s: VIDIOCGMBUF\n",
 				zr->name);
@@ -4428,20 +4420,10 @@ schan_unlock_and_return:
 				goto v4l1reqbuf_unlock_and_return;
 			}
 
-			/* if there are existing buffers and they're the same */
-			if (fh->v4l_buffers.secretly_allocated) {
-				/* since we provide our own settings, they're
-				 * always the same */
-				do_alloc = 0;
-				fh->v4l_buffers.secretly_allocated = 0;
-				fh->v4l_buffers.allocated = 1;
+			if (v4l_fbuffer_alloc(file)) {
+				res = -ENOMEM;
+				goto v4l1reqbuf_unlock_and_return;
 			}
-
-			if (do_alloc)
-				if (v4l_fbuffer_alloc(file)) {
-					res = -ENOMEM;
-					goto v4l1reqbuf_unlock_and_return;
-				}
 
 			/* The next mmap will map the V4L buffers */
 			fh->map_mode = ZORAN_MAP_MODE_RAW;
@@ -4587,7 +4569,7 @@ sparams_unlock_and_return:
 	case BUZIOC_REQBUFS:
 		{
 			struct zoran_requestbuffers *breq = arg;
-			int do_alloc = 1, res = 0;
+			int res = 0;
 
 			dprintk(2, KERN_DEBUG "%s: BUZIOC_REQBUFS - count=%lu, size=%lu\n",
 				zr->name, breq->count, breq->size);
@@ -4617,25 +4599,13 @@ sparams_unlock_and_return:
 				goto jpgreqbuf_unlock_and_return;
 			}
 
-			if (fh->jpg_buffers.secretly_allocated) {
-				if (fh->jpg_buffers.num_buffers == breq->count &&
-				    fh->jpg_buffers.buffer_size == breq->size) {
-					do_alloc = 0;
-					fh->jpg_buffers.secretly_allocated = 0;
-					fh->jpg_buffers.allocated = 1;
-				} else {
-					jpg_fbuffer_free(file);
-				}
-			}
-
 			fh->jpg_buffers.num_buffers = breq->count;
 			fh->jpg_buffers.buffer_size = breq->size;
 
-			if (do_alloc)
-				if (jpg_fbuffer_alloc(file)) {
-					res = -ENOMEM;
-					goto jpgreqbuf_unlock_and_return;
-				}
+			if (jpg_fbuffer_alloc(file)) {
+				res = -ENOMEM;
+				goto jpgreqbuf_unlock_and_return;
+			}
 
 			/* The next mmap will map the MJPEG buffers - could
 			 * also be *_PLAY, but it doesn't matter here */
@@ -5151,7 +5121,7 @@ sfmtv4l_unlock_and_return:
 	case VIDIOC_REQBUFS:
 		{
 			struct v4l2_requestbuffers *req = arg;
-			int do_alloc = 1, calc_size, res = 0;
+			int calc_size, res = 0;
 
 			dprintk(2, KERN_DEBUG "%s: VIDIOC_REQBUFS - type=%d\n",
 				zr->name, req->type);
@@ -5169,19 +5139,11 @@ sfmtv4l_unlock_and_return:
 			if (fh->map_mode == ZORAN_MAP_MODE_RAW &&
 			    req->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 
-				/* this should probably be changed to be what the user asks,
-				 * but I'm lazy for now (in other words: TODO) */
-				if (fh->v4l_buffers.secretly_allocated) {
-					do_alloc = 0;
-					fh->v4l_buffers.secretly_allocated = 0;
-					fh->v4l_buffers.allocated = 1;
-				}
 				req->count = fh->v4l_buffers.num_buffers;
-				if (do_alloc)
-					if (v4l_fbuffer_alloc(file)) {
-						res = -ENOMEM;
-						goto v4l2reqbuf_unlock_and_return;
-					}
+				if (v4l_fbuffer_alloc(file)) {
+					res = -ENOMEM;
+					goto v4l2reqbuf_unlock_and_return;
+				}
 
 				/* The next mmap will map the V4L buffers */
 				fh->map_mode = ZORAN_MAP_MODE_RAW;
@@ -5195,25 +5157,14 @@ sfmtv4l_unlock_and_return:
 					req->count = BUZ_MAX_FRAME;
 				calc_size = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
 
-				if (fh->jpg_buffers.secretly_allocated) {
-					if (fh->jpg_buffers.num_buffers == req->count &&
-					    fh->jpg_buffers.buffer_size == calc_size) {
-						do_alloc = 0;
-						fh->jpg_buffers.secretly_allocated = 0;
-						fh->jpg_buffers.allocated = 1;
-					} else /* not doing this means memleaks */
-						jpg_fbuffer_free(file);
-				}
-
 				/* we need to calculate size ourselves now */
 				fh->jpg_buffers.num_buffers = req->count;
 				fh->jpg_buffers.buffer_size = calc_size;
 
-				if (do_alloc)
-					if (jpg_fbuffer_alloc(file)) {
-						res = -ENOMEM;
-						goto v4l2reqbuf_unlock_and_return;
-					}
+				if (jpg_fbuffer_alloc(file)) {
+					res = -ENOMEM;
+					goto v4l2reqbuf_unlock_and_return;
+				}
 
 				/* The next mmap will map the MJPEG buffers */
 				if (req->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -6175,10 +6126,7 @@ zoran_vm_close (struct vm_area_struct *vma)
 						zr->jpg_buffers.allocated = 0;
 						zr->jpg_buffers.active = fh->jpg_buffers.active = ZORAN_FREE;
 					}
-					/* see below */
-					//jpg_fbuffer_free(file);
-					fh->jpg_buffers.allocated = 0;
-					fh->jpg_buffers.secretly_allocated = 1;
+					jpg_fbuffer_free(file);
 
 					up(&zr->resource_lock);
 				}
@@ -6209,16 +6157,7 @@ zoran_vm_close (struct vm_area_struct *vma)
 						zr->v4l_buffers.allocated = 0;
 						zr->v4l_buffers.active = fh->v4l_buffers.active = ZORAN_FREE;
 					}
-					/* needs to be commented out, though I'd rather
-					 * free the buffers here, but that somehow
-					 * oopses the kernel (only when done inside
-					 * munmap()-handlers). So commented out (Ronald)
-					 */
-					//v4l_fbuffer_free(file);
-					/* this hack is to make sure we can mmap() more than
-					 * once per open() without screwing up */
-					fh->v4l_buffers.allocated = 0;
-					fh->v4l_buffers.secretly_allocated = 1;
+					v4l_fbuffer_free(file);
 
 					up(&zr->resource_lock);
 				}

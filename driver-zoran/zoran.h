@@ -310,7 +310,6 @@ struct zoran_jpg_struct {
 	struct zoran_jpg_buffer 	buffer[BUZ_MAX_FRAME]; 	/* buffers */
 	int 				num_buffers, buffer_size;
 	u8 				allocated;		/* Flag if buffers are allocated  */
-	u8				secretly_allocated;	/* Temporary hack as long as kfree() within munmap() oopses */
 	u8 				need_contiguous; 	/* Flag if contiguous buffers are needed */
 };
 
@@ -319,7 +318,6 @@ struct zoran_v4l_struct {
 	struct zoran_v4l_buffer 	buffer[VIDEO_MAX_FRAME]; 	/* buffers */
 	int 				num_buffers, buffer_size;
 	int 				allocated; 			/* Flag if buffers are allocated  */
-	int				secretly_allocated;		/* Temporary hack as long as kfree() within munmap() oopses */
 };
 
 struct zoran;

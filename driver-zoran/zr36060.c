@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.12 2002-12-29 15:08:01 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.13 2003-01-02 16:33:42 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -717,17 +717,17 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	/* Lower limit (arbitrary, 1 KB) */
 	if (size < 8192)
 		size = 8192;
-	/* Upper limit: 6/8 of the code buffers */
-	if (size > ptr->total_code_vol * 6)
-		size = ptr->total_code_vol * 6;
+	/* Upper limit: 7/8 of the code buffers */
+	if (size > ptr->total_code_vol * 7)
+		size = ptr->total_code_vol * 7;
+
+	ptr->real_code_vol = size>>3; /* in bytes */
 
 	/* the MBCVR is the *maximum* block volume, according to the
 	 * JPEG ISO specs, this shouldn't be used, since that allows
 	 * for the best encoding quality. So set it to it's max value */
 	reg = ptr->max_block_vol;
-	/* quality setting */
 	zr36060_write(ptr, ZR060_MBCVR, reg);
-	ptr->real_code_vol = size>>3; /* in bytes */
 
         return 0;
 }
