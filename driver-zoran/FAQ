@@ -123,13 +123,13 @@ Note: use encoder=X or decoder=X for non-default i2c chips (see i2c-id.h)
 
 The best know TV standards are NTSC/PAL/SECAM. but for decoding a frame that
 information is not enough. There are several formats of the TV standards.
-And not every TV decoder is able to handle every format. Also the every 
+And not every TV decoder is able to handle every format. Also not every 
 combination is supported by the driver. There are currently 11 different 
 tv broadcast formats all aver the world. 
 
 The CCIR defines parameters needed for broadcasting the signal. 
 The CCIR has defined different standards: A,B,D,E,F,G,D,H,I,K,K1,L,M,N,...
-The CCIR says not much about about the colorsystem used !!!
+The CCIR does not tell much about about the colorsystem used !!!
 And talking about a colorsystem says not to much about how it is broadcast.
 
 The CCIR standards A,E,F are not used any more.
@@ -165,12 +165,12 @@ and http://www.cabl.com/restaurant/channel.html
 
 Other weird things around: NTSC 4.43 is a modificated NTSC, which is mainly
 used in PAL VCR's that are able to play back NTSC. PAL 60 seems to be the same
-as NTSC 4.43 . The Datasheets also talk about NTSC 44, It seems as if it would 
+as NTSC 4.43 . The datasheets also talk about NTSC 44, it seems as if it would 
 be the same as NTSC 4.43. 
-NTSC Combs seems to be a decoder mode where the decoder uses a comb filter
+NTSC Comb seems to be a decoder mode where the decoder uses a comb filter
 to split coma and luma instead of a Delay line.
 
-But I did not defiantly find out what NTSC Comb is.
+But I did not definitely find out what NTSC Comb is.
 
 Philips saa7111 TV decoder
 was introduced in 1997, is used in the BUZ and 
@@ -196,7 +196,7 @@ can handle: PAL B/G/H/I, PAL N, PAL M, NTSC M, NTSC 44, PAL 60, SECAM,NTSC Comb
 
 1.2 What the TV encoder can do an what not
 
-The TV encoder are doing the "same" as the decoder, but in the oder direction.
+The TV encoder are doing the "same" as the decoder, but in the other direction.
 You feed them digital data and the generate a Composite or SVHS signal.
 For information about the colorsystems and TV norm take a look in the
 TV decoder section.
