@@ -133,6 +133,6 @@ case "$norm" in
         exit 1
         ;;
 esac
-$SUDO /sbin/insmod ./zoran.o default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
+$SUDO /sbin/insmod ./zoran.o debug=2 default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
 sync;sync
 echo "Drivers for '$cards' with norm '$norm' loaded"

@@ -6,7 +6,7 @@
    
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
   
-   $Id: videocodec.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
+   $Id: videocodec.c,v 1.1.2.3 2002-11-13 12:54:31 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -31,6 +31,7 @@
 
 #define VIDEOCODEC_VERSION "v0.2"
 
+#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>

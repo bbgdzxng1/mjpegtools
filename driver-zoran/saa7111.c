@@ -25,6 +25,8 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <linux/version.h>
+
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>

@@ -203,6 +203,7 @@ enum zoran_buffer_state {
 enum zoran_map_mode {
 	ZORAN_MAP_MODE_RAW,
 	ZORAN_MAP_MODE_JPG_REC,
+#define ZORAN_MAP_MODE_JPG ZORAN_MAP_MODE_JPG_REC
 	ZORAN_MAP_MODE_JPG_PLAY,
 };
 
@@ -228,13 +229,15 @@ struct zoran_format {
 	char *name;
 	int palette;
 	__u32 fourcc;
+	int colorspace;
 	int depth;
 	__u32 flags;
 };
 /* flags */
 #define ZORAN_FORMAT_COMPRESSED 1<<0
 #define ZORAN_FORMAT_OVERLAY    1<<1
-#define ZORAN_FORMAT_RAWCAPTURE 1<<2
+#define ZORAN_FORMAT_CAPTURE	1<<2
+#define ZORAN_FORMAT_PLAYBACK	1<<3
 
 /* overlay-settings */
 struct zoran_overlay_settings {

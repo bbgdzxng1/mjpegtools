@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.7 2002-10-17 18:09:27 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.8 2002-11-13 12:54:32 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -708,7 +708,12 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
         blocks = size / 64;
 	/* Target compressed field size in bits: */
 	size = size * 16;	/* uncompressed size in bits */
-	size = size * cap->quality / 200;	/* quality = 100 is a compression ratio 1:2 */
+	/* (Ronald) quality = 100 is a compression ratio 1:4 -
+	 * using 1:4 (instead of 1:2, zr36060 max) as limit because the
+	 * buz can't handle more at decimation=1... s/400/200/
+	 * for maximum quality (note: don't change it unless you
+	 * know what you're doing!) */
+	size = size * cap->quality / 400;
 	/* Lower limit (arbitrary, 1 KB) */
 	if (size < 8192)
 		size = 8192;
