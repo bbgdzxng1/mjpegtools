@@ -34,10 +34,10 @@ zoran.o: $(zoran-objs)
 
 ifneq (,$(findstring 2.4.,$(CURRENT)))
 install:
-	su -c "cp -v $(obj-m) $(DEST) && /sbin/depmod -a"
+	su -c "cp -v $(obj-m) $(DEST) && /sbin/depmod -ae -F $(KERNEL_LOCATION)/System.map $(CURRENT)"
 else
 install:
-	su -c "cp -v *.ko $(DEST) && /sbin/depmod -a"
+	su -c "cp -v *.ko $(DEST) && /sbin/depmod -ae -F $(KERNEL_LOCATION)/System.map $(CURRENT)"
 endif
 
 clean:
