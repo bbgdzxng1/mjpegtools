@@ -9,6 +9,7 @@ MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(mjpegtools, $MJPEG_VERSION)
 AM_MAINTAINER_MODE
+AM_OUTPUT_DEPENDENCY_COMMANDS
 AC_CANONICAL_HOST
 
 # libtool versioning
@@ -661,9 +662,9 @@ AC_ARG_ENABLE(use-video-raw,
  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-video-raw)         ;; esac ],
  [ enable_use_video_raw=yes ])
 AC_ARG_ENABLE(write-y4m-named-field,
- [  --disable-write-y4m-named-field  Write YUV4MPEG with tagged field by default.],
+ [  --enable-write-y4m-named-field  Write YUV4MPEG with named field by default.],
  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-write-y4m-named-field) ;; esac ],
- [ enable_write_y4m_named_field=yes ])
+ [ enable_write_y4m_named_field=no ])
 AC_ARG_ENABLE(use-media-file,
  [  --disable-use-media-file         Do not support file read/write.],
  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-media-file)        ;; esac ],
