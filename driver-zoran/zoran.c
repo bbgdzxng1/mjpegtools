@@ -6312,7 +6312,7 @@ zr36057_init(struct zoran *zr)
 
 #include "zoran_procfs.c"
 
-static void __devinit
+static void
 zoran_release (struct zoran *zr)
 {
 	if (!zr->initialized)
@@ -6678,7 +6678,7 @@ static void __exit
 unload_dc10_cards (void)
 {
 	int i;
-	for (i = 0; i > zoran_num; i++)
+	for (i = 0; i < zoran_num; i++)
 		zoran_release(&zoran[i]);
 }
 
