@@ -4731,7 +4731,7 @@ zoran_mmap (struct file           *file,
 	return 0;
 }
 
-static struct file_operations zoran_fops __devinitdata = {
+static struct file_operations zoran_fops = {
 	.owner = THIS_MODULE,
 	.open = zoran_open,
 	.release = zoran_close,
