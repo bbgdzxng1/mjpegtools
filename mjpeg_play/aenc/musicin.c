@@ -95,6 +95,10 @@ musicin.c
  *         Bill Truerniet                                             *
  **********************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+ 
 #ifdef MS_DOS
 #include <dos.h>
 #endif
