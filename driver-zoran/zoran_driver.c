@@ -3676,22 +3676,22 @@ zoran_do_ioctl (struct inode *inode,
 		case 0:
 			std->id = V4L2_STD_PAL;
 			strncpy(std->name, "PAL", 31);
-			std->frameperiod.numerator = 25;
-			std->frameperiod.denominator = 1;
+			std->frameperiod.numerator = 1;
+			std->frameperiod.denominator = 25;
 			std->framelines = zr->card.tvn[0]->Ht;
 			break;
 		case 1:
 			std->id = V4L2_STD_NTSC;
 			strncpy(std->name, "NTSC", 31);
-			std->frameperiod.numerator = 30000;
-			std->frameperiod.denominator = 1001;
+			std->frameperiod.numerator = 1001;
+			std->frameperiod.denominator = 30000;
 			std->framelines = zr->card.tvn[1]->Ht;
 			break;
 		case 2:
 			std->id = V4L2_STD_SECAM;
 			strncpy(std->name, "SECAM", 31);
-			std->frameperiod.numerator = 25;
-			std->frameperiod.denominator = 1;
+			std->frameperiod.numerator = 1;
+			std->frameperiod.denominator = 25;
 			std->framelines = zr->card.tvn[2]->Ht;
 			break;
 		}
