@@ -731,7 +731,7 @@ static struct i2c_algo_bit_data zoran_i2c_bit_data_template = {
 };
 
 static struct i2c_adapter zoran_i2c_adapter_template = {
-	.I2C_TEMPL_DEVNAME("zr36057"),
+	I2C_DEVNAME("zr36057"),
 	.id = I2C_HW_B_ZR36067,
 	.algo = NULL,
 	.client_register = zoran_i2c_client_register,
@@ -746,8 +746,8 @@ zoran_register_i2c (struct zoran *zr)
 	zr->i2c_algo.data = zr;
 	memcpy(&zr->i2c_adapter, &zoran_i2c_adapter_template,
 	       sizeof(struct i2c_adapter));
-	strncpy(I2C_DEVNAME(&zr->i2c_adapter), ZR_DEVNAME(zr),
-		sizeof(I2C_DEVNAME(&zr->i2c_adapter)) - 1);
+	strncpy(I2C_NAME(&zr->i2c_adapter), ZR_DEVNAME(zr),
+		sizeof(I2C_NAME(&zr->i2c_adapter)) - 1);
 	i2c_set_adapdata(&zr->i2c_adapter, zr);
 	zr->i2c_adapter.algo_data = &zr->i2c_algo;
 	return i2c_bit_add_bus(&zr->i2c_adapter);
@@ -1270,10 +1270,11 @@ find_zr36057 (void)
 			continue;
 		}
 
-		result =
-		    request_irq(zr->pci_dev->irq, zoran_irq,
-				SA_SHIRQ | SA_INTERRUPT, ZR_DEVNAME(zr),
-				(void *) zr);
+		result = request_irq(zr->pci_dev->irq,
+				     zoran_irq,
+				     SA_SHIRQ | SA_INTERRUPT,
+				     ZR_DEVNAME(zr),
+				     (void *) zr);
 		if (result < 0) {
 			if (result == -EINVAL) {
 				dprintk(1,

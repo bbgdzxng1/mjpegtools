@@ -34,6 +34,7 @@
 #include <linux/module.h>
 #include <linux/vmalloc.h>
 
+#include <linux/interrupt.h>
 #include <linux/proc_fs.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
@@ -1383,7 +1384,13 @@ error_handler (struct zoran *zr,
 	} while (0);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+#define IRQ_HANDLED
+#define IRQ_NONE
 void
+#else
+irqreturn_t
+#endif
 zoran_irq (int             irq,
 	   void           *dev_id,
 	   struct pt_regs *regs)
@@ -1411,7 +1418,7 @@ zoran_irq (int             irq,
 		}
 		zr->last_isr = stat;
 		spin_unlock_irqrestore(&zr->spinlock, flags);
-		return;
+		return IRQ_HANDLED;
 	}
 
 	spin_lock_irqsave(&zr->spinlock, flags);
@@ -1638,6 +1645,8 @@ zoran_irq (int             irq,
 		zr->last_isr = stat;
 	}
 	spin_unlock_irqrestore(&zr->spinlock, flags);
+
+	return IRQ_HANDLED;
 }
 
 void

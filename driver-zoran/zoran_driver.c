@@ -51,8 +51,8 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/pci.h>
-#include <linux/wrapper.h>
 
+#include <linux/interrupt.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 
@@ -357,7 +357,7 @@ v4l_fbuffer_alloc (struct file *file)
 			    virt_to_bus(mem);
 			for (off = 0; off < fh->v4l_buffers.buffer_size;
 			     off += PAGE_SIZE)
-				mem_map_reserve(MAP_NR(mem + off));
+				SetPageReserved(MAP_NR(mem + off));
 			dprintk(4,
 				KERN_INFO
 				"%s: v4l_fbuffer_alloc() - V4L frame %d mem 0x%lx (bus: 0x%lx)\n",
@@ -477,7 +477,7 @@ v4l_fbuffer_free (struct file *file)
 			mem = fh->v4l_buffers.buffer[i].fbuffer;
 			for (off = 0; off < fh->v4l_buffers.buffer_size;
 			     off += PAGE_SIZE)
-				mem_map_unreserve(MAP_NR(mem + off));
+				ClearPageReserved(MAP_NR(mem + off));
 			kfree((void *) fh->v4l_buffers.buffer[i].fbuffer);
 		}
 #if defined(CONFIG_BIGPHYS_AREA)
@@ -572,7 +572,7 @@ jpg_fbuffer_alloc (struct file *file)
 			    ((fh->jpg_buffers.buffer_size / 4) << 1) | 1;
 			for (off = 0; off < fh->jpg_buffers.buffer_size;
 			     off += PAGE_SIZE)
-				mem_map_reserve(MAP_NR(mem + off));
+				SetPageReserved(MAP_NR(mem + off));
 		} else {
 			/* jpg_bufsize is allreay page aligned */
 			for (j = 0;
@@ -593,7 +593,7 @@ jpg_fbuffer_alloc (struct file *file)
 				fh->jpg_buffers.buffer[i].frag_tab[2 * j +
 								   1] =
 				    (PAGE_SIZE / 4) << 1;
-				mem_map_reserve(MAP_NR(mem));
+				SetPageReserved(MAP_NR(mem));
 			}
 
 			fh->jpg_buffers.buffer[i].frag_tab[2 * j - 1] |= 1;
@@ -639,7 +639,7 @@ jpg_fbuffer_free (struct file *file)
 				for (off = 0;
 				     off < fh->jpg_buffers.buffer_size;
 				     off += PAGE_SIZE)
-					mem_map_unreserve(MAP_NR
+					ClearPageReserved(MAP_NR
 							  (mem + off));
 				kfree((void *) mem);
 				fh->jpg_buffers.buffer[i].frag_tab[0] = 0;
@@ -652,7 +652,7 @@ jpg_fbuffer_free (struct file *file)
 				if (!fh->jpg_buffers.buffer[i].
 				    frag_tab[2 * j])
 					break;
-				mem_map_unreserve(MAP_NR
+				ClearPageReserved(MAP_NR
 						  (bus_to_virt
 						   (fh->jpg_buffers.
 						    buffer[i].frag_tab[2 *

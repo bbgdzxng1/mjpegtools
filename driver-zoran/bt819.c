@@ -47,7 +47,6 @@
 #include <linux/sched.h>
 #include <asm/segment.h>
 #include <linux/types.h>
-#include <linux/wrapper.h>
 
 #include <linux/videodev.h>
 #include <linux/version.h>
@@ -313,7 +312,7 @@ bt819_command (struct i2c_client *client,
 		res |= DECODER_STATUS_COLOR;
 		*iarg = res;
 
-		dprintk(1, KERN_INFO "%s: get status %x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: get status %x\n", I2C_NAME(client),
 			*iarg);
 	}
 		break;
@@ -323,7 +322,7 @@ bt819_command (struct i2c_client *client,
 		int *iarg = arg;
 		struct timing *timing = NULL;
 
-		dprintk(1, KERN_INFO "%s: set norm %x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set norm %x\n", I2C_NAME(client),
 			*iarg);
 
 		switch (*iarg) {
@@ -353,7 +352,7 @@ bt819_command (struct i2c_client *client,
 			dprintk(1,
 				KERN_ERR
 				"%s: unsupported norm %d\n",
-				I2C_DEVNAME(client), *iarg);
+				I2C_NAME(client), *iarg);
 			return -EINVAL;
 		}
 
@@ -379,7 +378,7 @@ bt819_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set input %x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set input %x\n", I2C_NAME(client),
 			*iarg);
 
 		if (*iarg < 0 || *iarg > 7) {
@@ -404,7 +403,7 @@ bt819_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set output %x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set output %x\n", I2C_NAME(client),
 			*iarg);
 
 		/* not much choice of outputs */
@@ -420,7 +419,7 @@ bt819_command (struct i2c_client *client,
 		int enable = (*iarg != 0);
 
 		dprintk(1, KERN_INFO "%s: enable output %x\n",
-			I2C_DEVNAME(client), *iarg);
+			I2C_NAME(client), *iarg);
 
 		if (decoder->enable != enable) {
 			decoder->enable = enable;
@@ -441,7 +440,7 @@ bt819_command (struct i2c_client *client,
 		dprintk(1,
 			KERN_INFO
 			"%s: set picture brightness %d contrast %d colour %d\n",
-			I2C_DEVNAME(client), pic->brightness, pic->contrast,
+			I2C_NAME(client), pic->brightness, pic->contrast,
 			pic->colour);
 
 
@@ -528,7 +527,9 @@ static struct i2c_driver i2c_driver_bt819;
 static int
 bt819_detect_client (struct i2c_adapter *adapter,
 		     int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		     unsigned short      flags,
+#endif
 		     int                 kind)
 {
 	int i, id;
@@ -574,15 +575,15 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	id = bt819_read(client, 0x17);
 	switch (id & 0xf0) {
 	case 0x70:
-	        snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+	        snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 			 "bt819a[%d]", client->id);
 		break;
 	case 0x60:
-		snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 			 "bt817a[%d]", client->id);
 		break;
 	case 0x20:
-		snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 			 "bt815a[%d]", client->id);
 		break;
 	default:
@@ -605,12 +606,12 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	i = bt819_init(client);
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init status %d\n",
-			I2C_DEVNAME(client), i);
+			I2C_NAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version 0x%x at address 0x%x\n",
-			I2C_DEVNAME(client), id & 0x0f,
+			I2C_NAME(client), id & 0x0f,
 			client->addr << 1);
 	}
 

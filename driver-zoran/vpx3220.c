@@ -356,7 +356,7 @@ vpx3220_command (struct i2c_client *client,
 		struct video_decoder_capability *cap = arg;
 
 		dprintk(1, KERN_DEBUG "%s: DECODER_GET_CAPABILITIES\n",
-			I2C_DEVNAME(client));
+			I2C_NAME(client));
 
 		cap->flags = VIDEO_DECODER_PAL |
 			     VIDEO_DECODER_NTSC |
@@ -373,11 +373,11 @@ vpx3220_command (struct i2c_client *client,
 		int res = 0, status;
 
 		dprintk(1, KERN_INFO "%s: DECODER_GET_STATUS\n",
-			I2C_DEVNAME(client));
+			I2C_NAME(client));
 
 		status = vpx3220_fp_read(client, 0x0f3);
 
-		dprintk(1, KERN_INFO "%s: status: 0x%04x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: status: 0x%04x\n", I2C_NAME(client),
 			status);
 
 		if (status < 0)
@@ -416,28 +416,28 @@ vpx3220_command (struct i2c_client *client,
 		int *iarg = arg, data;
 
 		dprintk(1, KERN_DEBUG "%s: DECODER_SET_NORM %d\n",
-			I2C_DEVNAME(client), *iarg);
+			I2C_NAME(client), *iarg);
 		switch (*iarg) {
 
 		case VIDEO_MODE_NTSC:
 			vpx3220_write_fp_block(client, init_ntsc,
 					       sizeof(init_ntsc) >> 1);
 			dprintk(1, KERN_INFO "%s: norm switched to NTSC\n",
-				I2C_DEVNAME(client));
+				I2C_NAME(client));
 			break;
 
 		case VIDEO_MODE_PAL:
 			vpx3220_write_fp_block(client, init_pal,
 					       sizeof(init_pal) >> 1);
 			dprintk(1, KERN_INFO "%s: norm switched to PAL\n",
-				I2C_DEVNAME(client));
+				I2C_NAME(client));
 			break;
 
 		case VIDEO_MODE_SECAM:
 			vpx3220_write_fp_block(client, init_secam,
 					       sizeof(init_secam) >> 1);
 			dprintk(1, KERN_INFO "%s: norm switched to SECAM\n",
-				I2C_DEVNAME(client));
+				I2C_NAME(client));
 			break;
 
 		case VIDEO_MODE_AUTO:
@@ -445,7 +445,7 @@ vpx3220_command (struct i2c_client *client,
 			data = vpx3220_fp_read(client, 0xf2) & 0x20;
 			vpx3220_fp_write(client, 0xf2, 0x00c0 | data);
 			dprintk(1, KERN_INFO "%s: norm switched to Auto\n",
-				I2C_DEVNAME(client));
+				I2C_NAME(client));
 			break;
 
 		default:
@@ -474,7 +474,7 @@ vpx3220_command (struct i2c_client *client,
 			return -EINVAL;
 
 		dprintk(1, KERN_INFO "%s: input switched to %s\n",
-			I2C_DEVNAME(client), inputs[*iarg]);
+			I2C_NAME(client), inputs[*iarg]);
 
 		vpx3220_write(client, 0x33, input[*iarg][0]);
 
@@ -505,7 +505,7 @@ vpx3220_command (struct i2c_client *client,
 		int *iarg = arg;
 
 		dprintk(1, KERN_DEBUG "%s: DECODER_ENABLE_OUTPUT %d\n",
-			I2C_DEVNAME(client), *iarg);
+			I2C_NAME(client), *iarg);
 
 		vpx3220_write(client, 0xf2, (*iarg ? 0x1b : 0x00));
 	}
@@ -618,7 +618,9 @@ vpx3220_detach_client (struct i2c_client *client)
 static int
 vpx3220_detect_client (struct i2c_adapter *adapter,
 		       int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		       unsigned short      flags,
+#endif
 		       int                 kind)
 {
 	int err;
@@ -664,15 +666,15 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 		    vpx3220_read(client, 0x01);
 		switch (pn) {
 		case 0x4680:
-			snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+			snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 				 "vpx3220a[%d]", client->id);
 			break;
 		case 0x4260:
-			snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+			snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 				 "vpx3216b[%d]", client->id);
 			break;
 		case 0x4280:
-			snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+			snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 				 "vpx3214c[%d]", client->id);
 			break;
 		default:
@@ -684,7 +686,7 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 			return 0;
 		}
 	} else {
-		snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+		snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 			 "forced vpx32xx[%d]",
 		client->id);
 	}
@@ -712,7 +714,7 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 	}
 
 	dprintk(1, KERN_INFO "%s: vpx32xx client found at address 0x%02x\n",
-		I2C_DEVNAME(client), client->addr << 1);
+		I2C_NAME(client), client->addr << 1);
 
 	vpx3220_init_client(client);
 

@@ -47,7 +47,6 @@
 #include <linux/sched.h>
 #include <asm/segment.h>
 #include <linux/types.h>
-#include <linux/wrapper.h>
 
 #include <linux/videodev.h>
 #include <linux/version.h>
@@ -271,7 +270,7 @@ adv7170_command (struct i2c_client *client,
 		int iarg = *(int *) arg;
 
 		dprintk(1, KERN_DEBUG "%s_command: set norm %d",
-			I2C_DEVNAME(client), iarg);
+			I2C_NAME(client), iarg);
 
 		switch (iarg) {
 
@@ -295,11 +294,11 @@ adv7170_command (struct i2c_client *client,
 
 		default:
 			dprintk(1, KERN_ERR "%s: illegal norm: %d\n",
-			       I2C_DEVNAME(client), iarg);
+			       I2C_NAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_NAME(client),
 			norms[iarg]);
 		encoder->norm = iarg;
 	}
@@ -314,7 +313,7 @@ adv7170_command (struct i2c_client *client,
 		 *iarg = 2: color bar */
 
 		dprintk(1, KERN_DEBUG "%s_command: set input from %s\n",
-			I2C_DEVNAME(client),
+			I2C_NAME(client),
 			iarg == 0 ? "decoder" : "ZR36060");
 
 		switch (iarg) {
@@ -339,11 +338,11 @@ adv7170_command (struct i2c_client *client,
 
 		default:
 			dprintk(1, KERN_ERR "%s: illegal input: %d\n",
-				I2C_DEVNAME(client), iarg);
+				I2C_NAME(client), iarg);
 			return -EINVAL;
 
 		}
-		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", I2C_NAME(client),
 			inputs[iarg]);
 		encoder->input = iarg;
 	}
@@ -414,7 +413,9 @@ static struct i2c_driver i2c_driver_adv7170;
 static int
 adv7170_detect_client (struct i2c_adapter *adapter,
 		       int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		       unsigned short      flags,
+#endif
 		       int                 kind)
 {
 	int i;
@@ -450,7 +451,7 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 		/* We should never get here!!! */
 		return 0;
 	}
-	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+	snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 		"%s[%d]", dname, client->id);
 
 	encoder = kmalloc(sizeof(struct adv7170), GFP_KERNEL);
@@ -476,11 +477,11 @@ adv7170_detect_client (struct i2c_adapter *adapter,
 		i = adv7170_write(client, 0x07, TR0MODE);
 		i = adv7170_read(client, 0x12);
 		dprintk(1, KERN_INFO "%s_attach: rev. %d at 0x%02x\n",
-			I2C_DEVNAME(client), i & 1, client->addr << 1);
+			I2C_NAME(client), i & 1, client->addr << 1);
 	}
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init error 0x%x\n",
-		       I2C_DEVNAME(client), i);
+		       I2C_NAME(client), i);
 	}
 
 	return 0;
@@ -492,7 +493,7 @@ adv7170_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"adv7170.c: starting probe for adapter %s (0x%x)\n",
-		I2C_DEVNAME(adapter), adapter->id);
+		I2C_NAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &adv7170_detect_client);
 }
 

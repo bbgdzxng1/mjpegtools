@@ -43,7 +43,6 @@
 #include <linux/sched.h>
 #include <asm/segment.h>
 #include <linux/types.h>
-#include <linux/wrapper.h>
 
 #include <linux/videodev.h>
 #include <linux/version.h>
@@ -213,7 +212,7 @@ saa7111_command (struct i2c_client *client,
 		for (i = 0; i < 32; i += 16) {
 			int j;
 
-			printk(KERN_DEBUG "%s: %03x", I2C_DEVNAME(client), i);
+			printk(KERN_DEBUG "%s: %03x", I2C_NAME(client), i);
 			for (j = 0; j < 16; ++j) {
 				printk(" %02x",
 				       saa7111_read(client, i + j));
@@ -244,7 +243,7 @@ saa7111_command (struct i2c_client *client,
 		int res;
 
 		status = saa7111_read(client, 0x1f);
-		dprintk(1, KERN_DEBUG "%s status: 0x%02x\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_DEBUG "%s status: 0x%02x\n", I2C_NAME(client),
 			status);
 		res = 0;
 		if ((status & (1 << 6)) == 0) {
@@ -466,7 +465,9 @@ static struct i2c_driver i2c_driver_saa7111;
 static int
 saa7111_detect_client (struct i2c_adapter *adapter,
 		       int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		       unsigned short      flags,
+#endif
 		       int                 kind)
 {
 	int i;
@@ -491,7 +492,7 @@ saa7111_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_saa7111;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = saa7111_i2c_id++;
-	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+	snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 		"saa7111[%d]", client->id);
 
 	decoder = kmalloc(sizeof(struct saa7111), GFP_KERNEL);
@@ -519,12 +520,12 @@ saa7111_detect_client (struct i2c_adapter *adapter,
 	i = saa7111_write_block(client, init, sizeof(init));
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach error: init status %d\n",
-			I2C_DEVNAME(client), i);
+			I2C_NAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version %x at address 0x%x\n",
-			I2C_DEVNAME(client), saa7111_read(client, 0x00) >> 4,
+			I2C_NAME(client), saa7111_read(client, 0x00) >> 4,
 			client->addr << 1);
 	}
 
@@ -537,7 +538,7 @@ saa7111_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"saa7111.c: starting probe for adapter %s (0x%x)\n",
-		I2C_DEVNAME(adapter), adapter->id);
+		I2C_NAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &saa7111_detect_client);
 }
 

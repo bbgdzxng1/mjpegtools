@@ -47,7 +47,6 @@
 #include <linux/sched.h>
 #include <asm/segment.h>
 #include <linux/types.h>
-#include <linux/wrapper.h>
 
 #include <linux/videodev.h>
 #include <linux/version.h>
@@ -121,7 +120,7 @@ bt856_dump (struct i2c_client *client)
 {
 	int i;
 	struct bt856 *encoder = i2c_get_clientdata(client);
-	printk(KERN_INFO "%s: register dump:", I2C_DEVNAME(client));
+	printk(KERN_INFO "%s: register dump:", I2C_NAME(client));
 	for (i = 0xd6; i <= 0xde; i += 2)
 		printk(" %02x", encoder->reg[i - REG_OFFSET]);
 	printk("\n");
@@ -172,7 +171,7 @@ bt856_command (struct i2c_client *client,
 		struct video_encoder_capability *cap = arg;
 
 		dprintk(1, KERN_INFO "%s: get capabilities\n",
-			I2C_DEVNAME(client));
+			I2C_NAME(client));
 
 		cap->flags = VIDEO_ENCODER_PAL |
 			     VIDEO_ENCODER_NTSC |
@@ -186,7 +185,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set norm %d\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set norm %d\n", I2C_NAME(client),
 			*iarg);
 
 		switch (*iarg) {
@@ -215,7 +214,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set input %d\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set input %d\n", I2C_NAME(client),
 			*iarg);
 
 		/* We only have video bus.
@@ -254,7 +253,7 @@ bt856_command (struct i2c_client *client,
 	{
 		int *iarg = arg;
 
-		dprintk(1, KERN_INFO "%s: set output %d\n", I2C_DEVNAME(client),
+		dprintk(1, KERN_INFO "%s: set output %d\n", I2C_NAME(client),
 			*iarg);
 
 		/* not much choice of outputs */
@@ -271,7 +270,7 @@ bt856_command (struct i2c_client *client,
 		encoder->enable = !!*iarg;
 
 		dprintk(1, KERN_INFO "%s: enable output %d\n",
-			I2C_DEVNAME(client), encoder->enable);
+			I2C_NAME(client), encoder->enable);
 	}
 		break;
 
@@ -317,7 +316,9 @@ static struct i2c_driver i2c_driver_bt856;
 static int
 bt856_detect_client (struct i2c_adapter *adapter,
 		     int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		     unsigned short      flags,
+#endif
 		     int                 kind)
 {
 	int i;
@@ -342,7 +343,7 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_bt856;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = bt856_i2c_id++;
-	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+	snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 		"bt856[%d]", client->id);
 
 	encoder = kmalloc(sizeof(struct bt856), GFP_KERNEL);
@@ -387,7 +388,7 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	if (debug != 0)
 		bt856_dump(client);
 
-	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", I2C_DEVNAME(client),
+	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", I2C_NAME(client),
 		client->addr << 1);
 
 	return 0;
@@ -399,7 +400,7 @@ bt856_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"bt856.c: starting probe for adapter %s (0x%x)\n",
-		I2C_DEVNAME(adapter), adapter->id);
+		I2C_NAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &bt856_detect_client);
 }
 

@@ -5,8 +5,6 @@
 #ifndef __ZORAN_I2C_COMPAT_H__
 #define __ZORAN_I2C_COMPAT_H__
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
-
 #ifndef I2C_DRIVERID_ADV7175
 #define I2C_DRIVERID_ADV7175 48 /* same as in 2.5.x */
 #endif
@@ -41,6 +39,8 @@
 #define PCI_DEVICE_ID_LML_33R10 0x8a02
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+
 static inline void *
 i2c_get_adapdata (struct i2c_adapter *adap)
 {
@@ -67,15 +67,12 @@ i2c_set_clientdata (struct i2c_client *client,
 	client->data = data;
 }
 
-#define I2C_DEVNAME(s) (s)->name
-#define I2C_TEMPL_DEVNAME(n) name = n
+#define I2C_NAME(s) (s)->name
+#define I2C_DEVNAME(n) .name = n
 
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 
-#define I2C_DEVNAME(s) (s)->dev.name
-#define I2C_TEMPL_DEVNAME(n) dev = { \
-		.name = n \
-	}
+#define I2C_NAME(s) (s)->dev.name
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 

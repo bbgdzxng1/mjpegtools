@@ -43,7 +43,6 @@
 #include <linux/sched.h>
 #include <asm/segment.h>
 #include <linux/types.h>
-#include <linux/wrapper.h>
 
 #include <linux/videodev.h>
 #include <linux/version.h>
@@ -410,7 +409,9 @@ static struct i2c_driver i2c_driver_saa7185;
 static int
 saa7185_detect_client (struct i2c_adapter *adapter,
 		       int                 address,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 		       unsigned short      flags,
+#endif
 		       int                 kind)
 {
 	int i;
@@ -435,7 +436,7 @@ saa7185_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_saa7185;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = saa7185_i2c_id++;
-	snprintf(I2C_DEVNAME(client), sizeof(I2C_DEVNAME(client)) - 1,
+	snprintf(I2C_NAME(client), sizeof(I2C_NAME(client)) - 1,
 		"saa7185[%d]", client->id);
 
 	encoder = kmalloc(sizeof(struct saa7185), GFP_KERNEL);
@@ -461,12 +462,12 @@ saa7185_detect_client (struct i2c_adapter *adapter,
 	}
 	if (i < 0) {
 		dprintk(1, KERN_ERR "%s_attach: init error %d\n",
-			I2C_DEVNAME(client), i);
+			I2C_NAME(client), i);
 	} else {
 		dprintk(1,
 			KERN_INFO
 			"%s_attach: chip version %d at address 0x%x\n",
-			I2C_DEVNAME(client), saa7185_read(client) >> 5,
+			I2C_NAME(client), saa7185_read(client) >> 5,
 			client->addr << 1);
 	}
 
@@ -479,7 +480,7 @@ saa7185_attach_adapter (struct i2c_adapter *adapter)
 	dprintk(1,
 		KERN_INFO
 		"saa7185.c: starting probe for adapter %s (0x%x)\n",
-		I2C_DEVNAME(adapter), adapter->id);
+		I2C_NAME(adapter), adapter->id);
 	return i2c_probe(adapter, &addr_data, &saa7185_detect_client);
 }
 
