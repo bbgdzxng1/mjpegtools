@@ -436,13 +436,6 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 			{ 0, "Internal/comp" }
 		},
 		.norms = 3,
-#if 0
-		.tvn = {
-			&f50ccir601_dc10,
-			&f60ccir601_dc10,
-			&f50ccir601_dc10
-		},
-#endif
 		.tvn = {
 			&f50sqpixel_dc10,
 			&f60sqpixel_dc10,
@@ -526,13 +519,6 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 			{ 0, "Internal/comp" }
 		},
 		.norms = 3,
-#if 	0
-		.tvn = {
-			&f50ccir601_dc10,
-			&f60ccir601_dc10,
-			&f50ccir601_dc10
-		},
-#endif
 		.tvn = {
 			&f50sqpixel_dc10,
 			&f60sqpixel_dc10,
@@ -563,13 +549,6 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 			{ 0, "Internal/comp" }
 		},
 		.norms = 3,
-#if 0
-		vn = {
-			&f50ccir601_dc10,
-			&f60ccir601_dc10,
-			&f50ccir601_dc10
-		},
-#endif
 		.tvn = {
 			&f50sqpixel_dc10,
 			&f60sqpixel_dc10,
@@ -1308,8 +1287,13 @@ find_zr36057 (void)
 			}
 		}
 
-		if (card_num == -1)
-			BUG();
+		if (card_num < 0 || card_num >= NUM_CARDS) {
+			dprintk(2,
+				KERN_ERR
+				"%s: find_zr36057() - invalid cardnum %d\n",
+				zr->name, card_num);
+			continue;
+		}
 
 		zr->card = &zoran_cards[card_num];
 		snprintf(zr->name, sizeof(zr->name),
