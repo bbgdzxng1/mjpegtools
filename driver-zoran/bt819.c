@@ -408,6 +408,22 @@ static int bt819_command(struct i2c_client *client, unsigned int cmd, void * arg
 
 /* ----------------------------------------------------------------------- */
 
+static void
+bt819_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+bt819_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -478,6 +494,9 @@ bt819_detect_client (struct i2c_adapter *adapter,
       printk(KERN_INFO "%s_attach: chip version %x at address 0x%x\n", 
 		client->name, bt819_read(client, 0x17) & 0x0f, client->addr<<1);
    }
+
+   bt819_inc_use(client);
+
    return 0;
 }
 
@@ -500,25 +519,10 @@ bt819_detach_client(struct i2c_client *client)
       return err;
    }
 
+   bt819_dec_use(client);
    kfree(decoder);
    kfree(client);
    return 0;
-}
-
-static void
-bt819_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-bt819_dec_use(struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_DEC_USE_COUNT;
-#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -532,8 +536,6 @@ struct i2c_driver i2c_driver_bt819 = {
    attach_adapter:	bt819_attach_adapter,
    detach_client:	bt819_detach_client,
    command:		bt819_command,
-   inc_use:		bt819_inc_use,
-   dec_use:		bt819_dec_use
 };
 
 EXPORT_NO_SYMBOLS;

@@ -360,6 +360,22 @@ adv7175_command(struct i2c_client *client, unsigned int cmd, void * arg)
 
 /* ----------------------------------------------------------------------- */
 
+static void
+adv7175_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+adv7175_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -439,6 +455,8 @@ adv7175_detect_client (struct i2c_adapter *adapter,
       printk(KERN_ERR "%s_attach: init error 0x%x\n", client->name, i);
    }
 
+   adv7175_inc_use(client);
+
    return 0;
 }
 
@@ -461,25 +479,10 @@ adv7175_detach_client(struct i2c_client *client)
       return err;
    }
 
+   adv7175_dec_use(client);
    kfree(encoder);
    kfree(client);
    return 0;
-}
-
-static void
-adv7175_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-adv7175_dec_use(struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_DEC_USE_COUNT;
-#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -493,8 +496,6 @@ struct i2c_driver i2c_driver_adv717x = {
    attach_adapter:	adv7175_attach_adapter,
    detach_client:	adv7175_detach_client,
    command:		adv7175_command,
-   inc_use:		adv7175_inc_use,
-   dec_use:		adv7175_dec_use
 };
 
 EXPORT_NO_SYMBOLS;

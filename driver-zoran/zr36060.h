@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.h,v 1.1.1.1.2.1 2002-08-01 11:05:44 rbultje Exp $
+   $Id: zr36060.h,v 1.1.1.1.2.2 2002-10-17 18:09:27 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -44,6 +44,7 @@ struct zr36060 {
     __u16                 bitrate_ctrl;
 
     __u32                 total_code_vol;
+    __u32                 real_code_vol;
     __u16                 max_block_vol;
 
     __u8                  h_samp_ratio[8];

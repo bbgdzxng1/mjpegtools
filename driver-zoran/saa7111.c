@@ -357,6 +357,22 @@ static int saa7111_command(struct i2c_client *client, unsigned int cmd, void * a
 
 /* ----------------------------------------------------------------------- */
 
+static void
+saa7111_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+saa7111_dec_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -424,6 +440,9 @@ saa7111_detect_client (struct i2c_adapter *adapter,
       printk(KERN_INFO "%s_attach: chip version %x at address 0x%x\n",
          client->name, saa7111_read(client, 0x00)>>4, client->addr<<1);
    }
+
+   saa7111_inc_use(client);
+
    return 0;
 }
 
@@ -446,25 +465,10 @@ saa7111_detach_client(struct i2c_client *client)
       return err;
    }
 
+   saa7111_dec_use(client);
    kfree(decoder);
    kfree(client);
    return 0;
-}
-
-static void
-saa7111_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-saa7111_dec_use(struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_DEC_USE_COUNT;
-#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -479,8 +483,6 @@ struct i2c_driver i2c_driver_saa7111 =
    attach_adapter:	saa7111_attach_adapter,
    detach_client:	saa7111_detach_client,
    command:		saa7111_command,
-   inc_use:		saa7111_inc_use,
-   dec_use:		saa7111_dec_use
 };
 
 EXPORT_NO_SYMBOLS;

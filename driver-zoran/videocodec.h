@@ -6,7 +6,7 @@
 
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: videocodec.h,v 1.1.2.2 2002-10-07 12:55:43 rbultje Exp $
+   $Id: videocodec.h,v 1.1.2.3 2002-10-17 18:09:27 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -241,9 +241,7 @@ struct vfe_settings {
 #define VIDEO_CAPTURE_ODD		0
 #define VIDEO_CAPTURE_EVEN		1
 */
-	__u16	field_per_buff;		/* .. */
 	__u16	quality;		/* quality of the video */
-	__u32	max_buffer_size;	/* maximum size per captured field */	
 };
 
 struct tvnorm {

@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.6 2002-10-11 19:57:27 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.7 2002-10-17 18:09:27 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -472,12 +472,12 @@ static void zr36060_init(struct zr36060 *ptr)
                 /* setup misc. data for compression (target code sizes) */
 
                 /* size of compressed code to reach without header data */
-                sum = ptr->total_code_vol - sum;
+                sum = ptr->real_code_vol - sum;
                 bitcnt = sum<<3;               /* need the size in bits */
 
                 tmp = bitcnt>>16; 
                 DEBUG2("%s: code: csize=%d, tot=%d, bit=%ld, highbits=%ld\n",
-                       ptr->name,sum, ptr->total_code_vol,bitcnt,tmp);
+                       ptr->name,sum, ptr->real_code_vol,bitcnt,tmp);
                 zr36060_write(ptr, ZR060_TCV_NET_HI,tmp>>8);
                 zr36060_write(ptr, ZR060_TCV_NET_MH,tmp&0xff);
                 tmp = bitcnt&0xffff;
@@ -704,22 +704,23 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	zr36060_write(ptr, ZR060_SWR_HEND_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_SWR_HEND_LO, (reg >> 0) & 0xff);
 
-	size = (norm->Ha / 2) * (norm->Wa) / (cap->decimation & 0xff) / (cap->decimation >> 8);
+	size = ptr->width * ptr->height;
         blocks = size / 64;
 	/* Target compressed field size in bits: */
 	size = size * 16;	/* uncompressed size in bits */
-	size = size * cap->quality / 400;	/* quality = 100 is a compression ratio 1:4 */
+	size = size * cap->quality / 200;	/* quality = 100 is a compression ratio 1:2 */
 	/* Lower limit (arbitrary, 1 KB) */
 	if (size < 8192)
 		size = 8192;
 	/* Upper limit: 6/8 of the code buffers */
-	if (size * cap->field_per_buff > cap->max_buffer_size * 6)
-		size = cap->max_buffer_size * 6 / cap->field_per_buff;
+	if (size > ptr->total_code_vol * 6)
+		size = ptr->total_code_vol * 6;
 	reg = size / (blocks * 2);
 	if (reg > ptr->max_block_vol)
                 reg = ptr->max_block_vol;	/* 480 bits/block, does 0xff represents unlimited? */
 	/* quality setting */
 	zr36060_write(ptr, ZR060_MBCVR, reg);
+	ptr->real_code_vol = size>>3; /* in bytes */
 
         return 0;
 }
@@ -767,6 +768,7 @@ static int zr36060_control(struct videocodec *codec, int type, int size,
                 case CODEC_S_JPEG_TDS_BYTE: /* get target volume in byte */
                         if (size!=sizeof(int)) return -EFAULT;
                         ptr->total_code_vol = *ival;
+                        ptr->real_code_vol = (ptr->total_code_vol*6)>>3;
                         break;
 
                 case CODEC_G_JPEG_SCALE: /* get scaling factor */
@@ -878,6 +880,7 @@ int zr36060_setup(struct videocodec *codec)
         ptr->width=384;
         ptr->height=288;
         ptr->total_code_vol=16000;	/* CHECKME */
+        ptr->real_code_vol = (ptr->total_code_vol*6)>>3;
         ptr->max_block_vol=240;		/* CHECKME, was 120 is 240 */
         ptr->scalefact=0x100;
         ptr->dri=1;			/* CHECKME, was 8 is 1 */

@@ -375,6 +375,22 @@ saa7110_command(struct i2c_client *client, unsigned int cmd, void *arg)
 
 /* ----------------------------------------------------------------------- */
 
+static void
+saa7110_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+	        MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+saa7110_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+	        MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -457,6 +473,8 @@ saa7110_detect_client (struct i2c_adapter *adapter,
 		//saa7110_write(client, 0x2E, 0x9A);
 	}
 
+	saa7110_inc_use(client);
+
         //saa7110_selmux(client,0);
         //determine_norm(client);
 	/* setup and implicit mode 0 select has been performed */
@@ -482,25 +500,11 @@ saa7110_detach_client(struct i2c_client *client)
 		return err;
 	}
 
+	saa7110_dec_use(client);
 	kfree(decoder);
 	kfree(client);
+
 	return 0;
-}
-
-static void
-saa7110_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-saa7110_dec_use(struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -515,8 +519,6 @@ struct i2c_driver i2c_driver_saa7110 =
 	attach_adapter:	saa7110_attach_adapter,
 	detach_client:	saa7110_detach_client,
 	command:	saa7110_command,
-	inc_use:	saa7110_inc_use,
-	dec_use:	saa7110_dec_use
 };
 
 EXPORT_NO_SYMBOLS;

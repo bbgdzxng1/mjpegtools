@@ -405,6 +405,20 @@ static int vpx3220_init_client (struct i2c_client *client)
  * Client managment code
  */
 
+static void vpx3220_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+	MOD_INC_USE_COUNT;
+#endif
+}
+
+static void vpx3220_dec_use (struct i2c_client *client)
+{
+#ifdef MODULE
+	MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -427,6 +441,7 @@ static int vpx3220_detach_client (struct i2c_client *client)
 		return err;
 	}
 
+	vpx3220_dec_use(client);
 	kfree(client);
 	return 0;
 }
@@ -499,6 +514,7 @@ static int vpx3220_detect_client (struct i2c_adapter *adapter, int address,
 	printk (KERN_INFO __func__ ": %s found at 0x%02x\n", client->name, client->addr<<1);
 
 	vpx3220_init_client(client);
+	vpx3220_inc_use(client);
 
 	return 0;
 }
@@ -512,20 +528,6 @@ static int vpx3220_attach_adapter (struct i2c_adapter *adapter)
 	return ret;
 }
 
-static void vpx3220_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_INC_USE_COUNT;
-#endif
-}
-
-static void vpx3220_dec_use (struct i2c_client *client)
-{
-#ifdef MODULE
-	MOD_DEC_USE_COUNT;
-#endif
-}
-
 /* -----------------------------------------------------------------------
  * Driver initialization and cleanup code
  */
@@ -537,8 +539,6 @@ static struct i2c_driver vpx3220_i2c_driver = {
 	attach_adapter:	&vpx3220_attach_adapter,
 	detach_client:	&vpx3220_detach_client,
 	command:	&vpx3220_command,
-	inc_use:	&vpx3220_inc_use,
-	dec_use:	&vpx3220_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;

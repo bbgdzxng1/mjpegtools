@@ -333,6 +333,22 @@ saa7185_command(struct i2c_client *client, unsigned int cmd, void * arg)
 
 /* ----------------------------------------------------------------------- */
 
+static void
+saa7185_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+saa7185_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_DEC_USE_COUNT;
+#endif
+}
+
 /*
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
@@ -398,6 +414,8 @@ saa7185_detect_client (struct i2c_adapter *adapter,
          client->name, saa7185_read(client)>>5, client->addr<<1);
    }
 
+   saa7185_inc_use(client);
+
    return 0;
 }
 
@@ -423,25 +441,10 @@ saa7185_detach_client(struct i2c_client *client)
    saa7185_write(client, 0x61, (encoder->reg[0x61]) | 0x40); /* SW: output off is active */
    //saa7185_write(client, 0x3a, (encoder->reg[0x3a]) | 0x80); /* SW: color bar */
 
+   saa7185_dec_use(client);
    kfree(encoder);
    kfree(client);
    return 0;
-}
-
-static void
-saa7185_inc_use (struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_INC_USE_COUNT;
-#endif
-}
-
-static void
-saa7185_dec_use(struct i2c_client *client)
-{
-#ifdef MODULE
-   MOD_DEC_USE_COUNT;
-#endif
 }
 
 /* ----------------------------------------------------------------------- */
@@ -455,8 +458,6 @@ struct i2c_driver i2c_driver_saa7185 = {
    attach_adapter:	saa7185_attach_adapter,
    detach_client:	saa7185_detach_client,
    command:		saa7185_command,
-   inc_use:		saa7185_inc_use,
-   dec_use:		saa7185_dec_use
 };
 
 EXPORT_NO_SYMBOLS;
