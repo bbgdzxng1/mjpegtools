@@ -211,7 +211,30 @@ static const unsigned short init_pal[] = {
 	0xf0, 0x173,		/* 13.5 MHz transport, Forced
 				 * mode, latch windows */
 	0xf2, 0x3d1,		/* PAL B,G,H,I, composite input */
-	0xe7, 0x26e,		/* PAL */
+	0xe7, 0x26e,		/* PAL/SECAM */
+};
+
+static const unsigned short init_secam[] = {
+	0x88, 5,		/* Window 1 vertical begin */
+	0x89, 288 + 16,		/* Vertical lines in (16 lines
+				 * skipped by the VFE) */
+	0x8a, 288 + 16,		/* Vertical lines out (16 lines
+				 * skipped by the VFE) */
+	0x8b, 10,		/* Horizontal begin */
+	0x8c, 768,		/* Horizontal length */
+	0x8d, 768,		/* Number of pixels */
+	0x8e, 318,		/* Window 2 vertical begin */
+	0x89, 288 + 16,		/* Vertical lines in (16 lines
+				 * skipped by the VFE) */
+	0x8a, 288 + 16,		/* Vertical lines out (16 lines
+				 * skipped by the VFE) */
+	0x91, 10,		/* Horizontal begin */
+	0x92, 768,		/* Horizontal length */
+	0x93, 768,		/* Number of pixels */
+	0xf0, 0x173,		/* 13.5 MHz transport, Forced
+				 * mode, latch windows */
+	0xf2, 0x3d5,		/* SECAM, composite input */
+	0xe7, 0x26e,		/* PAL/SECAM */
 };
 
 static const unsigned char init_common[] = {
@@ -367,7 +390,9 @@ vpx3220_command (struct i2c_client *client,
 			break;
 
 		case VIDEO_MODE_SECAM:
-			return -EINVAL;
+			vpx3220_write_fp_block(client, init_secam,
+					       sizeof(init_secam) > 1);
+			break;
 
 		case VIDEO_MODE_AUTO:
 			/* FIXME This is only preliminary support */
