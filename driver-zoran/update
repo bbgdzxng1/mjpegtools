@@ -75,8 +75,7 @@ do
                 exit 1
             fi
             $SUDO /sbin/insmod ./bt819.o
-            #$SUDO /sbin/insmod ./bt856.o
-            echo "playback for $1 is currently broken (i2c)"
+            $SUDO /sbin/insmod ./bt856.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
             incompat="lml33"
@@ -89,8 +88,7 @@ do
                 exit 1
             fi
             $SUDO /sbin/insmod ./saa7111.o
-            #$SUDO /sbin/insmod ./saa7185.o
-            echo "playback for $1 is currently broken (i2c)"
+            $SUDO /sbin/insmod ./saa7185.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
             incompat="buz"
