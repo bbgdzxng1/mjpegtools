@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36016.c,v 1.1.2.1 2002-08-01 11:05:44 rbultje Exp $
+   $Id: zr36016.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@
 
 /* I/O commands, error codes */
 #include<asm/io.h>
-#include<errno.h>
+//#include<errno.h>
 
 /* v4l  API */
 #include<linux/videodev.h>
@@ -388,7 +388,7 @@ int zr36016_setup(struct videocodec *codec)
 
         if (zr36016_codecs==MAX_CODECS) {
                 printk(KERN_ERR "zr36016: Can't attach more codecs!\n");
-                return -ECANCELED;
+                return -ENOSPC;
         }
 
         //mem structure init

@@ -6,7 +6,7 @@
    
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
   
-   $Id: videocodec.c,v 1.1.2.1 2002-08-01 11:05:43 rbultje Exp $
+   $Id: videocodec.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -45,7 +45,7 @@
 #include <asm/uaccess.h>
 #endif
 
-#include <sys/errno.h>
+//#include <sys/errno.h>
 
 #if CONFIG_MODVERSIONS==1
 #define MODVERSIONS

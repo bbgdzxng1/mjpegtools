@@ -1352,7 +1352,7 @@ static void zr36057_overlay(struct zoran *zr, int on)
 
 		/* Set overlay clipping */
 
-		if (zr->overlay_settings.clipcount)
+		if (zr->overlay_settings.clipcount > 0)
 			btor(ZR36057_OCR_OvlEnable, ZR36057_OCR);
 
 		/* ... and switch it on */
@@ -2943,8 +2943,6 @@ zoran_open_init_params (struct zoran *zr)
 	zr->jpg_settings.jpg_comp.COM_len = 0;	/* No COM marker */
 	memset(zr->jpg_settings.jpg_comp.COM_data, 0, sizeof(zr->jpg_settings.jpg_comp.COM_data));
 
-	memset(zr->jpg_settings.jpg_comp.reserved, 0, sizeof(zr->jpg_settings.jpg_comp.reserved));
-
 	zr->jpg_settings.jpg_comp.jpeg_markers = JPEG_MARKER_DHT | JPEG_MARKER_DQT;
 
 	i = zoran_check_jpg_settings(zr, &zr->jpg_settings);
@@ -3361,7 +3359,7 @@ setup_window (struct file       *file,
 	/*
 	 *   Write the overlay mask if clips are wanted.
 	 */
-	if (clipcount) {
+	if (clipcount > 0) {
 		vcp = vmalloc(sizeof(struct video_clip) * (clipcount + 4));
 		if (vcp == NULL) {
 			printk(KERN_ERR "%s: zoran_ioctl: Alloc of clip mask failed\n", zr->name);
@@ -3371,19 +3369,17 @@ setup_window (struct file       *file,
 			vfree(vcp);
 			return -EFAULT;
 		}
-	}
-	write_overlay_mask(file, vcp, clipcount);
-	if (clipcount) {
+		write_overlay_mask(file, vcp, clipcount);
 		vfree(vcp);
 	}
-
-	if (on)
-		zr36057_overlay(zr, 1);
 
 	fh->overlay_settings.is_set = 1;
 	if (fh->overlay_active != ZORAN_FREE &&
 	    zr->overlay_active != ZORAN_FREE)
 		zr->overlay_settings = fh->overlay_settings;
+
+	if (on)
+		zr36057_overlay(zr, 1);
 
 	/* Make sure the changes come into effect */
 	res = wait_grab_pending(zr);
@@ -4841,7 +4837,7 @@ zoran_do_ioctl (struct inode *inode,
 			struct v4l2_enumstd *std = arg;
 			DEBUG2(printk("%s: ioctl VIDIOC_ENUMSTD (v4l2): index=%d\n", zr->name, std->index));
 
-			if (std->index < 0 || std->index >= zr->card->norms)
+			if (std->index < 0 || std->index >= (zr->card->norms+1))
 				return -EINVAL;
 			else {
 				int id = std->index;
@@ -4850,6 +4846,12 @@ zoran_do_ioctl (struct inode *inode,
 			}
 
 			switch (std->index) {
+				case 3:
+					std->std.colorstandard = V4L2_COLOR_STD_AUTO;
+					strncpy(std->std.name, "Autodetect", 31);
+					std->std.framerate.numerator = 0;
+					std->std.framerate.denominator = 0;
+					break;
 				case 0:
 					std->std.colorstandard = V4L2_COLOR_STD_PAL;
 					strncpy(std->std.name, "PAL", 31);
@@ -4926,25 +4928,55 @@ zoran_do_ioctl (struct inode *inode,
 					printk(KERN_WARNING "%s: ioctl VIDIOC_S_STD: TV standard is locked, can not switch norm.\n", zr->name);
 					return -EPERM;
 				} else {
-					printk(KERN_WARNING "%s: VIDIOCSCHAN: TV standard is locked, norm was not changed.\n", zr->name);
+					printk(KERN_WARNING "%s: VIDIOC_S_STD: TV standard is locked, norm was not changed.\n", zr->name);
 					std->colorstandard = zr->norm + 1;
 				}
 			}
 
 			if (std->colorstandard - 1 < 0 ||
-			    std->colorstandard - 1 >= zr->card->norms ||
-			    !zr->card->tvn[std->colorstandard-1])
+			    std->colorstandard - 1 >= (zr->card->norms + 1) ||
+			    (std->colorstandard != V4L2_COLOR_STD_AUTO &&
+			     !zr->card->tvn[std->colorstandard-1]))
 			{
 				printk(KERN_ERR "%s: ioctl VIDIOC_S_STD: unsupported norm %d\n",
 					zr->name, std->colorstandard);
 				return -EOPNOTSUPP;
                         }
 
-			encoder_norm = zr->norm = std->colorstandard - 1;
-                        zr->timing = zr->card->tvn[zr->norm];
+			if (std->colorstandard == V4L2_COLOR_STD_AUTO) {
+				unsigned long timeout;
+				int norm = VIDEO_MODE_AUTO, status;
 
-			/* We switch overlay off and on since a change in the norm
-			   needs different VFE settings */
+				decoder_command(zr, DECODER_SET_NORM, &norm);
+
+				/* let changes come into effect */
+				timeout = jiffies + 1 * HZ;
+				while (jiffies < timeout)
+					schedule();
+
+				decoder_command(zr, DECODER_GET_STATUS, &status);
+				if (!(status & DECODER_STATUS_GOOD)) {
+					printk(KERN_ERR "%s: ioctl VIDIOC_S_STD (v4l2) - no norm detected\n",
+						zr->name);
+					/* reset norm */
+					decoder_command(zr, DECODER_SET_NORM, &zr->norm);
+					return -EIO;
+				}
+
+				if (status & DECODER_STATUS_NTSC)
+					zr->norm = VIDEO_MODE_NTSC;
+				else if (status & DECODER_STATUS_SECAM)
+					zr->norm = VIDEO_MODE_SECAM;
+				else
+					zr->norm = VIDEO_MODE_PAL;
+				encoder_norm = zr->norm;
+			} else {
+				encoder_norm = zr->norm = std->colorstandard - 1;
+			}
+			zr->timing = zr->card->tvn[zr->norm];
+
+			/* We switch overlay off and on since a change in the
+			   norm needs different VFE settings */
 			on = zr->overlay_active && !zr->v4l_memgrab_active;
 			if (on)
 				zr36057_overlay(zr, 0);
@@ -4952,7 +4984,7 @@ zoran_do_ioctl (struct inode *inode,
 		        // set_videobus_enable(zr, 0);
 			decoder_command(zr, DECODER_SET_NORM, &zr->norm);
 			encoder_command(zr, ENCODER_SET_NORM, &encoder_norm);
-		        // set_videobus_enable(zr, 1);
+	        	// set_videobus_enable(zr, 1);
 
 			if (on)
 				zr36057_overlay(zr, 1);
@@ -5162,9 +5194,28 @@ zoran_do_ioctl (struct inode *inode,
 
 	case VIDIOC_G_TUNER:
 		{
-			//struct v4l2_tuner *tuner = arg;
-			printk(KERN_ERR "%s: ioctl VIDIOC_S_TUNER (v4l2) not implemented yet\n", zr->name);
-			return -EINVAL;
+			int status;
+			struct v4l2_tuner *tuner = arg;
+
+			printk("%s: ioctl VIDIOC_S_TUNER (v4l2)\n", zr->name);
+
+			/* Get status of video decoder */
+			decoder_command(zr, DECODER_GET_STATUS, &status);
+
+			memset(tuner, 0, sizeof(struct v4l2_tuner));
+			tuner->input = zr->input;
+			strncpy(tuner->name, zr->card->input[zr->input].name,
+				sizeof(tuner->name)-1);
+			zoran_do_ioctl(inode, file, VIDIOC_G_STD, &tuner->std);
+			if (status & DECODER_STATUS_GOOD) {
+				if (status & DECODER_STATUS_COLOR)
+					tuner->signal = 0xffff;
+				else
+					tuner->signal = 0xff;
+			} else
+				tuner->signal = 0;
+
+			return 0;
 		}
 		break;
 

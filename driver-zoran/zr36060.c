@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.1 2002-08-01 11:05:44 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.2 2002-08-07 21:45:29 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@
 
 /* I/O commands, error codes */
 #include<asm/io.h>
-#include<errno.h>
+//#include<errno.h>
 
 /* headerfile of this module */
 #include"zr36060.h"
@@ -832,7 +832,7 @@ int zr36060_setup(struct videocodec *codec)
 
         if (zr36060_codecs==MAX_CODECS) {
                 printk(KERN_ERR "zr36060: Can't attach more codecs!\n");
-                return -ECANCELED;
+                return -ENOSPC;
         }
 
         //mem structure init
