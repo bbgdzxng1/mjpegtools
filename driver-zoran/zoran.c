@@ -1895,8 +1895,6 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 		reg = ZR36057_FPP_Odd_Even;
 	else
 		reg = 0;
-	if ((mode == BUZ_MODE_MOTION_DECOMPRESS && zr->card->type != LML33) || zr->card->type == BUZ)
-		reg ^= ZR36057_FPP_Odd_Even;
 
 	btwrite(reg, ZR36057_FPP);
 
