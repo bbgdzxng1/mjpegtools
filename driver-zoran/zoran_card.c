@@ -1294,6 +1294,11 @@ find_zr36057 (void)
 			continue;
 		}
 
+		/* even though we make this a non pointer and thus
+		 * theoretically allow for making changes to this struct
+		 * on a per-individual card basis at runtime, this is
+		 * strongly discouraged. This structure is intended to
+		 * keep general card information, no settings or anything */
 		zr->card = zoran_cards[card_num];
 		snprintf(zr->name, sizeof(zr->name),
 			 "%s[%u]", zr->card.name, zr->id);
