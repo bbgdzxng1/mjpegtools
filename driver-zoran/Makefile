@@ -11,6 +11,11 @@ TOPDIR=/usr/src/linux
 EXTRA_CFLAGS = -DEXPORT_SYMTAB # -save-temps
 CURRENT = $(shell uname -r)
 
+MAJ=$(shell grep "\#define MAJOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
+MIN=$(shell grep "\#define MINOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
+REL=$(shell grep "\#define RELEASE_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
+DIR=driver-zoran-$(MAJ).$(MIN).$(REL)
+
 here:
 	@echo "Making Unified Zoran (zr360x7) driver for $(CURRENT) kernel..."
 	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
@@ -32,5 +37,11 @@ install:
 
 clean:
 	-rm -f $(obj-m) $(zoran-objs)
+
+release:
+	mkdir $(DIR)
+	cp *.[ch] FAQ Makefile ChangeLog update $(DIR)
+	tar -zcf $(DIR).tar.gz $(DIR)
+	rm -fr $(DIR)
 
 include $(KERNEL_LOCATION)/Rules.make
