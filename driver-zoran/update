@@ -12,7 +12,7 @@ LINUX_VERSION=`uname -r`
 sync;sync
 
 #change to NTSC or SECAM or PAL
-norm=UNKNOWN
+norm=PAL
 
 # Unload everything
 $SUDO /sbin/rmmod dc10 > /dev/null 2>&1     # Just in case if old driver was loaded
@@ -36,12 +36,10 @@ $SUDO /sbin/rmmod zr36016 > /dev/null 2>&1
 $SUDO /sbin/rmmod zr36050 > /dev/null 2>&1
 
 $SUDO /sbin/rmmod videocodec > /dev/null 2>&1
-if echo $LINUX_VERSION | grep '2\.4' > /dev/null
-then
-    $SUDO /sbin/rmmod i2c-old > /dev/null 2>&1
-else
-    $SUDO /sbin/rmmod i2c > /dev/null 2>&1
-fi
+
+$SUDO /sbin/rmmod i2c-old > /dev/null 2>&1
+$SUDO /sbin/rmmod i2c-algo-bit > /dev/null 2>&1
+$SUDO /sbin/rmmod i2c-core > /dev/null 2>&1
 $SUDO /sbin/rmmod videodev > /dev/null 2>&1
 
 # Load driver
@@ -51,12 +49,8 @@ $SUDO /sbin/insmod videodev
 
 # I2COPTS="scan=1"
 
-if echo $LINUX_VERSION | grep '2\.4' > /dev/null
-then
-    $SUDO /sbin/insmod i2c-old $I2COPTS
-else
-    $SUDO /sbin/insmod i2c $I2COPTS
-fi
+$SUDO /sbin/insmod i2c-core $I2CCOREOPTS
+$SUDO /sbin/insmod i2c-algo-bit $I2CALGOBITOPTS
 
 $SUDO /sbin/insmod ./videocodec.o
 
@@ -81,7 +75,8 @@ do
                 exit 1
             fi
             $SUDO /sbin/insmod ./bt819.o
-            $SUDO /sbin/insmod ./bt856.o
+            #$SUDO /sbin/insmod ./bt856.o
+            echo "playback for $1 is currently broken (i2c)"
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
             incompat="lml33"
@@ -94,14 +89,16 @@ do
                 exit 1
             fi
             $SUDO /sbin/insmod ./saa7111.o
-            $SUDO /sbin/insmod ./saa7185.o
+            #$SUDO /sbin/insmod ./saa7185.o
+            echo "playback for $1 is currently broken (i2c)"
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
             incompat="buz"
             ;;
         'dc30'|'dc30plus')
             $SUDO /sbin/insmod ./vpx3220.o
-            $SUDO /sbin/insmod ./adv7175.o
+            #$SUDO /sbin/insmod ./tea6415.o
+            echo "playback disabled for $1 since the chipset (tea6415) specs are unknown"
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
