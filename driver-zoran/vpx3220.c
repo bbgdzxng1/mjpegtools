@@ -216,7 +216,7 @@ static const unsigned short init_ntsc[] = {
 };
 
 static const unsigned short init_pal[] = {
-	0x88, 23  - 16,		/* Window 1 vertical begin */
+	0x88, 23,		/* Window 1 vertical begin */
 	0x89, 288 + 16,		/* Vertical lines in (16 lines
 				 * skipped by the VFE) */
 	0x8a, 288 + 16,		/* Vertical lines out (16 lines
@@ -255,7 +255,7 @@ static const unsigned char init_common[] = {
 	0xf2, 0x00,		/* Disable all outputs */
 	0x33, 0x0d,		/* Luma : VIN2, Chroma : CIN
 				 * (clamp off) */
-	0xd8, 0x80,		/* HREF/VREF active high, VREF
+	0xd8, 0xa8,		/* HREF/VREF active high, VREF
 				 * pulse = 2, Odd/Even flag */
 	0x20, 0x03,		/* IF compensation 0dB/oct */
 	0xe0, 0xff,		/* Open up all comparators */
