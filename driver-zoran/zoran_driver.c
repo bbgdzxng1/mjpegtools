@@ -1280,7 +1280,9 @@ zoran_open (struct inode *inode,
 		goto open_unlock_and_return;
 	}
 
-	down(&zr->resource_lock);
+	/* see fs/device.c - the kernel already locks during open(),
+	 * so locking ourselves only causes deadlocks */
+	/*down(&zr->resource_lock);*/
 
 	if (!zr->decoder) {
 		dprintk(1,
@@ -1367,7 +1369,7 @@ zoran_open (struct inode *inode,
 	if (zr->user++ == 0)
 		first_open = 1;
 
-	up(&zr->resource_lock);
+	/*up(&zr->resource_lock);*/
 
 	/* default setup - TODO: look at flags */
 	if (first_open) {	/* First device open */
@@ -1404,7 +1406,7 @@ open_unlock_and_return:
 
 	/* if there's no device found, we didn't obtain the lock either */
 	if (zr) {
-		up(&zr->resource_lock);
+		/*up(&zr->resource_lock);*/
 	}
 
 	return res;
@@ -1417,10 +1419,12 @@ zoran_close (struct inode *inode,
 	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
 
-	dprintk(1, KERN_INFO "%s: zoran_close(%s, pid=[%d])\n", ZR_DEVNAME(zr),
-		current->comm, current->pid);
+	dprintk(1, KERN_INFO "%s: zoran_close(%s, pid=[%d]), users(+)=%d\n",
+		ZR_DEVNAME(zr), current->comm, current->pid, zr->user);
 
-	down(&zr->resource_lock);
+	/* kernel locks (fs/device.c), so don't do that ourselves
+	 * (prevents deadlocks) */
+	/*down(&zr->resource_lock);*/
 
 	zoran_close_end_session(file);
 
@@ -1448,7 +1452,7 @@ zoran_close (struct inode *inode,
 		zr->v4l_buffers.allocated = 0;
 		zr->v4l_buffers.active = ZORAN_FREE;
 		zoran_set_pci_master(zr, 0);
-
+		
 		if (!pass_through) {	/* Switch to color bar */
 			int zero = 0, two = 2;
 			decoder_command(zr, DECODER_ENABLE_OUTPUT, &zero);
@@ -1474,7 +1478,7 @@ zoran_close (struct inode *inode,
 	module_put(THIS_MODULE);
 #endif
 
-	up(&zr->resource_lock);
+	/*up(&zr->resource_lock);*/
 
 	dprintk(4, KERN_INFO "%s: zoran_close() done\n", ZR_DEVNAME(zr));
 
