@@ -16,8 +16,8 @@ subject: unified zoran driver (zr360x7, zoran, buz, dc10(+), dc30(+), lml33)
 
 1. What cards are supported
 
-Iomega Buz, Linux Media Labs LML33, Pinnacle/Miro DC10/DC10+. Support for the
-Pinnacle DC30+ is under development.
+Iomega Buz, Linux Media Labs LML33/LML33R10, Pinnacle/Miro DC10/DC10+.
+Support for the Pinnacle DC30/DC30+ is under development.
 
 Iomega Buz:
 * Zoran zr36067 PCI controller
@@ -77,11 +77,11 @@ Card number: 2
 Pinnacle/Miro DC10(old):
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
-* Zoran zr36016 Video Front End
+* Zoran zr36016 Video Front End or Fuji md0211 Video Front End (clone?)
 * Micronas vpx3220a TV decoder
-* mse3000 TV encoder
+* mse3000 TV encoder or Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
-                videocodec, vpx3220, mse3000, zr36050, zr36016, zoran
+                videocodec, vpx3220, mse3000/adv7176, zr36050, zr36016, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 0
@@ -90,10 +90,10 @@ Pinnacle/Miro DC30:
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End
-* Micronas vpx3225d TV decoder
+* Micronas vpx3225d/vpx3220a/vpx3216b TV decoder
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
-                videocodec, vpx3224, adv7175, zr36050, zr36016, zoran
+                videocodec, vpx3220/vpx3224, adv7175, zr36050, zr36016, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 3
@@ -102,19 +102,18 @@ Pinnacle/Miro DC30+:
 * Zoran zr36067 PCI controller
 * Zoran zr36050 MJPEG codec
 * Zoran zr36016 Video Front End
-* Micronas vpx3225d TV decoder
+* Micronas vpx3225d/vpx3220a/vpx3216b TV decoder
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
-		videocodec, vpx3224, adv7175, zr36050, zr36015, zoran
+		videocodec, vpx3220/vpx3224, adv7175, zr36050, zr36015, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 Card number: 4
 
 Note: No module for the mse3000 is available yet
 Note: No module for the vpx3224 is available yet
-Note: DC10(old)/DC30/DC30+ don't work yet
-DC10(old) status: 36050/36016 don't deliver interrupts
-DC30(+) status  : vpx32xx doesn't work, input numbers wrong + see DC10(old)
+Note: DC10(old)/DC30/DC30+ don't work 100% yet (no interrupts)
+Note: use encoder=X or decoder=X for non-default i2c chips (see i2c-id.h)
 
 ===========================
 
@@ -122,9 +121,11 @@ DC30(+) status  : vpx32xx doesn't work, input numbers wrong + see DC10(old)
 
 Load zoran.o. If it can't autodetect your card, use the card=X insmod
 option with X being the card number as given in the previous section.
+To have more than one card, use card=X1[,X2[,X3,[X4[..]]]]
+
 To automate this, add the following to your /etc/modules.conf:
 
-options zoran card=X
+options zoran card=X1[,X2[,X3[,X4[..]]]]
 alias char-major-81-0 zoran
 
 One thing to keep in mind is that this doesn't load zoran.o itself yet. It
