@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.12 2003-08-03 17:41:35 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.13 2003-08-04 19:27:21 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -271,8 +271,8 @@ zr36016_init (struct zr36016 *ptr)
 
 	// misc setup
 	zr36016_writei(ptr, ZR016I_SETUP1,
-		       (ptr->ydec ? ZR016_HRFL | ZR016_HORZ : 0) |
-		       (ptr->xdec ? ZR016_VERT : 0) | ZR016_CNTI);
+		       (ptr->xdec ? (ZR016_HRFL | ZR016_HORZ) : 0) |
+		       (ptr->ydec ? ZR016_VERT : 0) | ZR016_CNTI);
 	zr36016_writei(ptr, ZR016I_SETUP2, ZR016_CCIR);
 
 	// Window setup
