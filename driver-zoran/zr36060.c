@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.11 2002-12-27 15:58:26 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.12 2002-12-29 15:08:01 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -713,7 +713,7 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	 * it to 1:4 (instead of 1:2, zr36060 max) as limit because the
 	 * buz can't handle more at decimation=1... Use low_bitrate if
 	 * you have a Buz, unless you know what you're doing */
-	size = size * cap->quality / (low_bitrate?200:400);
+	size = size * cap->quality / (low_bitrate?400:200);
 	/* Lower limit (arbitrary, 1 KB) */
 	if (size < 8192)
 		size = 8192;
