@@ -1260,8 +1260,7 @@ error_handler (struct zoran *zr,
 		 */
 		btand(~ZR36057_JMC_Go_en, ZR36057_JMC);
 		udelay(1);
-		stat = stat | (post_office_read(zr, 7, 0) & 3) << 8 |
-		       zr->codec->master_data->readreg(zr->codec, 0x008);
+		stat = stat | (post_office_read(zr, 7, 0) & 3) << 8;
 		btwrite(0, ZR36057_JPC);
 		btor(ZR36057_MCTCR_CFlush, ZR36057_MCTCR);
 		jpeg_codec_reset(zr);
