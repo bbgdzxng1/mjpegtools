@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.c,v 1.1.2.18 2003-03-23 19:08:58 rbultje Exp $
+ * $Id: zr36060.c,v 1.1.2.19 2003-03-25 17:29:58 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -474,9 +474,8 @@ zr36060_init (struct zr36060 *ptr)
 		zr36060_write(ptr, ZR060_TCR_HI, 0x00);
 		zr36060_write(ptr, ZR060_TCR_LO, 0x00);
 
-		/* Disable all IRQs */
-		/*FIXME: We should set ZR060_IMR_DataErr for the DC10plus board only */
-		zr36060_write(ptr, ZR060_IMR, ZR060_IMR_DataErr);
+		/* Disable all IRQs - no DataErr means autoreset */
+		zr36060_write(ptr, ZR060_IMR, 0);
 
 		/* volume control settings */
 		zr36060_write(ptr, ZR060_SF_HI, ptr->scalefact >> 8);
@@ -559,9 +558,8 @@ zr36060_init (struct zr36060 *ptr)
 		zr36060_write(ptr, ZR060_TCR_HI, 0x00);
 		zr36060_write(ptr, ZR060_TCR_LO, 0x00);
 
-		/* Disable all IRQs */
-		/* FIXME: we should set ZR060_IMR_DataErr for the DC10plus board */
-		zr36060_write(ptr, ZR060_IMR, ZR060_IMR_DataErr);
+		/* Disable all IRQs - no DataErr means autoreset */
+		zr36060_write(ptr, ZR060_IMR, 0);
 
 		/* setup misc. data for expansion */
 		zr36060_write(ptr, ZR060_MER, 0);

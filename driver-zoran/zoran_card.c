@@ -1502,7 +1502,7 @@ init_dc10_cards (void)
 		return -EIO;
 	}
 	if (zoran_num == 0)
-		return 0;	//-ENXIO;
+		return -ENODEV;
 	dprintk(1, KERN_INFO "%s: %d card(s) found\n", ZORAN_NAME,
 		zoran_num);
 	/* check the parameters we have been given, adjust if necessary */
