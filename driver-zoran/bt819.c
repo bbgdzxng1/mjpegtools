@@ -103,7 +103,7 @@ struct timing timing_data[] = {
 
 /* ----------------------------------------------------------------------- */
 
-static int
+static inline int
 bt819_write(struct i2c_client *client, u8 reg, u8 value)
 {
    struct bt819 *decoder = client->data;
@@ -111,7 +111,7 @@ bt819_write(struct i2c_client *client, u8 reg, u8 value)
    return i2c_smbus_write_byte_data(client, reg, value);
 }
 
-static int
+static inline int
 bt819_setbit(struct i2c_client *client, u8 reg, u8 bit, u8 value)
 {
    struct bt819 *decoder = client->data;
@@ -125,19 +125,40 @@ bt819_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
    int ret = -1;
    u8 reg;
 
-   /* (Ronald) just as saa7110, this is ugly, and for the same reason,
-    * we don't use the chip's internal auto-increment function... */
-   while (len > 1) {
-      reg = *data++;
-      ret = bt819_write(client, reg, *data++);
-      len-=2;
-      if (ret)
-         return ret;
+   /* the bt819 has an autoincrement function, use it if
+    * the adapter understands raw I2C */
+   if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+      /* do raw I2C, not smbus compatible */
+      struct bt819 *decoder = client->data;
+      struct i2c_msg msg;
+      u8 block_data[32];
+      msg.addr = client->addr;
+      msg.flags = client->flags;
+      while (len >= 2) {
+         msg.buf = (char *) block_data;
+         msg.len = 0;
+         block_data[msg.len++] = reg = data[0];
+         do {
+            block_data[msg.len++] = decoder->reg[reg++] = data[1];
+            len -= 2; data += 2;
+         } while (len >= 2 && data[0] == reg && msg.len < 32);
+         if ((ret = i2c_transfer(client->adapter, &msg, 1)) < 0)
+            break;
+      }
+   } else {
+      /* do some slow I2C emulation kind of thing */
+      while (len >= 2) {
+         reg = *data++;
+         if ((ret = bt819_write(client, reg, *data++)) < 0)
+            break;
+         len-=2;
+      }
    }
+
    return ret;
 }
 
-static u8
+static inline int
 bt819_read(struct i2c_client *client, u8 reg)
 {
    return i2c_smbus_read_byte_data(client, reg);
@@ -527,37 +548,30 @@ bt819_detach_client(struct i2c_client *client)
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_bt819 = {
-   name:		"bt819",
+   .name		= "bt819",
 
-   id:			I2C_DRIVERID_BT819,
-   flags:		I2C_DF_NOTIFY,
+   .id			= I2C_DRIVERID_BT819,
+   .flags		= I2C_DF_NOTIFY,
 
-   attach_adapter:	bt819_attach_adapter,
-   detach_client:	bt819_detach_client,
-   command:		bt819_command,
-   inc_use:		bt819_inc_use,
-   dec_use:		bt819_dec_use,
+   .attach_adapter	= bt819_attach_adapter,
+   .detach_client	= bt819_detach_client,
+   .command		= bt819_command,
+   .inc_use		= bt819_inc_use,
+   .dec_use		= bt819_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-#ifdef MODULE
-int init_module(void)
-#else
-int bt819_init(void)
-#endif
+static int __init bt819_init_module(void)
 {
    DEBUG(printk("inserting bt819\n"));
    return i2c_add_driver(&i2c_driver_bt819);
 }
 
-
-
-#ifdef MODULE
-
-void cleanup_module(void)
+static void __exit bt819_exit(void)
 {
    i2c_del_driver(&i2c_driver_bt819);
 }
 
-#endif
+module_init(bt819_init_module);
+module_exit(bt819_exit);

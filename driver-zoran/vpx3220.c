@@ -43,12 +43,12 @@
 
 /* ----------------------------------------------------------------------- */
 
-static int vpx3220_write(struct i2c_client *client, u8 reg, u8 value)
+static inline int vpx3220_write(struct i2c_client *client, u8 reg, u8 value)
 {
 	return i2c_smbus_write_byte_data(client, reg, value);
 }
 
-static u8 vpx3220_read(struct i2c_client *client, u8 reg)
+static inline int vpx3220_read(struct i2c_client *client, u8 reg)
 {
 	return i2c_smbus_read_byte_data(client, reg);
 }
@@ -119,11 +119,12 @@ static u16 vpx3220_fp_read(struct i2c_client *client, u16 fpaddr)
 static int vpx3220_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
 {
 	u8 reg;
-	int ret = 0;
+	int ret = -1;
 
-	while (len > 1) {
+	while (len >= 2) {
 		reg = *data++;
-		ret |= i2c_smbus_write_byte_data(client, reg, *data++);
+		if ((ret = i2c_smbus_write_byte_data(client, reg, *data++)) < 0)
+			break;
 		len -= 2;
 	}
 
@@ -531,19 +532,19 @@ static int vpx3220_attach_adapter (struct i2c_adapter *adapter)
  */
 
 static struct i2c_driver vpx3220_i2c_driver = {
-	name:		"vpx3220",
-	id:		I2C_DRIVERID_VPX32XX,
-	flags:		I2C_DF_NOTIFY,
-	attach_adapter:	&vpx3220_attach_adapter,
-	detach_client:	&vpx3220_detach_client,
-	command:	&vpx3220_command,
-	inc_use:	vpx3220_inc_use,
-	dec_use:	vpx3220_dec_use,
+	.name		= "vpx3220",
+	.id		= I2C_DRIVERID_VPX32XX,
+	.flags		= I2C_DF_NOTIFY,
+	.attach_adapter	= vpx3220_attach_adapter,
+	.detach_client	= vpx3220_detach_client,
+	.command	= vpx3220_command,
+	.inc_use	= vpx3220_inc_use,
+	.dec_use	= vpx3220_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-int __init vpx3220_init (void)
+static int __init vpx3220_init (void)
 {
 	int res = 0;
 
@@ -553,25 +554,14 @@ int __init vpx3220_init (void)
 	return res;
 }
 
-void __exit vpx3220_cleanup (void)
+static void __exit vpx3220_cleanup (void)
 {
 	i2c_del_driver(&vpx3220_i2c_driver);
 }
 
-#ifdef MODULE
-
-int init_module(void)
-{
-	return vpx3220_init();
-}
-
-void cleanup_module(void)
-{
-	vpx3220_cleanup();
-}
+module_init(vpx3220_init);
+module_exit(vpx3220_cleanup);
 
 MODULE_DESCRIPTION("vpx3220a/vpx3216b/vpx3214c video encoder driver");
 MODULE_AUTHOR("Laurent Pinchart");
 MODULE_LICENSE("GPL");
-
-#endif

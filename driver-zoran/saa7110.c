@@ -85,26 +85,38 @@ saa7110_write(struct i2c_client *client, u8 reg, u8 value)
 static int
 saa7110_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
 {
+	int ret = -1;
 	u8 reg = *data++;
-	int ret;
 	len--;
 
-	/* (Ronald) this is actually ugly...
-	 * the saa7110 chip auto-increments the registry number on
-	 * subsequent writes, but this is hard-to-impossible to implement
-	 * using the smbus i2c protocol. So I'm just making it individual
-	 * writes here... If anyone knows a better solution (using smbus),
-	 * please tell me */
-	while (len-- > 0) {
-		ret = saa7110_write(client, reg++, *data++);
-		if (ret)
-			return ret;
-        }
+	/* the saa7110 has an autoincrement function, use it if
+	 * the adapter understands raw I2C */
+	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+		struct saa7110 *decoder = client->data;
+		struct i2c_msg msg;
+		u8 block_data[54];
+		msg.len = 0;
+		msg.buf = (char *) block_data;
+		msg.addr = client->addr;
+		msg.flags = client->flags;
+		while (len >= 1) {
+			msg.len = 0;
+			block_data[msg.len++] = reg;
+			while (len-- >= 1 && msg.len < 54)
+				block_data[msg.len++] = decoder->reg[reg++] = *data++;
+			ret = i2c_transfer(client->adapter, &msg, 1);
+		}
+	} else {
+		while (len-- >= 1) {
+			if ((ret = saa7110_write(client, reg++, *data++)) < 0)
+				break;
+	        }
+	}
 
-	return 0;
+	return ret;
 }
 
-static u8
+static inline int
 saa7110_read(struct i2c_client *client)
 {
 	return i2c_smbus_read_byte(client);
@@ -379,7 +391,7 @@ static void
 saa7110_inc_use (struct i2c_client *client)
 {
 #ifdef MODULE
-	        MOD_INC_USE_COUNT;
+        MOD_INC_USE_COUNT;
 #endif
 }
 
@@ -387,7 +399,7 @@ static void
 saa7110_dec_use(struct i2c_client *client)
 {
 #ifdef MODULE
-	        MOD_DEC_USE_COUNT;
+        MOD_DEC_USE_COUNT;
 #endif
 }
 
@@ -410,14 +422,15 @@ saa7110_detect_client (struct i2c_adapter *adapter,
                        unsigned short      flags,
                        int                 kind)
 {
-	struct i2c_client *	client;
-	struct	saa7110*	decoder;
-	int			rv;
+	struct i2c_client* client;
+	struct saa7110*	decoder;
+	int rv;
 
 	DEBUG(printk(KERN_INFO "saa7110.c: detecting saa7110 client on address 0x%x\n", address<<1));
 	
 	/* Check if the adapter supports the needed features */
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_READ_BYTE |
+					      I2C_FUNC_SMBUS_WRITE_BYTE_DATA))
 		return 0;
 
 	client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
@@ -508,32 +521,29 @@ saa7110_detach_client(struct i2c_client *client)
 
 struct i2c_driver i2c_driver_saa7110 =
 {
-	name:		"saa7110",
+	.name			= "saa7110",
 
-	id:		I2C_DRIVERID_SAA7110,
-	flags:		I2C_DF_NOTIFY,
+	.id			= I2C_DRIVERID_SAA7110,
+	.flags			= I2C_DF_NOTIFY,
 
-	attach_adapter:	saa7110_attach_adapter,
-	detach_client:	saa7110_detach_client,
-	command:	saa7110_command,
-	inc_use:	saa7110_inc_use,
-	dec_use:	saa7110_dec_use,
+	.attach_adapter		= saa7110_attach_adapter,
+	.detach_client		= saa7110_detach_client,
+	.command		= saa7110_command,
+	.inc_use		= saa7110_inc_use,
+	.dec_use		= saa7110_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-#ifdef MODULE
-int init_module(void)
-#else
-int saa7110_init(void)
-#endif
+static int __init saa7110_init(void)
 {
 	return i2c_add_driver(&i2c_driver_saa7110);
 }
 
-#ifdef MODULE
-void cleanup_module(void)
+static void __exit saa7110_exit(void)
 {
 	i2c_del_driver(&i2c_driver_saa7110);
 }
-#endif
+
+module_init(saa7110_init);
+module_exit(saa7110_exit);

@@ -88,7 +88,7 @@ struct bt856
 
 /* ----------------------------------------------------------------------- */
 
-static int
+static inline int
 bt856_write(struct i2c_client *client, u8 reg, u8 value)
 {
    struct bt856 *encoder = client->data;
@@ -96,7 +96,8 @@ bt856_write(struct i2c_client *client, u8 reg, u8 value)
    return i2c_smbus_write_byte_data(client, reg, value);
 }
 
-static int bt856_setbit(struct i2c_client *client, u8 reg, u8 bit, u8 value)
+static inline int
+bt856_setbit(struct i2c_client *client, u8 reg, u8 bit, u8 value)
 {
    struct bt856 *encoder = client->data;
    return bt856_write(client, reg, 
@@ -395,32 +396,29 @@ bt856_detach_client(struct i2c_client *client)
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_bt856 = {
-   name:		"bt856",
+   .name		= "bt856",
 
-   id:			I2C_DRIVERID_BT856,
-   flags:		I2C_DF_NOTIFY,
+   .id			= I2C_DRIVERID_BT856,
+   .flags		= I2C_DF_NOTIFY,
 
-   attach_adapter:	bt856_attach_adapter,
-   detach_client:	bt856_detach_client,
-   command:		bt856_command,
-   inc_use:		bt856_inc_use,
-   dec_use:		bt856_dec_use,
+   .attach_adapter	= bt856_attach_adapter,
+   .detach_client	= bt856_detach_client,
+   .command		= bt856_command,
+   .inc_use		= bt856_inc_use,
+   .dec_use		= bt856_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-#ifdef MODULE
-int init_module(void)
-#else
-int bt856_init(void)
-#endif
+static int __init bt856_init(void)
 {
    return i2c_add_driver(&i2c_driver_bt856);
 }
 
-#ifdef MODULE
-void cleanup_module(void)
+static void __exit bt856_exit(void)
 {
    i2c_del_driver(&i2c_driver_bt856);
 }
-#endif
+
+module_init(bt856_init);
+module_exit(bt856_exit);

@@ -82,7 +82,7 @@ struct saa7185
 
 /* ----------------------------------------------------------------------- */
 
-static u8
+static inline int
 saa7185_read(struct i2c_client *client)
 {
    return i2c_smbus_read_byte(client);
@@ -103,15 +103,36 @@ saa7185_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
    int ret = -1;
    u8 reg;
 
-   /* (Ronald) just as saa7110, this is ugly, and for the same reason,
-    * we don't use the chip's internal auto-increment function... */
-   while (len > 1) {
-      reg = *data++;
-      ret = saa7185_write(client, reg, *data++);
-      len-=2;
-      if (ret)
-         return ret;
+   /* the adv7175 has an autoincrement function, use it if
+    * the adapter understands raw I2C */
+   if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+      /* do raw I2C, not smbus compatible */
+      struct saa7185 *encoder = client->data;
+      struct i2c_msg msg;
+      u8 block_data[32];
+      msg.addr = client->addr;
+      msg.flags = client->flags;
+      while (len >= 2) {
+         msg.buf = (char *) block_data;
+         msg.len = 0;
+         block_data[msg.len++] = reg = data[0];
+         do {
+            block_data[msg.len++] = encoder->reg[reg++] = data[1];
+            len -= 2; data += 2;
+         } while (len >= 2 && data[0] == reg && msg.len < 32);
+         if ((ret = i2c_transfer(client->adapter, &msg, 1)) < 0)
+            break;
+      }
+   } else {
+      /* do some slow I2C emulation kind of thing */
+      while (len >= 2) {
+         reg = *data++;
+         if ((ret = saa7185_write(client, reg, *data++)) < 0)
+            break;
+         len-=2;
+      }
    }
+
    return ret;
 }
 
@@ -449,32 +470,29 @@ saa7185_detach_client(struct i2c_client *client)
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_saa7185 = {
-   name:		"saa7185",      /* name */
+   .name		= "saa7185",      /* name */
 
-   id:			I2C_DRIVERID_SAA7185B,
-   flags:		I2C_DF_NOTIFY,
+   .id			= I2C_DRIVERID_SAA7185B,
+   .flags		= I2C_DF_NOTIFY,
 
-   attach_adapter:	saa7185_attach_adapter,
-   detach_client:	saa7185_detach_client,
-   command:		saa7185_command,
-   inc_use:		saa7185_inc_use,
-   dec_use:		saa7185_dec_use,
+   .attach_adapter	= saa7185_attach_adapter,
+   .detach_client	= saa7185_detach_client,
+   .command		= saa7185_command,
+   .inc_use		= saa7185_inc_use,
+   .dec_use		= saa7185_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-#ifdef MODULE
-int init_module(void)
-#else
-int saa7185_init(void)
-#endif
+static int __init saa7185_init(void)
 {
    return i2c_add_driver(&i2c_driver_saa7185);
 }
 
-#ifdef MODULE
-void cleanup_module(void)
+static void __exit saa7185_exit(void)
 {
    i2c_del_driver(&i2c_driver_saa7185);
 }
-#endif
+
+module_init(saa7185_init);
+module_exit(saa7185_exit);
