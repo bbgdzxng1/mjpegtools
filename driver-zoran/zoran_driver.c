@@ -1280,13 +1280,13 @@ zoran_open (struct inode *inode,
 		}
 	}
 
-	down(&zr->resource_lock);
-
 	if (!zr) {
 		dprintk(1, KERN_ERR "%s: device not found!\n", ZORAN_NAME);
 		res = -ENODEV;
 		goto open_unlock_and_return;
 	}
+
+	down(&zr->resource_lock);
 
 	if (!zr->decoder) {
 		dprintk(1,
@@ -1358,7 +1358,10 @@ zoran_open (struct inode *inode,
 	return 0;
 
 open_unlock_and_return:
-	up(&zr->resource_lock);
+	/* if there's no device found, we didn't obtain the lock either */
+	if (zr) {
+		up(&zr->resource_lock);
+	}
 	return res;
 }
 
