@@ -4311,7 +4311,7 @@ zoran_do_ioctl (struct inode *inode,
 
 					/* tell the user what we actually did */
 					fmt->fmt.pix.width = settings.img_width / settings.HorDcm;
-					fmt->fmt.pix.height = settings.img_height / (settings.TmpDcm*settings.VerDcm);
+					fmt->fmt.pix.height = settings.img_height*2 / (settings.TmpDcm*settings.VerDcm);
 					if (settings.TmpDcm == 1 && settings.field_per_buff == 2) {
 						fmt->fmt.pix.flags |= V4L2_FMT_FLAG_INTERLACED;
 						fmt->fmt.pix.flags &= ~V4L2_FMT_FLAG_TOPFIELD;
