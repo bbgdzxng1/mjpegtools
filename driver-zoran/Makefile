@@ -3,8 +3,7 @@
 # when compiling module(s)
 
 EXTRA_CFLAGS = -DEXPORT_SYMTAB # -save-temps
-#CURRENT = $(shell uname -r)
-CURRENT = 2.5.65
+CURRENT = $(shell uname -r)
 KERNEL_LOCATION = /lib/modules/$(CURRENT)/build
 PWD = $(shell pwd)
 DEST = /lib/modules/$(CURRENT)/kernel/drivers/media/video
