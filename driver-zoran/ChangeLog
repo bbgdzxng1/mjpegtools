@@ -1,5 +1,9 @@
 Version 0.9.1 -> 0.9.2
 ----------------------
+* add SECAM support to vpx3220
+* add encoder=X/decoder=X insmod options to zoran.o (for varying cards
+    such as the DC10old (mse3000/adv7175) and the DC30/DC30+ (vpx32xx))
+* add "make release" feature to Makefile
 * re-add some line that mysteriously got lost during VIDIOCGMBUF (fixes
     SIGFPE in xawtv)
 * fix oops where semaphore wasn't down()'ed on v4l_fbuffer_free() -> double
@@ -35,7 +39,7 @@ Version 0.9.0 -> 0.9.1
 * separated zoran.c/zoran_procfs.c into zoran_{procfs,driver,device,card}.c
 * s/DEBUGX/dprintk(x,/
 * added debug options to all i2c clients
-* identd'ed all files to kernel stile (linux/Documentation/CodingStyle)
+* identd'ed all files to kernel style (linux/Documentation/CodingStyle)
 * added a fix to not list SECAM or AUTO norms if not supported
 * added card= option (which autoloads all modules)
 * many random fixes that don't matter at all
