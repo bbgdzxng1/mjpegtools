@@ -1265,7 +1265,7 @@ zoran_open (struct inode *inode,
 	unsigned int minor = minor(inode->i_rdev);
 	struct zoran *zr = NULL;
 	struct zoran_fh *fh;
-	int i, res, first_open = 0;
+	int i, res, first_open = 0, have_module_locks = 0;
 
 	/* find the device */
 	for (i = 0; i < zoran_num; i++) {
@@ -1290,6 +1290,45 @@ zoran_open (struct inode *inode,
 		res = -EIO;
 		goto open_unlock_and_return;
 	}
+
+	/* try to grab a module lock */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	MOD_INC_USE_COUNT;
+	i2c_inc_use_client(zr->decoder);
+	if (zr->encoder)
+		i2c_inc_use_client(zr->encoder);
+#else
+	if (try_module_get(THIS_MODULE)) {
+		dprintk(1,
+			KERN_ERR
+			"%s: failed to acquire my own lock! PANIC!\n",
+			zr->name);
+		res = -EAGAIN;
+		goto open_unlock_and_return;
+	}
+	if (try_module_get(zr->decoder->driver->owner)) {
+		dprintk(1,
+			KERN_ERR
+			"%s: failed to grab ownership of i2c decoder\n",
+			zr->name);
+		res = -EAGAIN;
+		module_put(THIS_MODULE);
+		goto open_unlock_and_return;
+	}
+	if (zr->encoder &&
+	    try_module_get(zr->encoder->driver->owner)) {
+		dprintk(1,
+			KERN_ERR
+			"%s: failed to grab ownership of i2c encoder\n",
+			zr->name);
+		res = -EAGAIN;
+		module_put(zr->decoder->driver->owner);
+		module_put(THIS_MODULE);
+		goto open_unlock_and_return;
+	}
+#endif
+
+	have_module_locks = 1;
 
 	if (zr->user >= 2048) {
 		dprintk(1, KERN_ERR "%s: too many users (%d) on device\n",
@@ -1345,15 +1384,30 @@ zoran_open (struct inode *inode,
 	fh->zr = zr;
 	zoran_open_init_session(file);
 
-	MOD_INC_USE_COUNT;
-
 	return 0;
 
 open_unlock_and_return:
+	/* if we grabbed locks, release them accordingly */
+	if (have_module_locks) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+		i2c_dec_use_client(zr->decoder);
+		if (zr->encoder)
+			i2c_dec_use_client(zr->encoder);
+		MOD_DEC_USE_COUNT;
+#else
+		module_put(zr->decoder->driver->owner);
+		if (zr->encoder) {
+			module_put(zr->encoder->driver->owner);
+		}
+		module_put(THIS_MODULE);
+#endif
+	}
+
 	/* if there's no device found, we didn't obtain the lock either */
 	if (zr) {
 		up(&zr->resource_lock);
 	}
+
 	return res;
 }
 
@@ -1407,8 +1461,21 @@ zoran_close (struct inode *inode,
 	kfree(fh->overlay_mask);
 	kfree(fh);
 
-	up(&zr->resource_lock);
+	/* release locks on the i2c modules */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	i2c_dec_use_client(zr->decoder);
+	if (zr->encoder)
+		i2c_dec_use_client(zr->encoder);
 	MOD_DEC_USE_COUNT;
+#else
+	module_put(zr->decoder->driver->owner);
+	if (zr->encoder) {
+		 module_put(zr->encoder->driver->owner);
+	}
+	module_put(THIS_MODULE);
+#endif
+
+	up(&zr->resource_lock);
 
 	dprintk(4, KERN_INFO "%s: zoran_close() done\n", zr->name);
 

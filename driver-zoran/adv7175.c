@@ -57,9 +57,9 @@ MODULE_LICENSE("GPL");
 #include <linux/i2c-dev.h>
 
 /* temp hack */
-#ifndef I2C_DRIVERID_ADV717X
-#warning Using temporary hack for missing I2C driver-ID for adv717x
-#define I2C_DRIVERID_ADV717X 48	/* same as in 2.5.x */
+#ifndef I2C_DRIVERID_ADV7175
+#warning Using temporary hack for missing I2C driver-ID for adv7175
+#define I2C_DRIVERID_ADV7175 48	/* same as in 2.5.x */
 #endif
 /* /temp hack */
 
@@ -418,8 +418,8 @@ static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 
 I2C_CLIENT_INSMOD;
 
-static int adv717x_i2c_id = 0;
-static struct i2c_driver i2c_driver_adv717x;
+static int adv7175_i2c_id = 0;
+static struct i2c_driver i2c_driver_adv7175;
 
 static int
 adv7175_detect_client (struct i2c_adapter *adapter,
@@ -434,7 +434,7 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 
 	dprintk(1,
 		KERN_INFO
-		"adv7175.c: detecting adv717x client on address 0x%x\n",
+		"adv7175.c: detecting adv7175 client on address 0x%x\n",
 		address << 1);
 
 	/* Check if the adapter supports the needed features */
@@ -447,9 +447,9 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 	memset(client, 0, sizeof(struct i2c_client));
 	client->addr = address;
 	client->adapter = adapter;
-	client->driver = &i2c_driver_adv717x;
+	client->driver = &i2c_driver_adv7175;
 	client->flags = I2C_CLIENT_ALLOW_USE;
-	client->id = adv717x_i2c_id++;
+	client->id = adv7175_i2c_id++;
 	if ((client->addr == I2C_ADV7175 >> 1) ||
 	    (client->addr == (I2C_ADV7175 >> 1) + 1)) {
 		dname = adv7175_name;
@@ -527,29 +527,50 @@ adv7175_detach_client (struct i2c_client *client)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+static void
+adv7175_inc_use (struct i2c_client *client)
+{
+	MOD_INC_USE_COUNT;
+}
+
+static void
+adv7175_dec_use (struct i2c_client *client)
+{
+	MOD_DEC_USE_COUNT;
+}
+#endif
+
 /* ----------------------------------------------------------------------- */
 
-static struct i2c_driver i2c_driver_adv717x = {
-	.name = "adv717x",	/* name */
+static struct i2c_driver i2c_driver_adv7175 = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	.owner = THIS_MODULE,
+#endif
+	.name = "adv7175",	/* name */
 
-	.id = I2C_DRIVERID_ADV717X,
+	.id = I2C_DRIVERID_ADV7175,
 	.flags = I2C_DF_NOTIFY,
 
 	.attach_adapter = adv7175_attach_adapter,
 	.detach_client = adv7175_detach_client,
 	.command = adv7175_command,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	.inc_use = adv7175_inc_use,
+	.dec_use = adv7175_dec_use,
+#endif
 };
 
 static int __init
 adv7175_init (void)
 {
-	return i2c_add_driver(&i2c_driver_adv717x);
+	return i2c_add_driver(&i2c_driver_adv7175);
 }
 
 static void __exit
 adv7175_exit (void)
 {
-	i2c_del_driver(&i2c_driver_adv717x);
+	i2c_del_driver(&i2c_driver_adv7175);
 }
 
 module_init(adv7175_init);

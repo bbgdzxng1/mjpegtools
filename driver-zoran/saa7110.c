@@ -579,9 +579,26 @@ saa7110_detach_client (struct i2c_client *client)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+static void
+saa7110_inc_use (struct i2c_client *client)
+{
+	MOD_INC_USE_COUNT;
+}
+
+static void
+saa7110_dec_use (struct i2c_client *client)
+{
+	MOD_DEC_USE_COUNT;
+}
+#endif
+
 /* ----------------------------------------------------------------------- */
 
 static struct i2c_driver i2c_driver_saa7110 = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	.owner = THIS_MODULE,
+#endif
 	.name = "saa7110",
 
 	.id = I2C_DRIVERID_SAA7110,
@@ -590,6 +607,10 @@ static struct i2c_driver i2c_driver_saa7110 = {
 	.attach_adapter = saa7110_attach_adapter,
 	.detach_client = saa7110_detach_client,
 	.command = saa7110_command,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	.inc_use = saa7110_inc_use,
+	.dec_use = saa7110_dec_use,
+#endif
 };
 
 static int __init

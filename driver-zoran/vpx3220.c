@@ -712,17 +712,40 @@ vpx3220_attach_adapter (struct i2c_adapter *adapter)
 	return ret;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+static void
+vpx3220_inc_use (struct i2c_client *client)
+{
+	MOD_INC_USE_COUNT;
+}
+
+static void
+vpx3220_dec_use (struct i2c_client *client)
+{
+	MOD_DEC_USE_COUNT;
+}
+#endif
+
 /* -----------------------------------------------------------------------
  * Driver initialization and cleanup code
  */
 
 static struct i2c_driver vpx3220_i2c_driver = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	.owner = THIS_MODULE,
+#endif
 	.name = "vpx3220",
+
 	.id = I2C_DRIVERID_VPX32XX,
 	.flags = I2C_DF_NOTIFY,
+
 	.attach_adapter = vpx3220_attach_adapter,
 	.detach_client = vpx3220_detach_client,
 	.command = vpx3220_command,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	.inc_use = vpx3220_inc_use,
+	.dec_use = vpx3220_dec_use,
+#endif
 };
 
 static int __init

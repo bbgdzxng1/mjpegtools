@@ -6,7 +6,7 @@
  *
  * (c) 2002 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: videocodec.c,v 1.1.2.6 2003-01-14 21:14:47 rbultje Exp $
+ * $Id: videocodec.c,v 1.1.2.7 2003-03-26 20:30:13 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -140,6 +140,19 @@ videocodec_attach (struct videocodec_master *master)
 				       sizeof(struct attached_list));
 				ptr->codec = codec;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+				MOD_INC_USE_COUNT;
+#else
+				if ((res = try_module_get(THIS_MODULE)) != 0) {
+					dprintk(1,
+						KERN_ERR
+						"videocodec: failed to increment usecount\n");
+					kfree(codec);
+					kfree(ptr);
+					return NULL;
+				}
+#endif
+
 				a = h->list;
 				if (!a) {
 					h->list = ptr;
@@ -154,7 +167,6 @@ videocodec_attach (struct videocodec_master *master)
 						h->codec->name);
 				}
 
-				MOD_INC_USE_COUNT;
 				h->attached += 1;
 				return codec;
 			} else {
@@ -221,7 +233,12 @@ videocodec_detach (struct videocodec *codec)
 				kfree(a);
 				h->attached -= 1;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 				MOD_DEC_USE_COUNT;
+#else
+				module_put(THIS_MODULE);
+#endif
+
 				return 0;
 			}
 			prev = a;
@@ -238,6 +255,9 @@ int
 videocodec_register (const struct videocodec *codec)
 {
 	struct codec_list *ptr, *h = codeclist_top;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	int res;
+#endif
 
 	if (!codec) {
 		dprintk(1, KERN_ERR "videocodec_register: no data!\n");
@@ -258,6 +278,18 @@ videocodec_register (const struct videocodec *codec)
 	memset(ptr, 0, sizeof(struct codec_list));
 	ptr->codec = codec;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	MOD_INC_USE_COUNT;
+#else
+	if ((res = try_module_get(THIS_MODULE)) != 0) {
+		dprintk(1,
+			KERN_ERR
+			"videocodec: failed to increment module count\n");
+		kfree(ptr);
+		return res;
+	}
+#endif
+
 	if (!h) {
 		codeclist_top = ptr;
 		dprintk(4, "videocodec: hooked in as first element\n");
@@ -268,7 +300,7 @@ videocodec_register (const struct videocodec *codec)
 		dprintk(4, "videocodec: hooked in after '%s'\n",
 			h->codec->name);
 	}
-	MOD_INC_USE_COUNT;
+
 	return 0;
 }
 
@@ -314,7 +346,13 @@ videocodec_unregister (const struct videocodec *codec)
 					"videocodec: delete middle element\n");
 			}
 			kfree(h);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 			MOD_DEC_USE_COUNT;
+#else
+			module_put(THIS_MODULE);
+#endif
+
 			return 0;
 		}
 		prev = h;

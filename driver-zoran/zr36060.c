@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.c,v 1.1.2.19 2003-03-25 17:29:58 rbultje Exp $
+ * $Id: zr36060.c,v 1.1.2.20 2003-03-26 20:30:22 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -849,22 +849,6 @@ zr36060_control (struct videocodec *codec,
 }
 
 /* =========================================================================
-   Module usage counter
-   ========================================================================= */
-
-static void
-zr36060_inc_use (void)
-{
-	MOD_INC_USE_COUNT;
-}
-
-static void
-zr36060_dec_use (void)
-{
-	MOD_DEC_USE_COUNT;
-}
-
-/* =========================================================================
    Exit and unregister function:
 
    Deinitializes Zoran's JPEG processor
@@ -884,7 +868,11 @@ zr36060_unset (struct videocodec *codec)
 		codec->data = NULL;
 
 		zr36060_codecs--;
-		zr36060_dec_use();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+		MOD_DEC_USE_COUNT;
+#else
+		module_put(THIS_MODULE);
+#endif
 
 		return 0;
 	}
@@ -928,7 +916,18 @@ zr36060_setup (struct videocodec *codec)
 	ptr->num = zr36060_codecs++;
 	ptr->codec = codec;
 
-	zr36060_inc_use();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	MOD_INC_USE_COUNT;
+#else
+	if ((res = try_module_get(THIS_MODULE)) != 0) {
+		dprintk(1,
+			KERN_ERR
+			"zr36060: failed to increase module use count\n");
+		kfree(ptr);
+		zr36060_codecs--;
+		return res;
+	}
+#endif
 
 	//testing
 	res = zr36060_basic_test(ptr);

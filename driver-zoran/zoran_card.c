@@ -55,9 +55,9 @@
 #include "zoran_procfs.h"
 
 /* temp hack */
-#ifndef I2C_DRIVERID_ADV717X
-#warning Using temporary hack for missing I2C driver-ID for adv717x
-#define I2C_DRIVERID_ADV717X 48	/* same as in 2.5.x */
+#ifndef I2C_DRIVERID_ADV7175
+#warning Using temporary hack for missing I2C driver-ID for adv7175
+#define I2C_DRIVERID_ADV7175 48	/* same as in 2.5.x */
 #endif
 #ifndef I2C_DRIVERID_MSE3000
 #warning Using temporary hack for missing I2C driver-ID for mse3000
@@ -356,7 +356,7 @@ i2cid_to_modulename (u16 i2c_id)
 	case I2C_DRIVERID_ADV7170:
 		name = "adv7170";
 		break;
-	case I2C_DRIVERID_ADV717X:
+	case I2C_DRIVERID_ADV7175:
 		name = "adv7175";
 		break;
 	case I2C_DRIVERID_BT819:
@@ -458,7 +458,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.type = DC10_new,
 		.name = "DC10(new)",
 		.i2c_decoder = I2C_DRIVERID_SAA7110,
-		.i2c_encoder = I2C_DRIVERID_ADV717X,
+		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36060,
 
 		.inputs = 3,
@@ -486,7 +486,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.vendor_id = PCI_VENDOR_ID_MIRO,
 		.device_id = PCI_DEVICE_ID_MIRO_DC10PLUS,
 		.i2c_decoder = I2C_DRIVERID_SAA7110,
-		.i2c_encoder = I2C_DRIVERID_ADV717X,
+		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36060,
 
 		.inputs = 3,
@@ -513,7 +513,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.type = DC30,
 		.name = "DC30",
 		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_encoder = I2C_DRIVERID_ADV717X,
+		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36050,
 		.video_vfe = CODEC_TYPE_ZR36016,
 
@@ -543,7 +543,7 @@ static struct card_info zoran_cards[NUM_CARDS] __devinitdata = {
 		.vendor_id = PCI_VENDOR_ID_MIRO,
 		.device_id = PCI_DEVICE_ID_MIRO_DC30PLUS,
 		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_encoder = I2C_DRIVERID_ADV717X,
+		.i2c_encoder = I2C_DRIVERID_ADV7175,
 		.video_codec = CODEC_TYPE_ZR36050,
 		.video_vfe = CODEC_TYPE_ZR36016,
 

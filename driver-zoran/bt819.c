@@ -623,9 +623,26 @@ bt819_detach_client (struct i2c_client *client)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+static void
+bt819_inc_use (struct i2c_client *client)
+{
+	MOD_INC_USE_COUNT;
+}
+
+static void
+bt819_dec_use (struct i2c_client *client)
+{
+	MOD_DEC_USE_COUNT;
+}
+#endif
+
 /* ----------------------------------------------------------------------- */
 
 static struct i2c_driver i2c_driver_bt819 = {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+	.owner = THIS_MODULE,
+#endif
 	.name = "bt819",
 
 	.id = I2C_DRIVERID_BT819,
@@ -634,6 +651,10 @@ static struct i2c_driver i2c_driver_bt819 = {
 	.attach_adapter = bt819_attach_adapter,
 	.detach_client = bt819_detach_client,
 	.command = bt819_command,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	.inc_use = bt819_inc_use,
+	.dec_use = bt819_dec_use,
+#endif
 };
 
 static int __init

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.7 2003-03-21 22:23:09 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.8 2003-03-26 20:30:21 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -393,22 +393,6 @@ zr36016_control (struct videocodec *codec,
 }
 
 /* =========================================================================
-   Module usage counter
-   ========================================================================= */
-
-static void
-zr36016_inc_use (void)
-{
-	MOD_INC_USE_COUNT;
-}
-
-static void
-zr36016_dec_use (void)
-{
-	MOD_DEC_USE_COUNT;
-}
-
-/* =========================================================================
    Exit and unregister function:
 
    Deinitializes Zoran's JPEG processor
@@ -428,7 +412,11 @@ zr36016_unset (struct videocodec *codec)
 		codec->data = NULL;
 
 		zr36016_codecs--;
-		zr36016_dec_use();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+		MOD_DEC_USE_COUNT;
+#else
+		module_put(THIS_MODULE);
+#endif
 
 		return 0;
 	}
@@ -472,7 +460,18 @@ zr36016_setup (struct videocodec *codec)
 	ptr->num = zr36016_codecs++;
 	ptr->codec = codec;
 
-	zr36016_inc_use();
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+	MOD_INC_USE_COUNT;
+#else
+	if ((res = try_module_get(THIS_MODULE)) != 0) {
+		dprintk(1,
+			KERN_ERR
+			"zr36016: failed to increase module use count\n");
+		kfree(ptr);
+		zr36016_codecs--;
+		return res;
+	}
+#endif
 
 	//testing
 	res = zr36016_basic_test(ptr);
