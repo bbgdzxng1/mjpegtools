@@ -408,17 +408,17 @@ static struct tvnorm f60sqpixel = { 780, 640, 51, 716, 525, 480, 12 };
 static struct tvnorm f50ccir601 = { 864, 720, 75, 804, 625, 576, 18 };
 static struct tvnorm f60ccir601 = { 858, 720, 57, 788, 525, 480, 16 };
 
+static struct tvnorm f50ccir601_lml33 = { 864, 720, 75+62, 804, 625, 576, 18 };
+static struct tvnorm f60ccir601_lml33 = { 858, 720, 57+62, 788, 525, 480, 16 };
+
 static struct tvnorm f50sqpixel_dc10 = { 944, 768, 0, 880, 625, 576, 16 };
 static struct tvnorm f60sqpixel_dc10 = { 780, 640, 0, 716, 525, 480, 12 };
-//static struct tvnorm f50ccir601_dc10 = { 864, 720, 0, 804, 625, 576, 18 };
-//static struct tvnorm f60ccir601_dc10 = { 858, 720, 0, 788, 525, 480, 16 };
 
-// FIXME: I cannot swap U and V in saa7114, so i do one pixel left shift in zoran
-//        by Maxim Yevtyushkin <max@linuxmedialabs.com>
-static struct tvnorm f50ccir601_lm33r10 =
-    { 864, 720, 74, 804, 625, 576, 18 };
-static struct tvnorm f60ccir601_lm33r10 =
-    { 858, 720, 56, 788, 525, 480, 16 };
+/* FIXME: I cannot swap U and V in saa7114, so i do one
+ * pixel left shift in zoran
+ * (Maxim Yevtyushkin <max@linuxmedialabs.com>) */
+static struct tvnorm f50ccir601_lm33r10 = { 864, 720, 74, 804, 625, 576, 18 };
+static struct tvnorm f60ccir601_lm33r10 = { 858, 720, 56, 788, 525, 480, 16 };
 
 static struct card_info zoran_cards[NUM_CARDS] = {
 	{
@@ -576,8 +576,8 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 		},
 		.norms = 2,
 		.tvn = {
-			&f50ccir601,
-			&f60ccir601,
+			&f50ccir601_lml33,
+			&f60ccir601_lml33,
 			NULL
 		},
 		.jpeg_int = ZR36057_ISR_GIRQ1,
@@ -1263,7 +1263,7 @@ find_zr36057 (void)
 			if (card_num == -1) {
 				dprintk(3,
 					KERN_DEBUG
-					"%s - find_zr36057() - trying to autodetect card type\n",
+					"%s: find_zr36057() - trying to autodetect card type\n",
 					zr->name);
 				for (i=0;i<NUM_CARDS;i++) {
 					if (ss_vendor == zoran_cards[i].vendor_id &&

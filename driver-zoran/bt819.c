@@ -96,9 +96,10 @@ struct timing {
 	int vscale;
 };
 
+/* for values, see the bt819 datasheet */
 struct timing timing_data[] = {
-	{864 - 24, 2, 623, 1, 0x0504, 0x0000},
-	{858 - 24, 2, 523, 1, 0x00f8, 0x0000},
+	{864 - 24, 20 /*2*/, 625 - 3 /*- 2*/, 3 /*1*/, 0x0504, 0x0000},
+	{858 - 24, 20 /*2*/, 525 - 3 /*- 2*/, 3 /*1*/, 0x00f8, 0x0000},
 //      { 858-68, 64, 523, 1, 0x00f8, 0x0000 },
 };
 
@@ -228,8 +229,11 @@ bt819_init (struct i2c_client *client)
 	init[8 * 2 - 1] = timing->hscale >> 8;
 	init[9 * 2 - 1] = timing->hscale & 0xff;
 
+	/* reset */
 	bt819_write(client, 0x1f, 0x00);
 	mdelay(1);
+
+	/* init */
 	return bt819_write_block(client, init, sizeof(init));
 
 }
@@ -315,6 +319,7 @@ bt819_command (struct i2c_client *client,
 		if (*iarg == VIDEO_MODE_NTSC) {
 			bt819_setbit(client, 0x01, 0, 1);
 			bt819_setbit(client, 0x01, 1, 0);
+			bt819_setbit(client, 0x01, 5, 0);
 			bt819_write(client, 0x18, 0x68);
 			bt819_write(client, 0x19, 0x5d);
 			//bt819_setbit(client, 0x1a,  5, 1);
@@ -322,6 +327,7 @@ bt819_command (struct i2c_client *client,
 		} else if (*iarg == VIDEO_MODE_PAL) {
 			bt819_setbit(client, 0x01, 0, 1);
 			bt819_setbit(client, 0x01, 1, 1);
+			bt819_setbit(client, 0x01, 5, 1);
 			bt819_write(client, 0x18, 0x7f);
 			bt819_write(client, 0x19, 0x72);
 			//bt819_setbit(client, 0x1a,  5, 0);
@@ -343,7 +349,7 @@ bt819_command (struct i2c_client *client,
 		bt819_write(client, 0x05, timing->vactive & 0xff);
 		bt819_write(client, 0x06, timing->hdelay & 0xff);
 		bt819_write(client, 0x07, timing->hactive & 0xff);
-		bt819_write(client, 0x08, timing->hscale >> 8);
+		bt819_write(client, 0x08, (timing->hscale >> 8) & 0xff);
 		bt819_write(client, 0x09, timing->hscale & 0xff);
 		decoder->norm = *iarg;
 	}
@@ -486,7 +492,10 @@ bt819_dec_use (struct i2c_client *client)
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
  */
-static unsigned short normal_i2c[] = { I2C_BT819 >> 1, I2C_CLIENT_END };
+static unsigned short normal_i2c[] = {
+	I2C_BT819 >> 1,
+	I2C_CLIENT_END,
+};
 static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 
 I2C_CLIENT_INSMOD;
@@ -500,7 +509,7 @@ bt819_detect_client (struct i2c_adapter *adapter,
 		     unsigned short      flags,
 		     int                 kind)
 {
-	int i;
+	int i, id;
 	struct bt819 *decoder;
 	struct i2c_client *client;
 
@@ -522,11 +531,10 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	client->driver = &i2c_driver_bt819;
 	client->flags = I2C_CLIENT_ALLOW_USE;
 	client->id = bt819_i2c_id++;
-	snprintf(client->name, sizeof(client->name) - 1, "bt819[%d]",
-		 client->id);
 
 	client->data = decoder = kmalloc(sizeof(struct bt819), GFP_KERNEL);
 	if (decoder == NULL) {
+		kfree(client);
 		return -ENOMEM;
 	}
 
@@ -539,6 +547,30 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	decoder->hue = 32768;
 	decoder->sat = 32768;
 	decoder->initialized = 0;
+
+	id = bt819_read(client, 0x17);
+	switch (id & 0xf0) {
+	case 0x70:
+	        snprintf(client->name, sizeof(client->name) - 1,
+			 "bt819a[%d]", client->id);
+		break;
+	case 0x60:
+		snprintf(client->name, sizeof(client->name) - 1,
+			 "bt817a[%d]", client->id);
+		break;
+	case 0x20:
+		snprintf(client->name, sizeof(client->name) - 1,
+			 "bt815a[%d]", client->id);
+		break;
+	default:
+		dprintk(1,
+			KERN_ERR
+			"bt819: unknown chip version 0x%x (ver 0x%x)\n",
+			id & 0xf0, id & 0x0f);
+		kfree(decoder);
+		kfree(client);
+		return 0;
+	}
 
 	i = i2c_attach_client(client);
 	if (i) {
@@ -554,8 +586,8 @@ bt819_detect_client (struct i2c_adapter *adapter,
 	} else {
 		dprintk(1,
 			KERN_INFO
-			"%s_attach: chip version %x at address 0x%x\n",
-			client->name, bt819_read(client, 0x17) & 0x0f,
+			"%s_attach: chip version 0x%x at address 0x%x\n",
+			client->name, id & 0x0f,
 			client->addr << 1);
 	}
 
@@ -565,10 +597,6 @@ bt819_detect_client (struct i2c_adapter *adapter,
 static int
 bt819_attach_adapter (struct i2c_adapter *adapter)
 {
-	dprintk(1,
-		KERN_INFO
-		"bt819.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id);
 	return i2c_probe(adapter, &addr_data, &bt819_detect_client);
 }
 
@@ -608,7 +636,6 @@ EXPORT_NO_SYMBOLS;
 static int __init
 bt819_init_module (void)
 {
-	dprintk(1, "inserting bt819\n");
 	return i2c_add_driver(&i2c_driver_bt819);
 }
 
