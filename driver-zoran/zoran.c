@@ -3643,11 +3643,13 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCGCHAN:
 		{
 			struct video_channel *vchan = arg;
+			int channel = vchan->channel;
 
 			dprintk(2, KERN_DEBUG "%s: ioctl VIDIOCGCHAN for channel %d\n",
 				zr->name, vchan->channel);
 
 			memset(vchan, 0, sizeof(struct video_channel));
+			vchan->channel = channel;
 			if (vchan->channel > zr->card->inputs) {
 				printk(KERN_ERR "%s: VIDIOCGCHAN on not existing channel %d\n",
 					zr->name, vchan->channel);
@@ -5054,20 +5056,14 @@ zoran_do_ioctl (struct inode *inode,
 			dprintk(2, "%s: ioctl VIDIOC_S_STD (v4l2): norm=0x%llx\n",
 				zr->name, *std);
 
-			switch (*std) {
-				case V4L2_STD_PAL:
-					norm1 = norm2 = VIDEO_MODE_PAL;
-					break;
-				case V4L2_STD_NTSC:
-					norm1 = norm2 = VIDEO_MODE_NTSC;
-					break;
-				case V4L2_STD_SECAM:
-					norm1 = norm2 = VIDEO_MODE_SECAM;
-					break;
-				case V4L2_STD_ALL:
-					norm1 = norm2 = VIDEO_MODE_AUTO;
-					break;
-			}
+                        if (*std == V4L2_STD_PAL)
+				norm1 = norm2 = VIDEO_MODE_PAL;
+			else if (*std == V4L2_STD_NTSC)
+				norm1 = norm2 = VIDEO_MODE_NTSC;
+			else if (*std == V4L2_STD_SECAM)
+				norm1 = norm2 = VIDEO_MODE_SECAM;
+			else if (*std == V4L2_STD_ALL)
+				norm1 = norm2 = VIDEO_MODE_AUTO;
 
 			if (zr->v4l_buffers.active != ZORAN_FREE ||
 			    zr->jpg_buffers.active != ZORAN_FREE) {
@@ -5356,20 +5352,13 @@ zoran_do_ioctl (struct inode *inode,
 			dprintk(2, "%s: ioctl VIDIOC_QUERY_STD (v4l2): std=0x%llx\n",
 				zr->name, *std);
 
-			switch (*std) {
-				case V4L2_STD_ALL:
-				case V4L2_STD_NTSC:
-				case V4L2_STD_PAL:
-					break;
-				case V4L2_STD_SECAM:
-					if (zr->card->norms == 3)
-						break;
-					/* else ... fall-through */
-				default:
-					return -EINVAL;
-			}
+                        if (*std == V4L2_STD_ALL ||
+			    *std == V4L2_STD_NTSC ||
+			    *std == V4L2_STD_PAL ||
+			    (*std == V4L2_STD_SECAM && zr->card->norms == 3))
+			    return 0;
 
-			return 0;
+			return -EINVAL;
 		}
 		break;
 
