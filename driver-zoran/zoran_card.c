@@ -920,6 +920,7 @@ zoran_open_init_params (struct zoran *zr)
 	/* DMA ring stuff for V4L */
 	zr->v4l_pend_tail = 0;
 	zr->v4l_pend_head = 0;
+	zr->v4l_sync_tail = 0;
 	zr->v4l_buffers.active = ZORAN_FREE;
 	for (i = 0; i < VIDEO_MAX_FRAME; i++) {
 		zr->v4l_buffers.buffer[i].state = BUZ_STATE_USER;	/* nothing going on */

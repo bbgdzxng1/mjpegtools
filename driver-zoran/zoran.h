@@ -438,6 +438,7 @@ struct zoran {
 	/* V4L grab queue of frames pending */
 	unsigned long v4l_pend_head;
 	unsigned long v4l_pend_tail;
+	unsigned long v4l_sync_tail;
 	int v4l_pend[V4L_MAX_FRAME];
 	struct zoran_v4l_struct v4l_buffers;	/* V4L buffers' info */
 

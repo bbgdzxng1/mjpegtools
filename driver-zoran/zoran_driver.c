@@ -791,9 +791,8 @@ zoran_v4l_queue_frame (struct file *file,
 		case BUZ_STATE_USER:
 			/* since there is at least one unused buffer there's room for at least
 			 * one more pend[] entry */
-			zr->v4l_pend[zr->
-				     v4l_pend_head++ & V4L_MASK_FRAME] =
-			    num;
+			zr->v4l_pend[zr->v4l_pend_head++ &
+					V4L_MASK_FRAME] = num;
 			zr->v4l_buffers.buffer[num].state = BUZ_STATE_PEND;
 			zr->v4l_buffers.buffer[num].bs.length =
 			    fh->v4l_settings.bytesperline *
@@ -1829,10 +1828,9 @@ zoran_v4l2_buffer_status (struct file        *file,
 			return -EINVAL;
 		}
 
-		buf->type =
-		    (fh->map_mode ==
-		     ZORAN_MAP_MODE_JPG_REC) ? V4L2_BUF_TYPE_VIDEO_CAPTURE
-		    : V4L2_BUF_TYPE_VIDEO_OUTPUT;
+		buf->type = (fh->map_mode == ZORAN_MAP_MODE_JPG_REC) ?
+			      V4L2_BUF_TYPE_VIDEO_CAPTURE :
+			      V4L2_BUF_TYPE_VIDEO_OUTPUT;
 		buf->length = fh->jpg_buffers.buffer_size;
 
 		/* these variables are only written after frame has been captured */
@@ -2309,6 +2307,8 @@ zoran_do_ioctl (struct inode *inode,
 		down(&zr->resource_lock);
 		res = v4l_sync(file, *frame);
 		up(&zr->resource_lock);
+		if (!res)
+			zr->v4l_sync_tail++;
 		return res;
 	}
 		break;
@@ -3329,9 +3329,7 @@ zoran_do_ioctl (struct inode *inode,
 				goto dqbuf_unlock_and_return;
 			}
 
-			num =
-			    zr->v4l_pend[zr->
-					 v4l_pend_tail & V4L_MASK_FRAME];
+			num = zr->v4l_pend[zr->v4l_sync_tail & V4L_MASK_FRAME];
 			if (file->f_flags & O_NONBLOCK &&
 			    zr->v4l_buffers.buffer[num].state !=
 			    BUZ_STATE_DONE) {
@@ -3342,6 +3340,8 @@ zoran_do_ioctl (struct inode *inode,
 			if (res)
 				goto dqbuf_unlock_and_return;
 			res = zoran_v4l2_buffer_status(file, buf, num);
+			if (!res)
+				zr->v4l_sync_tail++;
 			break;
 
 		case ZORAN_MAP_MODE_JPG_REC:
@@ -3416,6 +3416,7 @@ zoran_do_ioctl (struct inode *inode,
 			    ZORAN_LOCKED;
 			zr->v4l_settings = fh->v4l_settings;
 
+			zr->v4l_sync_tail = zr->v4l_pend_tail;
 			if (!zr->v4l_memgrab_active &&
 			    zr->v4l_pend_head != zr->v4l_pend_tail) {
 				zr36057_set_memgrab(zr, 1);
@@ -3487,6 +3488,7 @@ zoran_do_ioctl (struct inode *inode,
 
 			zr->v4l_grab_seq = 0;
 			zr->v4l_pend_head = zr->v4l_pend_tail = 0;
+			zr->v4l_sync_tail = 0;
 
 			break;
 
