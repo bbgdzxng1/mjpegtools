@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.5 2002-10-07 12:55:43 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.6 2002-10-11 19:57:27 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -715,7 +715,7 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	/* Upper limit: 6/8 of the code buffers */
 	if (size * cap->field_per_buff > cap->max_buffer_size * 6)
 		size = cap->max_buffer_size * 6 / cap->field_per_buff;
-	reg = size / (blocks * 4);
+	reg = size / (blocks * 2);
 	if (reg > ptr->max_block_vol)
                 reg = ptr->max_block_vol;	/* 480 bits/block, does 0xff represents unlimited? */
 	/* quality setting */
