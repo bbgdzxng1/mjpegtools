@@ -30,10 +30,6 @@
 #ifndef _BUZ_H_
 #define _BUZ_H_
 
-#if LINUX_VERSION_CODE < 0x20212
-typedef struct wait_queue *wait_queue_head_t;
-#endif
-
 /* The Buz only supports a maximum width of 720, but some V4L
    applications (e.g. xawtv are more happy with 768).
    If XAWTV_HACK is defined, we try to fake a device with bigger width */
@@ -311,6 +307,7 @@ struct zoran_jpg_struct {
 	struct zoran_jpg_buffer 	buffer[BUZ_MAX_FRAME]; 	/* buffers */
 	int 				num_buffers, buffer_size;
 	int 				allocated;		/* Flag if buffers are allocated  */
+	int				secretly_allocated;	/* Temporary hack as long as kfree() within munmap() oopses */
 	int 				need_contiguous; 	/* Flag if contiguous buffers are needed */
 };
 
@@ -319,6 +316,7 @@ struct zoran_v4l_struct {
 	struct zoran_v4l_buffer 	buffer[VIDEO_MAX_FRAME]; 	/* buffers */
 	int 				num_buffers, buffer_size;
 	int 				allocated; 			/* Flag if buffers are allocated  */
+	int				secretly_allocated;		/* Temporary hack as long as kfree() within munmap() oopses */
 };
 
 struct zoran;
@@ -354,20 +352,30 @@ struct card_info {
 
 	u32 jpeg_int;			/* JPEG interrupt */
 	u32 vsync_int;			/* VSYNC interrupt */
-        u8  gpio[GPIO_MAX];
+        s8  gpio[GPIO_MAX];
 	u8  gpcs[GPCS_MAX];
 
 	struct vfe_polarity vfe_pol;
 	u8  gpio_pol[GPIO_MAX];
 
+	/* is the /GWS line conected? */
+	u8 gws_not_connected;
+	
 	void (*init)(struct zoran *zr);
 };
 
 struct zoran {
 	struct video_device     video_dev;
-	struct i2c_bus          i2c;
-	struct videocodec       *codec;
-	struct videocodec       *vfe;
+
+	struct i2c_adapter      i2c_adapter;	/* */
+	struct i2c_algo_bit_data i2c_algo;	/* */
+	u32			i2cbr;
+
+	struct i2c_client	*decoder;	/* video decoder i2c client */
+	struct i2c_client	*encoder;	/* video encoder i2c client */
+
+	struct videocodec       *codec;		/* video codec */
+	struct videocodec       *vfe;		/* video front end */
 
 	int                     initialized;	/* flag if zoran has been correctly initalized */
 	int                     user;		/* number of current users */

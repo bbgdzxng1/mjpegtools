@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.4 2002-08-10 12:42:25 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.5 2002-10-07 12:55:43 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -446,7 +446,6 @@ static void zr36060_init(struct zr36060 *ptr)
 		zr36060_write(ptr, ZR060_IMR, 0x01);
 
 		/* volume control settings */
-		zr36060_write(ptr, ZR060_MBCVR, ptr->max_block_vol >> 1);
 		zr36060_write(ptr, ZR060_SF_HI, ptr->scalefact >> 8);
 		zr36060_write(ptr, ZR060_SF_LO, ptr->scalefact & 0xff);
 
@@ -505,7 +504,7 @@ static void zr36060_init(struct zr36060 *ptr)
 
 		/* Setup the Video Frontend */
 		/* Limit pixel range to 16..235 as per CCIR-601 */
-		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIVedge | ZR060_VCR_Range);
+		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_Range);
 
         } else {
                 DEBUG1("%s: EXPANSION SETUP\n",ptr->name);
@@ -538,7 +537,7 @@ static void zr36060_init(struct zr36060 *ptr)
 		/* Setup the Video Frontend */
 		//zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIExt);
 		//this doesn't seem right and doesn't work...
-		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_FIVedge | ZR060_VCR_Range);
+		zr36060_write(ptr, ZR060_VCR, ZR060_VCR_Range);
         }
 
 	/* Load the tables */
@@ -580,11 +579,11 @@ static int zr36060_set_mode(struct videocodec *codec, int mode)
 
 /* set picture size (norm is ignored as the codec doesn't know about it) */
 static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
-			     struct video_capture *cap, struct vfe_polarity *pol)
+			     struct vfe_settings *cap, struct vfe_polarity *pol)
 {
 	struct zr36060 *ptr = (struct zr36060 *)codec->data;
-        unsigned HStart;
 	u32 reg;
+	int size, blocks;
 
         DEBUG1("%s: set_video %d/%d-%dx%d (%%%d) call\n",ptr->name,
                cap->x, cap->y, cap->width, cap->height, cap->decimation);
@@ -597,8 +596,10 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 
 	zr36060_write(ptr, ZR060_LOAD, ZR060_LOAD_SyncRst);
 
-	reg = (pol->vsync_pol  ? ZR060_VPR_VSPol   : 0)
-	    | (pol->hsync_pol  ? ZR060_VPR_HSPol   : 0)
+	/* Note that CSPol/HSPol bits in zr26060 have the opposite
+	 * meaning of their zr360x7 counterparts with the same names */
+	reg = (!pol->vsync_pol  ? ZR060_VPR_VSPol   : 0)
+	    | (!pol->hsync_pol  ? ZR060_VPR_HSPol   : 0)
 	    | (pol->field_pol  ? ZR060_VPR_FIPol   : 0)
 	    | (pol->blank_pol  ? ZR060_VPR_BLPol   : 0)
 	    | (pol->subimg_pol ? ZR060_VPR_SImgPol : 0)
@@ -662,7 +663,7 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	zr36060_write(ptr, ZR060_SGR_BVEND_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_SGR_BVEND_LO, (reg >> 0) & 0xff);
 
-/*CM*/	reg = norm->HStart + 64 - 1;	/* BHstart */
+	reg = norm->HStart - 1;	/* BHstart */
 	zr36060_write(ptr, ZR060_SGR_BHSTART, reg);
 
 	reg += norm->Wa;	/* BHend */
@@ -678,15 +679,7 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	zr36060_write(ptr, ZR060_AAR_VEND_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_AAR_VEND_LO, (reg >> 0) & 0xff);
 
-/*CP
-        if (zr->card->type == BUZ) {
-                HStart += 44;
-        } else {
-                HStart += 64;
-        }
-*/
-	HStart = 64;
-        reg = cap->x + norm->HStart + HStart;        /* Hstart */
+        reg = cap->x + norm->HStart;        /* Hstart */
 	zr36060_write(ptr, ZR060_AAR_HSTART_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_AAR_HSTART_LO, (reg >> 0) & 0xff);
 
@@ -703,13 +696,30 @@ static int zr36060_set_video(struct videocodec *codec, struct tvnorm *norm,
 	zr36060_write(ptr, ZR060_SWR_VEND_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_SWR_VEND_LO, (reg >> 0) & 0xff);
 
-	reg = norm->HStart + 64 - 4;	/* SHstart */
+	reg = norm->HStart /*+ 64*/ - 4;	/* SHstart */
 	zr36060_write(ptr, ZR060_SWR_HSTART_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_SWR_HSTART_LO, (reg >> 0) & 0xff);
 
 	reg += norm->Wa + 8;	/* SHend */
 	zr36060_write(ptr, ZR060_SWR_HEND_HI, (reg >> 8) & 0xff);
 	zr36060_write(ptr, ZR060_SWR_HEND_LO, (reg >> 0) & 0xff);
+
+	size = (norm->Ha / 2) * (norm->Wa) / (cap->decimation & 0xff) / (cap->decimation >> 8);
+        blocks = size / 64;
+	/* Target compressed field size in bits: */
+	size = size * 16;	/* uncompressed size in bits */
+	size = size * cap->quality / 400;	/* quality = 100 is a compression ratio 1:4 */
+	/* Lower limit (arbitrary, 1 KB) */
+	if (size < 8192)
+		size = 8192;
+	/* Upper limit: 6/8 of the code buffers */
+	if (size * cap->field_per_buff > cap->max_buffer_size * 6)
+		size = cap->max_buffer_size * 6 / cap->field_per_buff;
+	reg = size / (blocks * 4);
+	if (reg > ptr->max_block_vol)
+                reg = ptr->max_block_vol;	/* 480 bits/block, does 0xff represents unlimited? */
+	/* quality setting */
+	zr36060_write(ptr, ZR060_MBCVR, reg);
 
         return 0;
 }

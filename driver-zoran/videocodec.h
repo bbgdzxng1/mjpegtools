@@ -6,7 +6,7 @@
 
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: videocodec.h,v 1.1.2.1 2002-08-01 11:05:43 rbultje Exp $
+   $Id: videocodec.h,v 1.1.2.2 2002-10-07 12:55:43 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -232,6 +232,20 @@ struct vfe_polarity {
 	int vclk_pol   : 1;
 };
 
+struct vfe_settings {
+	__u32 	x,y;			/* Offsets into image */
+	__u32	width, height;		/* Area to capture */
+	__u16	decimation;		/* Decimation divider */
+	__u16	flags;			/* Flags for capture */
+/* flags are the same as in struct video_capture - see videodev.h:
+#define VIDEO_CAPTURE_ODD		0
+#define VIDEO_CAPTURE_EVEN		1
+*/
+	__u16	field_per_buff;		/* .. */
+	__u16	quality;		/* quality of the video */
+	__u32	max_buffer_size;	/* maximum size per captured field */	
+};
+
 struct tvnorm {
 	u16	Wt, Wa, HStart, HSyncStart, Ht, Ha, VStart;
 };
@@ -260,7 +274,7 @@ struct videocodec {
         int (*set_mode)(struct videocodec *codec, int mode);
         // setup picture size and norm (for the codec's video frontend)
         int (*set_video)(struct videocodec *codec, struct tvnorm *norm,
-			 struct video_capture *cap, struct vfe_polarity *pol);
+			 struct vfe_settings *cap, struct vfe_polarity *pol);
         // other control commands, also mmap setup etc.
         int (*control)(struct videocodec *codec, int type, int size,
                                                            void *data);

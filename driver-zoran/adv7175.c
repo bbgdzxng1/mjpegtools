@@ -8,6 +8,9 @@
     Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
        - some corrections for Pinnacle Systems Inc. DC10plus card.
 
+    Changes by Ronald Bultje <rbultje@ronald.bitfreak.net>
+       - moved over to linux>=2.4.x i2c protocol (9/9/2002)
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -49,11 +52,8 @@ MODULE_DESCRIPTION("Analog Devices ADV7175 video encoder driver");
 MODULE_AUTHOR("Dave Perks");
 MODULE_LICENSE("GPL");
 
-#if LINUX_VERSION_CODE < 0x20400
 #include <linux/i2c.h>
-#else
-#include <linux/i2c-old.h>
-#endif
+#include <linux/i2c-dev.h>
 
 #include <linux/video_encoder.h>
 
@@ -67,8 +67,6 @@ MODULE_LICENSE("GPL");
 
 struct adv7175
 {
-   struct i2c_bus   *bus;
-   int      addr;
    unsigned char   reg[128];
 
    int      norm;
@@ -85,73 +83,62 @@ struct adv7175
 
 static char adv7175_name[] = "adv7175"; 
 static char adv7176_name[] = "adv7176"; 
-static char unknown_name[] = "UNKNOWN"; 
 
 #if (DEBUGLEVEL > 0)
 static char *inputs[] = {"pass_through", "play_back", "color_bar"};
 static char *norms[] = {"PAL", "NTSC", "SECAM->PAL (may not work!)"};
 #endif
 
-#define I2C_DELAY   10
-
 /* ----------------------------------------------------------------------- */
 
-static int adv7175_write(struct adv7175 *dev, unsigned char subaddr, unsigned char data)
+static int
+adv7175_write(struct i2c_client *client, u8 reg, u8 value)
 {
-   int ack;
-
-   LOCK_I2C_BUS(dev->bus);
-
-   i2c_start(dev->bus);
-   i2c_sendbyte(dev->bus, dev->addr, I2C_DELAY);
-   i2c_sendbyte(dev->bus, subaddr, I2C_DELAY);
-   ack = i2c_sendbyte(dev->bus, data, I2C_DELAY);
-   dev->reg[subaddr] = data;
-   i2c_stop(dev->bus);
-   UNLOCK_I2C_BUS(dev->bus);
-   return ack;
+   struct adv7175 *encoder = client->data;
+   encoder->reg[reg] = value;
+   return i2c_smbus_write_byte_data(client, reg, value);
 }
 
-static 
-unsigned char adv7175_read(struct adv7175 *dev, unsigned char subaddr)
+static u8
+adv7175_read(struct i2c_client *client, u8 reg)
 {
-   unsigned char data;
-
-   LOCK_I2C_BUS(dev->bus);
-
-   i2c_start(dev->bus);
-   i2c_sendbyte(dev->bus, dev->addr, I2C_DELAY);
-   i2c_sendbyte(dev->bus, subaddr, I2C_DELAY);
-   i2c_sendbyte(dev->bus, dev->addr+1, I2C_DELAY);
-   data = i2c_readbyte(dev->bus, 1);
-   dev->reg[subaddr] = data;
-   i2c_stop(dev->bus);
-   UNLOCK_I2C_BUS(dev->bus);
-   return data;
+   return i2c_smbus_read_byte_data(client, reg);
 }
 
-static int adv7175_write_block(struct adv7175 *dev, unsigned const char *data, unsigned int len)
+static int
+adv7175_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
 {
-   int ack=0;
-   unsigned subaddr;
+   int ret = -1;
+   u8 reg;
 
+   /* (Ronald) just as saa7110, this is ugly, and for the same reason,
+    * we don't use the chip's internal auto-increment function... */
    while (len > 1) {
-      LOCK_I2C_BUS(dev->bus);
-      i2c_start(dev->bus);
-      i2c_sendbyte(dev->bus, dev->addr, I2C_DELAY);
-      ack = i2c_sendbyte(dev->bus, (subaddr = *data++), I2C_DELAY);
-      ack = i2c_sendbyte(dev->bus, (dev->reg[subaddr] = *data++), I2C_DELAY);
-      len -= 2;
-      while (len > 1 && *data == ++subaddr) {
-         data++;
-         ack = i2c_sendbyte(dev->bus, (dev->reg[subaddr] = *data++), I2C_DELAY);
-         len -= 2;
-      }
-      i2c_stop(dev->bus);
-      UNLOCK_I2C_BUS(dev->bus);
+      reg = *data++;
+      ret = adv7175_write(client, reg, *data++);
+      len-=2;
+      if (ret)
+         return ret;
    }
-   return ack;
+   return ret;
 }
+
+#if (DEBUGLEVEL > 0)
+static void
+dump(struct i2c_client *client)
+{
+	struct adv7175 *encoder = client->data;
+	int i,j;
+	printk(KERN_INFO "%s: registry dump\n", client->name);
+	for (i=0;i<182/8;i++) {
+		printk("%s: 0x%02x -", client->name, i*8);
+		for (j=0;j<8;j++) {
+			printk(" 0x%02x", encoder->reg[i*8+j]);
+		}
+		printk("\n");
+	}
+}
+#endif
 
 /* ----------------------------------------------------------------------- */
 // Output filter:  S-Video  Composite
@@ -212,68 +199,17 @@ static const unsigned char init_ntsc[] = {
    0x06, 0x1a,   /* subc. phase */
 };
 
-
-static int adv7175_attach(struct i2c_device *device)
+static int
+adv7175_command(struct i2c_client *client, unsigned int cmd, void * arg)
 {
-   int i;
-   struct adv7175 * encoder;
-   char *dname;
-
-   device->data = encoder = kmalloc(sizeof(struct adv7175), GFP_KERNEL);
-   if (encoder == NULL) {
-      return -ENOMEM;
-   }
-
-   MOD_INC_USE_COUNT;
-
-   memset(encoder, 0, sizeof(struct adv7175));
-   if ((device->addr == I2C_ADV7175) || (device->addr == (I2C_ADV7175 + 2))) {
-    	dname = adv7175_name;
-   } else if ((device->addr == I2C_ADV7176) || (device->addr == (I2C_ADV7176 + 2))) {
-    	dname = adv7176_name;
-   } else {
-    	// We should never get here!!!
-    	dname = unknown_name;
-   }
-   strcpy(device->name, dname);
-   encoder->bus = device->bus;
-   encoder->addr = device->addr;
-   encoder->norm = VIDEO_MODE_PAL;
-   encoder->input = 0;
-   encoder->enable = 1;
-
-   i = adv7175_write_block(encoder, init_common, sizeof(init_common));
-   if (i >= 0) {
-     i = adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     i = adv7175_write(encoder, 0x07, TR0MODE);
-     i = adv7175_read(encoder, 0x12);
-     printk(KERN_INFO "%s_attach: %s rev. %d at 0x%02x\n", device->name, dname, i&1, device->addr);
-   }
-   if (i < 0) {
-      printk(KERN_ERR "%s_attach: init error %d\n", device->name, i);
-   }
-
-   return 0;
-}
-
-
-static int adv7175_detach(struct i2c_device *device)
-{
-   kfree(device->data);
-   MOD_DEC_USE_COUNT;
-   return 0;
-}
-
-static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * arg)
-{
-   struct adv7175 * encoder = device->data;
+   struct adv7175 *encoder = client->data;
 
    switch (cmd) {
 
    case 0:  // This is just for testing!!!
-           adv7175_write_block(encoder, init_common, sizeof(init_common));
-           adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-           adv7175_write(encoder, 0x07, TR0MODE);
+           adv7175_write_block(client, init_common, sizeof(init_common));
+           adv7175_write(client, 0x07, TR0MODE | TR0RST);
+           adv7175_write(client, 0x07, TR0MODE);
         break;
         
    case ENCODER_GET_CAPABILITIES:
@@ -295,24 +231,23 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
       {
          int iarg =  *(int *)arg;
          
-         //adv7175_write_block(encoder, init_common, sizeof(init_common));
          //if(encoder->norm != iarg) {
             switch (iarg) {
 
                 case VIDEO_MODE_NTSC:
-                    adv7175_write_block(encoder, init_ntsc, sizeof(init_ntsc));
+                    adv7175_write_block(client, init_ntsc, sizeof(init_ntsc));
      	            if (encoder->input == 0)
-                        adv7175_write(encoder, 0x0d, 0x4f);  // Enable genlock
-     	            adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	            adv7175_write(encoder, 0x07, TR0MODE);
+                        adv7175_write(client, 0x0d, 0x4f);  // Enable genlock
+     	            adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	            adv7175_write(client, 0x07, TR0MODE);
      	            break;
 
                 case VIDEO_MODE_PAL:
-     	            adv7175_write_block(encoder, init_pal, sizeof(init_pal));
+     	            adv7175_write_block(client, init_pal, sizeof(init_pal));
      	            if (encoder->input == 0)
-                        adv7175_write(encoder, 0x0d, 0x4f);  // Enable genlock
-     	            adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	            adv7175_write(encoder, 0x07, TR0MODE);
+                        adv7175_write(client, 0x0d, 0x4f);  // Enable genlock
+     	            adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	            adv7175_write(client, 0x07, TR0MODE);
                     break;
 
                 case VIDEO_MODE_SECAM: // WARNING! ADV7176 does not support SECAM.
@@ -320,18 +255,18 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
                                        // it does not work due to genlock: when decoder
                                        // is in SECAM and encoder in in PAL the subcarrier
                                        // can not be syncronized with horizontal frequency)
-     	            adv7175_write_block(encoder, init_pal, sizeof(init_pal));
+     	            adv7175_write_block(client, init_pal, sizeof(init_pal));
      	            if (encoder->input == 0)
-                        adv7175_write(encoder, 0x0d, 0x49);  // Disable genlock
-                    adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	            adv7175_write(encoder, 0x07, TR0MODE);
+                        adv7175_write(client, 0x0d, 0x49);  // Disable genlock
+                    adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	            adv7175_write(client, 0x07, TR0MODE);
                     break;
                 default:
-                    printk(KERN_ERR "%s: illegal norm: %d\n",device->name,iarg);
+                    printk(KERN_ERR "%s: illegal norm: %d\n",client->name,iarg);
                     return -EINVAL;
 
             }
-            DEBUG(printk(KERN_INFO "%s: switched to %s\n",device->name, norms[iarg]));
+            DEBUG(printk(KERN_INFO "%s: switched to %s\n",client->name, norms[iarg]));
             encoder->norm = iarg;
          //}
       }
@@ -349,40 +284,40 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
              switch (iarg) {
 
              case 0:
-	        adv7175_write(encoder, 0x01, 0x00);
-    	        adv7175_write(encoder, 0x0c, TR1CAPT);   /* TR1 */
+	        adv7175_write(client, 0x01, 0x00);
+    	        adv7175_write(client, 0x0c, TR1CAPT);   /* TR1 */
                 if (encoder->norm == VIDEO_MODE_SECAM)
-                    adv7175_write(encoder, 0x0d, 0x49);  // Disable genlock
+                    adv7175_write(client, 0x0d, 0x49);  // Disable genlock
                 else
-                    adv7175_write(encoder, 0x0d, 0x4f);  // Enable genlock
-     	        adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	        adv7175_write(encoder, 0x07, TR0MODE);
+                    adv7175_write(client, 0x0d, 0x4f);  // Enable genlock
+     	        adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	        adv7175_write(client, 0x07, TR0MODE);
 	        //udelay(10);
                 break;
 
              case 1:
-	        adv7175_write(encoder, 0x01, 0x00);
-    	        adv7175_write(encoder, 0x0c, TR1PLAY);   /* TR1 */
-	        adv7175_write(encoder, 0x0d, 0x49);
-     	        adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	        adv7175_write(encoder, 0x07, TR0MODE);
+	        adv7175_write(client, 0x01, 0x00);
+    	        adv7175_write(client, 0x0c, TR1PLAY);   /* TR1 */
+	        adv7175_write(client, 0x0d, 0x49);
+     	        adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	        adv7175_write(client, 0x07, TR0MODE);
 	        //udelay(10);
                 break;
 
               case 2:
-	        adv7175_write(encoder, 0x01, 0x80);
-                adv7175_write(encoder, 0x0d, 0x49);
-     	        adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
-     	        adv7175_write(encoder, 0x07, TR0MODE);
+	        adv7175_write(client, 0x01, 0x80);
+                adv7175_write(client, 0x0d, 0x49);
+     	        adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     	        adv7175_write(client, 0x07, TR0MODE);
 	        //udelay(10);
                 break;
 
               default:
-                printk(KERN_ERR "%s: illegal input: %d\n",device->name,iarg);
+                printk(KERN_ERR "%s: illegal input: %d\n",client->name,iarg);
                 return -EINVAL;
 
              }
-             DEBUG(printk(KERN_INFO "%s: switched to %s\n",device->name, inputs[iarg]));
+             DEBUG(printk(KERN_INFO "%s: switched to %s\n",client->name, inputs[iarg]));
              encoder->input = iarg;
          //}
       }
@@ -411,31 +346,148 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
       return -EINVAL;
    }
 
+   DEBUG(dump(client));
+
    return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
-struct i2c_driver i2c_driver_adv7175 = {
-   name:       "adv7175",      /* name */
-   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   addr_l:     I2C_ADV7175,
-   addr_h:     I2C_ADV7175+3,
+/*
+ * Generic i2c probe
+ * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
+ */
+static unsigned short normal_i2c[] = { I2C_ADV7175>>1, (I2C_ADV7175>>1)+1,
+					I2C_ADV7176>>1, (I2C_ADV7176>>1)+1,
+					I2C_CLIENT_END };
+static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 
-   attach:     adv7175_attach,
-   detach:     adv7175_detach,
-   command:    adv7175_command
-};
+I2C_CLIENT_INSMOD;
 
-struct i2c_driver i2c_driver_adv7176 = {
-   name:       "adv7175",      /* name */
-   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   addr_l:     I2C_ADV7176,
-   addr_h:     I2C_ADV7176+3,
+static int adv717x_i2c_id = 0;
+struct i2c_driver i2c_driver_adv717x;
 
-   attach:     adv7175_attach,
-   detach:     adv7175_detach,
-   command:    adv7175_command
+static int
+adv7175_detect_client (struct i2c_adapter *adapter,
+                       int                 address,
+                       unsigned short      flags,
+                       int                 kind)
+{
+   int i;
+   struct i2c_client *client;
+   struct adv7175* encoder;
+   char *dname;
+
+   DEBUG(printk(KERN_INFO "adv7175.c: detecting adv717x client on address 0x%x\n", address<<1));
+	
+   /* Check if the adapter supports the needed features */
+   if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
+      return 0;
+
+   client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
+   if (client == 0)
+      return -ENOMEM;
+   memset(client, 0, sizeof(struct i2c_client));
+   client->addr = address;
+   client->adapter = adapter;
+   client->driver = &i2c_driver_adv717x;
+   client->flags = 0;
+   client->id = adv717x_i2c_id++;
+   if ((client->addr == I2C_ADV7175>>1) ||
+       (client->addr == (I2C_ADV7175>>1)+1)) {
+    	dname = adv7175_name;
+   } else if ((client->addr == I2C_ADV7176>>1) ||
+              (client->addr == (I2C_ADV7176>>1)+1)) {
+    	dname = adv7176_name;
+   } else {
+    	// We should never get here!!!
+    	return 0;
+   }
+   snprintf(client->name, sizeof(client->name)-1, "%s[%d]", dname, client->id);
+
+   client->data = encoder = kmalloc(sizeof(struct adv7175), GFP_KERNEL);
+   if (encoder == NULL) {
+      return -ENOMEM;
+   }
+   memset(encoder, 0, sizeof(struct adv7175));
+   encoder->norm = VIDEO_MODE_PAL;
+   encoder->input = 0;
+   encoder->enable = 1;
+
+   i = i2c_attach_client(client);
+   if (i) {
+      kfree(client);
+      kfree(encoder);
+      return i;
+   }
+
+   i = adv7175_write_block(client, init_common, sizeof(init_common));
+   if (i >= 0) {
+     i = adv7175_write(client, 0x07, TR0MODE | TR0RST);
+     i = adv7175_write(client, 0x07, TR0MODE);
+     i = adv7175_read(client, 0x12);
+     printk(KERN_INFO "%s_attach: rev. %d at 0x%x\n", client->name, i&1, client->addr<<1);
+   }
+   if (i < 0) {
+      printk(KERN_ERR "%s_attach: init error 0x%x\n", client->name, i);
+   }
+
+   return 0;
+}
+
+static int
+adv7175_attach_adapter(struct i2c_adapter *adapter)
+{
+   DEBUG(printk(KERN_INFO "adv7175.c: starting probe for adapter %s (0x%x)\n",
+		adapter->name, adapter->id));
+   return i2c_probe(adapter, &addr_data, &adv7175_detect_client);
+}
+
+static int
+adv7175_detach_client(struct i2c_client *client)
+{
+   struct adv7175* encoder = client->data;
+   int err;
+
+   err = i2c_detach_client(client);
+   if (err) {
+      return err;
+   }
+
+   kfree(encoder);
+   kfree(client);
+   return 0;
+}
+
+static void
+adv7175_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+adv7175_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+   MOD_DEC_USE_COUNT;
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
+struct i2c_driver i2c_driver_adv717x = {
+   name:		"adv717x",      /* name */
+
+   id:			I2C_DRIVERID_ADV717X,
+   flags:		I2C_DF_NOTIFY,
+
+   attach_adapter:	adv7175_attach_adapter,
+   detach_client:	adv7175_detach_client,
+   command:		adv7175_command,
+   inc_use:		adv7175_inc_use,
+   dec_use:		adv7175_dec_use
 };
 
 EXPORT_NO_SYMBOLS;
@@ -446,20 +498,12 @@ int init_module(void)
 int adv7175_init(void)
 #endif
 {
-   int res_adv7175 = 0, res_adv7176 = 0;
-   res_adv7175 = i2c_register_driver(&i2c_driver_adv7175);
-   res_adv7176 = i2c_register_driver(&i2c_driver_adv7176);
-   return (res_adv7175 | res_adv7176); // Any idea how to make it better?
+   return i2c_add_driver(&i2c_driver_adv717x);
 }
-
-
 
 #ifdef MODULE
-
 void cleanup_module(void)
 {
-   i2c_unregister_driver(&i2c_driver_adv7176);
-   i2c_unregister_driver(&i2c_driver_adv7175);
+   i2c_del_driver(&i2c_driver_adv717x);
 }
-
 #endif

@@ -11,7 +11,7 @@
 
    Changes for DC10 by Laurent Pinchart <laurent.pinchart@skynet.be>
    
-   Changes for videodev2 by Ronald Bultje <rbultje@ronald.bitfreak.net>
+   Changes for videodev2/v4l2 by Ronald Bultje <rbultje@ronald.bitfreak.net>
 
    Based on
    
@@ -70,23 +70,9 @@
 #include <linux/types.h>
 #include <linux/wrapper.h>
 
-#if LINUX_VERSION_CODE < 0x20400
-#include <asm/spinlock.h>
-#include <linux/i2c.h>
-#define     ZORAN_HARDWARE  VID_HARDWARE_BT848
-#define     ZORAN_VID_TYPE  ( \
-                            VID_TYPE_CAPTURE | \
-                            VID_TYPE_OVERLAY | \
-                            VID_TYPE_CLIPPING | \
-                            VID_TYPE_FRAMERAM | \
-                            VID_TYPE_SCALES \
-                            )
-	    /* theoretically we could also flag VID_TYPE_SUBCAPTURE
-	       but this is not even implemented in the BTTV driver */
-#else
+#include <linux/i2c-algo-bit.h>
 #include <linux/spinlock.h>
 #include <linux/vmalloc.h>
-#include <linux/i2c-old.h>
 #define     MAP_NR(x)       virt_to_page(x)
 #define     ZORAN_HARDWARE  VID_HARDWARE_ZR36067
 #define     ZORAN_VID_TYPE  ( \
@@ -98,12 +84,6 @@
                             VID_TYPE_MJPEG_DECODER | \
                             VID_TYPE_MJPEG_ENCODER \
                             )
-#endif
-
-#if LINUX_VERSION_CODE < 0x20212
-#define     init_waitqueue_head(x)   do { *(x) = NULL; } while (0)
-#endif
-
 
 #include <linux/videodev.h>
 #include "videocodec.h"
@@ -499,6 +479,7 @@ v4l_fbuffer_alloc (struct file *file)
 	}
 
 	fh->v4l_buffers.allocated = 1;
+	fh->v4l_buffers.secretly_allocated = 0;
 	return 0;
 }
 
@@ -510,7 +491,9 @@ v4l_fbuffer_free (struct file *file)
 	struct zoran *zr = fh->zr;
 	int i, off;
 	unsigned char *mem;
-printk(KERN_INFO "%s: v4l_fbuffer_free\n", zr->name);
+
+	printk(KERN_INFO "%s: v4l_fbuffer_free\n", zr->name);
+
 	for (i = 0; i < fh->v4l_buffers.num_buffers; i++) {
 		if (!fh->v4l_buffers.buffer[i].fbuffer)
 			continue;
@@ -529,6 +512,7 @@ printk(KERN_INFO "%s: v4l_fbuffer_free\n", zr->name);
 	}
 
 	fh->v4l_buffers.allocated = 0;
+	fh->v4l_buffers.secretly_allocated = 0;
 }
 
 /*
@@ -617,6 +601,7 @@ static int jpg_fbuffer_alloc(struct file *file)
 	DEBUG1(printk(KERN_DEBUG "%s: jpg_fbuffer_alloc: %d KB allocated\n", zr->name,
 		      (fh->jpg_buffers.num_buffers * fh->jpg_buffers.buffer_size) >> 10));
 	fh->jpg_buffers.allocated = 1;
+	fh->jpg_buffers.secretly_allocated = 0;
 	return 0;
 }
 
@@ -662,26 +647,26 @@ static void jpg_fbuffer_free(struct file *file)
 		fh->jpg_buffers.buffer[i].frag_tab = NULL;
 	}
 	fh->jpg_buffers.allocated = 0;
+	fh->jpg_buffers.secretly_allocated = 0;
 }
 
-
+
 /*
  * General Purpose I/O and Guest bus access
  */
 
 /*
  * This is a bit tricky. When a board lacks a GPIO function, the corresponding
- * GPIO bit number in the card_info structure is set to 0. To make sure we can
- * make the difference between that and GPIO0, the bit number starts at 1 and
- * not 0.
+ * GPIO bit number in the card_info structure is set to 0.
  */
-static void GPIO(struct zoran *zr, unsigned bit, unsigned value)
+static void GPIO(struct zoran *zr, int bit, unsigned int value)
 {
 	u32 reg;
 	u32 mask;
 
-	/* Make sure the bit number is legal */
-	mask = (1 << (23 + bit)) & 0xff000000;
+	/* Make sure the bit number is legal
+	 * A bit number of -1 (lacking) gives a mask of 0, making it harmless */
+	mask = (1 << (24 + bit)) & 0xff000000;
 	reg = btread(ZR36057_GPPGCR1) & ~mask;
 	if (value) {
 		reg |= mask;
@@ -701,7 +686,7 @@ static int post_office_wait(struct zoran *zr)
 	while ((por = btread(ZR36057_POR)) & ZR36057_POR_POPen) {
 		/* wait for something to happen */
 	}
-	if ((por & ZR36057_POR_POTime) && zr->card->type != LML33 && zr->card->type != BUZ) {
+	if ((por & ZR36057_POR_POTime) && !zr->card->gws_not_connected) {
 		/* In LML33/BUZ \GWS line is not connected, so it has always timeout set */
                 printk(KERN_INFO "%s: pop timeout %08x\n", zr->name, por);
 		return -1;
@@ -863,10 +848,10 @@ static void dc10_init (struct zoran *zr)
 {
 	DEBUG2(printk(KERN_DEBUG "%s: dc10_init\n", zr->name));
 	/* Pixel clock selection */
-	GPIO(zr, 5, 0);
-	GPIO(zr, 6, 1);
+	GPIO(zr, 4, 0);
+	GPIO(zr, 5, 1);
 	/* Enable the video bus sync signals */
-	GPIO(zr, 8, 0);
+	GPIO(zr, 7, 0);
 }
 
 static void dc10plus_init (struct zoran *zr)
@@ -882,7 +867,7 @@ static void buz_init (struct zoran *zr)
 static void lml33_init (struct zoran *zr)
 {
 	DEBUG2(printk(KERN_DEBUG "%s: lml33_init\n", zr->name));
-	GPIO(zr, 3, 1);	// Set Composite input/output
+	GPIO(zr, 2, 1);	// Set Composite input/output
 }
 
 // struct tvnorm {
@@ -910,10 +895,11 @@ static struct card_info dc10_info = {
   tvn: { &f50sqpixel_dc10, &f60sqpixel_dc10, &f50sqpixel_dc10 },
   jpeg_int: 0,
   vsync_int: ZR36057_ISR_GIRQ1,
-  gpio: { 3, 2, 0, 4, 8, 1, 5, 6 },
+  gpio: { 2, 1, -1, 3, 7, 0, 4, 5 },
   gpio_pol: { 0, 0, 0, 1, 0, 0, 0, 0 },
   gpcs: { -1, 0 },
   vfe_pol: { 0, 0, 0, 0, 0, 0, 0, 0 },
+  gws_not_connected: 0,
   init: &dc10_init,
 };
 
@@ -925,10 +911,11 @@ static struct card_info dc10plus_info = {
   tvn: { &f50sqpixel, &f60sqpixel, &f50sqpixel },
   jpeg_int: ZR36057_ISR_GIRQ0,
   vsync_int: ZR36057_ISR_GIRQ1,
-  gpio: { 4, 1, 7, 2, 3, 0, 5, 6 },
+  gpio: { 3, 0, 6, 1, 2, -1, 4, 5 },
   gpio_pol: { 0, 0, 0, 0, 0, 0, 0, 0 },
   gpcs: { -1, 1 },
   vfe_pol: { 1, 1, 1, 1, 0, 0, 0, 0 },
+  gws_not_connected: 0,
   init: &dc10plus_init,
 };
 
@@ -940,10 +927,11 @@ static struct card_info lml33_info = {
   tvn: { &f50ccir601, &f60ccir601 },
   jpeg_int: ZR36057_ISR_GIRQ1,
   vsync_int: ZR36057_ISR_GIRQ0,
-  gpio: { 2, 0, 4, 6, 8, 0, 0, 0 },
+  gpio: { 1, -1, 3, 5, 7, -1, -1, -1 },
   gpio_pol: { 0, 0, 0, 0, 1, 0, 0, 0 },
   gpcs: { 3, 1 },
   vfe_pol: { 1, 0, 0, 0, 0, 1, 0, 0 },
+  gws_not_connected: 1,
   init: &lml33_init,
 };
 
@@ -955,10 +943,11 @@ static struct card_info buz_info = {
   tvn: { &f50ccir601, &f60ccir601, &f50ccir601 },
   jpeg_int: ZR36057_ISR_GIRQ1,
   vsync_int: ZR36057_ISR_GIRQ0,
-  gpio: { 2, 0, 4, 0, 0, 0, 0, 0 },
+  gpio: { 1, -1, 3, -1, -1, -1, -1, -1 },
   gpio_pol: { 0, 0, 0, 0, 0, 0, 0, 0 },
   gpcs: { 3, 1 },
   vfe_pol: { 1, 1, 0, 0, 0, 1, 0, 0 },
+  gws_not_connected: 1,
   init: &buz_init,
 };
 
@@ -967,115 +956,178 @@ static struct card_info buz_info = {
  * I2C functions
  */
 
-#define I2C_DELAY   10
-
 /* software I2C functions */
 
-static void i2c_setlines(struct i2c_bus *bus, int ctrl, int data)
+static int zoran_i2c_getsda (void *data)
 {
-	struct zoran *zr = (struct zoran *) bus->data;
-	btwrite((data << 1) | ctrl, ZR36057_I2CBR);
-	udelay(I2C_DELAY);
-}
+	struct zoran *zr = (struct zoran *)data;
 
-static int i2c_getdataline(struct i2c_bus *bus)
-{
-	struct zoran *zr = (struct zoran *) bus->data;
 	return (btread(ZR36057_I2CBR) >> 1) & 1;
 }
-
-static void attach_inform(struct i2c_bus *bus, int id)
+ 
+static int zoran_i2c_getscl (void *data)
 {
-	int i;
-        struct zoran *zr = (struct zoran *) bus->data;
-        
-	DEBUG1(printk(KERN_DEBUG "%s: i2c attach %02x\n", zr->name, id));
-        for(i=0; i < bus->devcount; i++) {
-		if (strcmp(bus->devices[i]->name, "vpx32xx") == 0) {
-			zr->card = &dc10_info;
-			sprintf(zr->name, "DC10(old)[%u]", zr->id);
-			break;
-		}
-		if (strcmp(bus->devices[i]->name, "saa7110") == 0) {
-			if (zr->revision < 2) {
-				zr->card = &dc10plus_info;
-				sprintf(zr->name, "DC10(new)[%u]", zr->id);
-			} else {
-				zr->card = &dc10plus_info;
-				sprintf(zr->name, "DC10plus[%u]", zr->id);
-			}
-			break;
-		}
-                if (strcmp(bus->devices[i]->name, "bt819") == 0) {
-		        zr->card = &lml33_info;
-                        sprintf(zr->name, "LML33[%u]", zr->id);
-                        break;
-	        }
-	        if (strcmp(bus->devices[i]->name, "saa7111") == 0) {
-		        zr->card = &buz_info;
-                        sprintf(zr->name, "Buz[%u]", zr->id);
-                        break;		
-	        }
-        }
+	struct zoran *zr = (struct zoran *)data;
+
+	return btread(ZR36057_I2CBR) & 1;
+}
+ 
+static void zoran_i2c_setsda (void *data, int state)
+{
+	struct zoran *zr = (struct zoran *)data;
+
+	if (state)
+		zr->i2cbr |= 2;
+	else
+		zr->i2cbr &= ~2;
+
+	btwrite(zr->i2cbr, ZR36057_I2CBR);
 }
 
-static void detach_inform(struct i2c_bus *bus, int id)
+static void zoran_i2c_setscl (void *data, int state)
 {
-	DEBUG1(struct zoran *zr = (struct zoran *) bus->data);
-	DEBUG1(printk(KERN_DEBUG "%s: i2c detach %02x\n", zr->name, id));
+	struct zoran *zr = (struct zoran *)data;
+
+	if (state)
+		zr->i2cbr |= 1;
+	else
+		zr->i2cbr &= ~1;
+
+	btwrite(zr->i2cbr, ZR36057_I2CBR);
 }
 
-static struct i2c_bus zoran_i2c_bus_template = {
-	name:               "zr36057",
-	id:                 I2C_BUSID_BUZ,
-	data:               NULL,
-
-#if LINUX_VERSION_CODE >= 0x020100
-	bus_lock:           SPIN_LOCK_UNLOCKED,
+static void zoran_i2c_inc_use (struct i2c_adapter *adapter)
+{
+#ifdef MODULE
+	MOD_INC_USE_COUNT;
 #endif
+}
+ 
+static void zoran_i2c_dec_use (struct i2c_adapter *adapter)
+{
+#ifdef MODULE
+	MOD_DEC_USE_COUNT;
+#endif
+}
 
-	attach_inform:      attach_inform,
-	detach_inform:      detach_inform,
+static int zoran_i2c_client_register (struct i2c_client *client)
+{
+        struct zoran *zr = (struct zoran *)(client->adapter->data);
 
-	i2c_setlines:       i2c_setlines,
-	i2c_getdataline:    i2c_getdataline,
-	i2c_read:           NULL,
-	i2c_write:          NULL,
+	DEBUG1(printk(KERN_DEBUG "%s: i2c_client_register (driver id: %d)\n", zr->name, client->driver->id));
+
+	switch (client->driver->id) {
+	case I2C_DRIVERID_VPX32XX:
+		zr->card = &dc10_info;
+		sprintf(zr->name, "DC10(old)[%u]", zr->id);
+		zr->decoder = client;
+		break;
+
+	case I2C_DRIVERID_SAA7110:
+		if (zr->revision < 2) {
+			zr->card = &dc10plus_info;
+			sprintf(zr->name, "DC10(new)[%u]", zr->id);
+		} else {
+			zr->card = &dc10plus_info;
+			sprintf(zr->name, "DC10plus[%u]", zr->id);
+		}
+		zr->decoder = client;
+		break;
+
+	case I2C_DRIVERID_BT819:
+		zr->card = &lml33_info;
+                sprintf(zr->name, "LML33[%u]", zr->id);
+		zr->decoder = client;
+		break;
+
+	case I2C_DRIVERID_SAA7111A:
+		zr->card = &buz_info;
+		sprintf(zr->name, "Buz[%u]", zr->id);
+		zr->decoder = client;
+		break;
+
+	case I2C_DRIVERID_SAA7185B:
+	case I2C_DRIVERID_BT856:
+	case I2C_DRIVERID_ADV717X:
+		zr->encoder = client;
+		break;
+	}
+
+	return 0;
+}
+ 
+static int zoran_i2c_client_unregister (struct i2c_client *client)
+{
+	DEBUG1(struct zoran *zr = (struct zoran *)client->adapter->data);
+	DEBUG1(printk(KERN_DEBUG "%s: i2c_client_unregister\n", zr->name));
+
+	return 0;
+}
+
+static struct i2c_algo_bit_data zoran_i2c_bit_data_template = {
+	setsda:			zoran_i2c_setsda,
+	setscl:			zoran_i2c_setscl,
+	getsda:			zoran_i2c_getsda,
+	getscl:			zoran_i2c_getscl,
+	udelay:			10,
+	mdelay:			0,
+	timeout:		100,
+};
+
+static struct i2c_adapter zoran_i2c_adapter_template = {
+	name:			"zr36057",
+	id:			I2C_HW_B_BT848,
+	algo:			NULL,
+	inc_use:		zoran_i2c_inc_use,
+	dec_use:		zoran_i2c_dec_use,
+	client_register:	zoran_i2c_client_register,
+	client_unregister:	zoran_i2c_client_unregister,
 };
 
 static int zoran_register_i2c (struct zoran *zr)
 {
-	memcpy(&zr->i2c, &zoran_i2c_bus_template, sizeof(struct i2c_bus));
-	strcpy(zr->i2c.name, zr->name);
-	zr->i2c.data = zr;
-        return i2c_register_bus(&zr->i2c);
+	memcpy(&zr->i2c_algo, &zoran_i2c_bit_data_template, sizeof(struct i2c_algo_bit_data));
+	zr->i2c_algo.data = zr;
+
+	memcpy(&zr->i2c_adapter, &zoran_i2c_adapter_template, sizeof(struct i2c_adapter));
+	strcpy(zr->i2c_adapter.name, zr->name);
+	zr->i2c_adapter.data = zr;
+	zr->i2c_adapter.algo_data = &zr->i2c_algo;
+
+	return i2c_bit_add_bus(&zr->i2c_adapter);
 }
 
 static inline void zoran_unregister_i2c (struct zoran *zr)
 {
-        i2c_unregister_bus((&zr->i2c));
+	i2c_bit_del_bus((&zr->i2c_adapter));
 }
 
 // Interface to decoder and encoder chips using i2c bus
 
 static inline int decoder_command(struct zoran *zr, int cmd, void *data)
 {
-        int res;
+	if (zr->decoder == NULL)
+		return -1;
+
         if (zr->card->type == LML33 && (cmd == DECODER_SET_NORM || DECODER_SET_INPUT)) {
+		int res;
                 // Bt819 needs to reset its FIFO buffer using #FRST pin and
                 // LML33 card uses GPIO(7) for that.
                 GPIO(zr, 7, 0); 
-                res = i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, cmd, data);
+		res = zr->decoder->driver->command(zr->decoder, cmd, data);
                 // Pull #FRST high.
                 GPIO(zr, 7, 1);
                 return res;
         } else
-                return i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEODECODER, cmd, data);
+                return zr->decoder->driver->command(zr->decoder, cmd, data);
 }
 
 static inline int encoder_command(struct zoran *zr, int cmd, void *data)
 {
-        return i2c_control_device(&zr->i2c, I2C_DRIVERID_VIDEOENCODER, cmd, data);
+	if (zr->encoder == NULL)
+		return -1;
+
+	return zr->encoder->driver->command(zr->encoder, cmd, data);
 }
 
 /*
@@ -2061,7 +2113,7 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	static int zero = 0;
 	static int one = 1;
         unsigned long timeout;
-	struct video_capture cap;
+	struct vfe_settings cap;
 
 	zr->codec_mode = mode;
 
@@ -2070,6 +2122,9 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	cap.width = zr->jpg_settings.img_width;
 	cap.height = zr->jpg_settings.img_height;
 	cap.decimation = zr->jpg_settings.HorDcm | (zr->jpg_settings.VerDcm << 8);
+	cap.quality = zr->jpg_settings.jpg_comp.quality;
+	cap.field_per_buff = zr->jpg_settings.field_per_buff;
+	cap.max_buffer_size = zr->jpg_buffers.buffer_size;
 
 	switch (mode) {
 
@@ -2918,12 +2973,14 @@ zoran_open_init_params (struct zoran *zr)
 		zr->v4l_buffers.buffer[i].state = BUZ_STATE_USER;	/* nothing going on */
 	}
 	zr->v4l_buffers.allocated = 0;
+	zr->v4l_buffers.secretly_allocated = 0;
 
 	for (i = 0; i < BUZ_MAX_FRAME; i++) {
 		zr->jpg_buffers.buffer[i].state = BUZ_STATE_USER;	/* nothing going on */
 	}
 	zr->jpg_buffers.active = ZORAN_FREE;
 	zr->jpg_buffers.allocated = 0;
+	zr->jpg_buffers.secretly_allocated = 0;
 
 	/* Set necessary params and call zoran_check_jpg_settings to set the defaults */
 	zr->jpg_settings.decimation = 1;
@@ -2976,6 +3033,7 @@ zoran_open_init_session (struct file *file)
 		fh->v4l_buffers.buffer[i].bs.frame = i;
 	}
 	fh->v4l_buffers.allocated = 0;
+	fh->v4l_buffers.secretly_allocated = 0;
 	fh->v4l_buffers.active = ZORAN_FREE;
 	fh->v4l_buffers.buffer_size = v4l_bufsize;
 	fh->v4l_buffers.num_buffers = v4l_nbufs;
@@ -2991,6 +3049,7 @@ zoran_open_init_session (struct file *file)
 	}
 	fh->jpg_buffers.need_contiguous = zr->jpg_buffers.need_contiguous;
 	fh->jpg_buffers.allocated = 0;
+	fh->jpg_buffers.secretly_allocated = 0;
 	fh->jpg_buffers.active = ZORAN_FREE;
 }
 
@@ -3017,7 +3076,7 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* v4l buffers */
-	if (fh->v4l_buffers.allocated) {
+	if (fh->v4l_buffers.allocated || fh->v4l_buffers.secretly_allocated) {
 		v4l_fbuffer_free(file);
 	}
 
@@ -3029,7 +3088,7 @@ zoran_close_end_session (struct file *file)
 	}
 
 	/* jpg buffers */
-	if (fh->jpg_buffers.allocated) {
+	if (fh->jpg_buffers.allocated || fh->jpg_buffers.secretly_allocated) {
 		jpg_fbuffer_free(file);
 	}
 }
@@ -3845,11 +3904,19 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCGMBUF:
 		{
 			struct video_mbuf *vmbuf = arg;
-			int i;
+			int i, do_alloc = 1;
 
 			if (fh->jpg_buffers.allocated || fh->v4l_buffers.allocated) {
 				printk(KERN_ERR "%s: VIDIOCGMBUF: buffers allready allocated\n", zr->name);
 				return -EINVAL;
+			}
+
+			/* if there are existing buffers and they're the same... */
+			if (fh->v4l_buffers.secretly_allocated) {
+				/* since we provide our own settings, they're always the same */
+				do_alloc = 0;
+				fh->v4l_buffers.secretly_allocated = 0;
+				fh->v4l_buffers.allocated = 1;
 			}
 
 			DEBUG2(printk(KERN_DEBUG "%s: ioctl VIDIOCGMBUF\n", zr->name));
@@ -3861,8 +3928,9 @@ zoran_do_ioctl (struct inode *inode,
 				vmbuf->offsets[i] = i * v4l_bufsize;
 			}
 
-			if (v4l_fbuffer_alloc(file))
-				return -ENOMEM;
+			if (do_alloc)
+				if (v4l_fbuffer_alloc(file))
+					return -ENOMEM;
 
 			/* The next mmap will map the V4L buffers */
 			fh->map_mode = ZORAN_MAP_MODE_RAW;
@@ -3986,6 +4054,7 @@ zoran_do_ioctl (struct inode *inode,
 	case BUZIOC_REQBUFS:
 		{
 			struct zoran_requestbuffers *breq = arg;
+			int do_alloc = 1;
 
 			if (fh->jpg_buffers.allocated || fh->v4l_buffers.allocated) {
 				printk(KERN_ERR "%s: BUZIOC_REQBUFS: buffers allready allocated\n", zr->name);
@@ -4009,11 +4078,21 @@ zoran_do_ioctl (struct inode *inode,
 			if (fh->jpg_buffers.need_contiguous && breq->size > MAX_KMALLOC_MEM)
 				breq->size = MAX_KMALLOC_MEM;
 
+			if (fh->jpg_buffers.secretly_allocated) {
+				if (fh->jpg_buffers.num_buffers == breq->count &&
+				    fh->jpg_buffers.buffer_size == breq->size) {
+					do_alloc = 0;
+					fh->jpg_buffers.secretly_allocated = 0;
+					fh->jpg_buffers.allocated = 1;
+				}
+			}
+
 			fh->jpg_buffers.num_buffers = breq->count;
 			fh->jpg_buffers.buffer_size = breq->size;
 
-			if (jpg_fbuffer_alloc(file))
-				return -ENOMEM;
+			if (do_alloc)
+				if (jpg_fbuffer_alloc(file))
+					return -ENOMEM;
 
 			/* The next mmap will map the MJPEG buffers - could also be *_PLAY, but it doesn't matter here */
 			fh->map_mode = ZORAN_MAP_MODE_JPG_REC;
@@ -4455,6 +4534,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_REQBUFS:
 		{
 			struct v4l2_requestbuffers *req = arg;
+			int do_alloc = 1, calc_size;
 
 			if (fh->v4l_buffers.allocated || fh->jpg_buffers.allocated) {
 				printk(KERN_ERR "%s: VIDIOC_REQBUFS (v4l2): buffers allready allocated\n", zr->name);
@@ -4466,9 +4546,15 @@ zoran_do_ioctl (struct inode *inode,
 				case V4L2_BUF_TYPE_CAPTURE:
 					/* this should probably be changed to be what the user asks,
 					 * but I'm lazy for now (in other words: TODO) */
+					if (fh->v4l_buffers.secretly_allocated) {
+						do_alloc = 0;
+						fh->v4l_buffers.secretly_allocated = 0;
+						fh->v4l_buffers.allocated = 1;
+					}
 					req->count = fh->v4l_buffers.num_buffers;
-					if (v4l_fbuffer_alloc(file))
-						return -ENOMEM;
+					if (do_alloc)
+						if (v4l_fbuffer_alloc(file))
+							return -ENOMEM;
 
 					/* The next mmap will map the V4L buffers */
 					fh->map_mode = ZORAN_MAP_MODE_RAW;
@@ -4481,13 +4567,24 @@ zoran_do_ioctl (struct inode *inode,
 						req->count = 4;
 					else if (req->count > BUZ_MAX_FRAME)
 						req->count = BUZ_MAX_FRAME;
+					calc_size = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
+
+					if (fh->jpg_buffers.secretly_allocated) {
+						if (fh->jpg_buffers.num_buffers == req->count &&
+						    fh->jpg_buffers.buffer_size == calc_size) {
+							do_alloc = 0;
+							fh->jpg_buffers.secretly_allocated = 0;
+							fh->jpg_buffers.allocated = 1;
+						}
+					}
 
 					/* we need to calculate size ourselves now */
 					fh->jpg_buffers.num_buffers = req->count;
-					fh->jpg_buffers.buffer_size = zoran_v4l2_calc_bufsize(&fh->jpg_settings);
+					fh->jpg_buffers.buffer_size = calc_size;
 
-					if (jpg_fbuffer_alloc(file))
-						return -ENOMEM;
+					if (do_alloc)
+						if (jpg_fbuffer_alloc(file))
+							return -ENOMEM;
 
 					/* The next mmap will map the MJPEG buffers */
 					fh->map_mode = ((req->type&V4L2_BUF_TYPE_field)==V4L2_BUF_TYPE_CODECIN)?ZORAN_MAP_MODE_JPG_REC:ZORAN_MAP_MODE_JPG_PLAY;
@@ -5312,6 +5409,8 @@ zoran_vm_close (struct vm_area_struct *vma)
 					}
 					/* see below */
 					//jpg_fbuffer_free(file);
+					fh->jpg_buffers.allocated = 0;
+					fh->jpg_buffers.secretly_allocated = 1;
 				}
 
 				break;
@@ -5344,6 +5443,10 @@ zoran_vm_close (struct vm_area_struct *vma)
 					 * munmap()-handlers). So commented out (Ronald)
 					 */
 					//v4l_fbuffer_free(file);
+					/* this hack is to make sure we can mmap() more than
+					 * once per open() without screwing up */
+					fh->v4l_buffers.allocated = 0;
+					fh->v4l_buffers.secretly_allocated = 1;
 				}
 
 				break;
@@ -5646,11 +5749,7 @@ static int zr36057_init(int i)
 	 */
 	memcpy(&zr->video_dev, &zoran_template, sizeof(zoran_template));
 	strcpy(zr->video_dev.name, zr->name);
-#if LINUX_VERSION_CODE < 0x20405
-	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER) < 0) {
-#else
 	if (video_register_device(&zr->video_dev, VFL_TYPE_GRABBER, -1) < 0) {
-#endif
 		zoran_unregister_i2c(zr);
 		kfree((void *) zr->stat_com);
 		return -1;
@@ -5782,27 +5881,21 @@ static int find_zr36057(void)
 
 		spin_lock_init(&zr->spinlock);
 
-#if LINUX_VERSION_CODE < 0x20400
-		zr->zr36057_adr = zr->pci_dev->base_address[0] & PCI_BASE_ADDRESS_MEM_MASK;
-#else
                 if (pci_enable_device(dev))
                         continue;
 
                 zr->zr36057_adr = pci_resource_start(zr->pci_dev, 0);
-#endif
+
 		pci_read_config_byte(zr->pci_dev, PCI_CLASS_REVISION, &zr->revision);
 		if (zr->revision < 2) {
 			printk(KERN_INFO "%s: Zoran ZR36057 (rev %d) irq: %d, memory: 0x%08x.\n", zr->name,
 			       zr->revision, zr->pci_dev->irq, zr->zr36057_adr);
 		} else {
 			unsigned short ss_vendor_id, ss_id;
-#if LINUX_VERSION_CODE < 0x20400
-			pci_read_config_word(zr->pci_dev, PCI_SUBSYSTEM_VENDOR_ID, &ss_vendor_id);
-			pci_read_config_word(zr->pci_dev, PCI_SUBSYSTEM_ID, &ss_id);
-#else
+
                         ss_vendor_id = zr->pci_dev->subsystem_vendor;
                         ss_id = zr->pci_dev->subsystem_device;
-#endif
+
 			printk(KERN_INFO "%s: Zoran ZR36067 (rev %d) irq: %d, memory: 0x%08x\n", zr->name,
 			       zr->revision, zr->pci_dev->irq, zr->zr36057_adr);
 			printk(KERN_INFO "%s: subsystem vendor=0x%04x id=0x%04x\n", zr->name, ss_vendor_id, ss_id);
@@ -5880,7 +5973,6 @@ static int find_zr36057(void)
 				printk(KERN_ERR "%s: Codec found, but not Zoran ZR36050.\n", zr->name);
 				goto zr_detach_codec;
 			}
-			break;
 
 			/* Setup ZR36016 */
 			master_vfe = kmalloc(sizeof(struct videocodec_master),GFP_KERNEL);

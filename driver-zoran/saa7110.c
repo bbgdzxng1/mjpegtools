@@ -8,6 +8,9 @@
     Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
        - some corrections for Pinnacle Systems Inc. DC10plus card.
 
+    Changes by Ronald Bultje <rbultje@ronald.bitfreak.net>
+       - moved over to linux>=2.4.x i2c protocol (4/9/2002)
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -36,11 +39,8 @@ MODULE_DESCRIPTION("Philips SAA7110 video decoder driver");
 MODULE_AUTHOR("Pauline Middelink");
 MODULE_LICENSE("GPL");
 
-#if LINUX_VERSION_CODE < 0x20400
 #include <linux/i2c.h>
-#else
-#include <linux/i2c-old.h>
-#endif
+#include <linux/i2c-dev.h>
 
 #include <linux/videodev.h>
 #include <linux/video_decoder.h>
@@ -56,16 +56,7 @@ MODULE_LICENSE("GPL");
 
 #define	I2C_SAA7110		0x9C	/* or 0x9E */
 
-#define	I2C_DELAY		10	/* 10 us or 100khz */
-
-#if LINUX_VERSION_CODE < 0x20212
-typedef struct wait_queue *wait_queue_head_t;
-#define     init_waitqueue_head(x)   do { *(x) = NULL; } while (0)
-#endif
-
 struct saa7110 {
-	struct	i2c_bus	*bus;
-	int		addr;
 	unsigned char	reg[54];
 
 	int		norm;
@@ -82,57 +73,41 @@ struct saa7110 {
 /* ----------------------------------------------------------------------- */
 /* I2C support functions						   */
 /* ----------------------------------------------------------------------- */
-static
-int saa7110_write(struct saa7110 *decoder, unsigned char subaddr, unsigned char data)
-{
-	int ack;
 
-	LOCK_I2C_BUS(decoder->bus);
-	i2c_start(decoder->bus);
-	i2c_sendbyte(decoder->bus, decoder->addr, I2C_DELAY);
-	i2c_sendbyte(decoder->bus, subaddr, I2C_DELAY);
-	ack = i2c_sendbyte(decoder->bus, data, I2C_DELAY);
-	i2c_stop(decoder->bus);
-	decoder->reg[subaddr] = data;
-	UNLOCK_I2C_BUS(decoder->bus);
-	return ack;
+static int
+saa7110_write(struct i2c_client *client, u8 reg, u8 value)
+{
+	struct saa7110 *decoder = client->data;
+	decoder->reg[reg] = value;
+	return i2c_smbus_write_byte_data(client, reg, value);
 }
 
-static
-int saa7110_write_block(struct saa7110* decoder, unsigned const char *data, unsigned int len)
+static int
+saa7110_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
 {
-	unsigned subaddr = *data;
+	u8 reg = *data++;
+	int ret;
+	len--;
 
-	LOCK_I2C_BUS(decoder->bus);
-        i2c_start(decoder->bus);
-        i2c_sendbyte(decoder->bus,decoder->addr,I2C_DELAY);
+	/* (Ronald) this is actually ugly...
+	 * the saa7110 chip auto-increments the registry number on
+	 * subsequent writes, but this is hard-to-impossible to implement
+	 * using the smbus i2c protocol. So I'm just making it individual
+	 * writes here... If anyone knows a better solution (using smbus),
+	 * please tell me */
 	while (len-- > 0) {
-                if (i2c_sendbyte(decoder->bus,*data,0)) {
-                        i2c_stop(decoder->bus);
-                        return -EAGAIN;
-                }
-		decoder->reg[subaddr++] = *data++;
+		ret = saa7110_write(client, reg++, *data++);
+		if (ret)
+			return ret;
         }
-	i2c_stop(decoder->bus);
-	UNLOCK_I2C_BUS(decoder->bus);
 
 	return 0;
 }
 
-static
-int saa7110_read(struct saa7110* decoder)
+static u8
+saa7110_read(struct i2c_client *client)
 {
-	int data;
-
-	LOCK_I2C_BUS(decoder->bus);
-	i2c_start(decoder->bus);
-	//i2c_sendbyte(decoder->bus, decoder->addr, I2C_DELAY);
-	//i2c_start(decoder->bus);
-	i2c_sendbyte(decoder->bus, decoder->addr | 1, I2C_DELAY);
-	data = i2c_readbyte(decoder->bus, 1);
-	i2c_stop(decoder->bus);
-	UNLOCK_I2C_BUS(decoder->bus);
-	return data;
+	return i2c_smbus_read_byte(client);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -143,8 +118,8 @@ int saa7110_read(struct saa7110* decoder)
 #define FRESP_06H_SVIDEO 0x83       //0xC0
 
 
-static
-int saa7110_selmux(struct i2c_device *device, int chan)
+static int
+saa7110_selmux(struct i2c_client *client, int chan)
 {
 static	const unsigned char modes[9][8] = {
 /* mode 0 */	{ FRESP_06H_COMPST, 0xD9, 0x17, 0x40, 0x03, 0x44, 0x75, 0x16 },
@@ -156,17 +131,17 @@ static	const unsigned char modes[9][8] = {
 /* mode 6 */	{ FRESP_06H_SVIDEO, 0x59, 0x17, 0x42, 0xA3, 0x44, 0x75, 0x12 },
 /* mode 7 */	{ FRESP_06H_SVIDEO, 0x9A, 0x17, 0xB1, 0x13, 0x60, 0xB5, 0x14 },
 /* mode 8 */	{ FRESP_06H_SVIDEO, 0x3C, 0x27, 0xC1, 0x23, 0x44, 0x75, 0x21 } };
-	struct saa7110* decoder = device->data;
+	struct saa7110 *decoder = client->data;
 	const unsigned char* ptr = modes[chan];
 
-	saa7110_write(decoder,0x06,ptr[0]);	/* Luminance control	*/
-	saa7110_write(decoder,0x20,ptr[1]);	/* Analog Control #1	*/
-	saa7110_write(decoder,0x21,ptr[2]);	/* Analog Control #2	*/
-	saa7110_write(decoder,0x22,ptr[3]);	/* Mixer Control #1	*/
-	saa7110_write(decoder,0x2C,ptr[4]);	/* Mixer Control #2	*/
-	saa7110_write(decoder,0x30,ptr[5]);	/* ADCs gain control	*/
-	saa7110_write(decoder,0x31,ptr[6]);	/* Mixer Control #3	*/
-	saa7110_write(decoder,0x21,ptr[7]);	/* Analog Control #2	*/
+	saa7110_write(client,0x06,ptr[0]);	/* Luminance control	*/
+	saa7110_write(client,0x20,ptr[1]);	/* Analog Control #1	*/
+	saa7110_write(client,0x21,ptr[2]);	/* Analog Control #2	*/
+	saa7110_write(client,0x22,ptr[3]);	/* Mixer Control #1	*/
+	saa7110_write(client,0x2C,ptr[4]);	/* Mixer Control #2	*/
+	saa7110_write(client,0x30,ptr[5]);	/* ADCs gain control	*/
+	saa7110_write(client,0x31,ptr[6]);	/* Mixer Control #3	*/
+	saa7110_write(client,0x21,ptr[7]);	/* Analog Control #2	*/
 	decoder->input = chan;
 
 	return 0;
@@ -181,138 +156,70 @@ static	const unsigned char initseq[] = {
   /* 0x28 */  0xFE, 0x01, 0xCF, 0x0F, 0x03, 0x01, 0x03, 0x0C,
   /* 0x30 */  0x44, 0x71, 0x02, 0x8C, 0x02};
 
-static
-int determine_norm(struct i2c_device* device)
+static int
+determine_norm(struct i2c_client *client)
 {
-	struct	saa7110* decoder = device->data;
+	struct saa7110 *decoder = client->data;
 	int	status;
 
 	/* mode changed, start automatic detection */
-	saa7110_write_block(decoder, initseq, sizeof(initseq));
-	saa7110_selmux(device, decoder->input);
+	saa7110_write_block(client, initseq, sizeof(initseq));
+	saa7110_selmux(client, decoder->input);
 	sleep_on_timeout(&decoder->wq, HZ/4);
-	status = saa7110_read(decoder);
+	status = saa7110_read(client);
 	if (status & 0x40) {
-	    DEBUG(printk(KERN_INFO "%s: status=0x%02x (no signal)\n",device->name, status));
+	    DEBUG(printk(KERN_INFO "%s: status=0x%02x (no signal)\n", client->name, status));
 	    return decoder->norm; // no change
 	}
 	if ((status & 3) == 0) {
-		saa7110_write(decoder,0x06,0x83);
+		saa7110_write(client,0x06,0x83);
 		if (status & 0x20) {
-			DEBUG(printk(KERN_INFO "%s: status=0x%02x (NTSC/no color)\n",device->name, status));
-			//saa7110_write(decoder,0x2E,0x81);
+			DEBUG(printk(KERN_INFO "%s: status=0x%02x (NTSC/no color)\n",client->name, status));
+			//saa7110_write(client,0x2E,0x81);
 			return VIDEO_MODE_NTSC;
 		}
-		DEBUG(printk(KERN_INFO "%s: status=0x%02x (PAL/no color)\n",device->name, status));
-		//saa7110_write(decoder,0x2E,0x9A);
+		DEBUG(printk(KERN_INFO "%s: status=0x%02x (PAL/no color)\n",client->name, status));
+		//saa7110_write(client,0x2E,0x9A);
 		return VIDEO_MODE_PAL;
 	}
 
-	//saa7110_write(decoder,0x06,0x03);
+	//saa7110_write(client,0x06,0x03);
 	if (status & 0x20) {	/* 60Hz */
-		DEBUG(printk(KERN_INFO "%s: status=0x%02x (NTSC)\n",device->name, status));
-		saa7110_write(decoder,0x0D,0x86);
-		saa7110_write(decoder,0x0F,0x50);
-		saa7110_write(decoder,0x11,0x2C);
-		//saa7110_write(decoder,0x2E,0x81);
+		DEBUG(printk(KERN_INFO "%s: status=0x%02x (NTSC)\n",client->name, status));
+		saa7110_write(client,0x0D,0x86);
+		saa7110_write(client,0x0F,0x50);
+		saa7110_write(client,0x11,0x2C);
+		//saa7110_write(client,0x2E,0x81);
 		return VIDEO_MODE_NTSC;
 	}
 
 	/* 50Hz -> PAL/SECAM */
-	saa7110_write(decoder,0x0D,0x86);
-	saa7110_write(decoder,0x0F,0x10);
-	saa7110_write(decoder,0x11,0x59);
-	//saa7110_write(decoder,0x2E,0x9A);
+	saa7110_write(client,0x0D,0x86);
+	saa7110_write(client,0x0F,0x10);
+	saa7110_write(client,0x11,0x59);
+	//saa7110_write(client,0x2E,0x9A);
 
 	sleep_on_timeout(&decoder->wq, HZ/4);
 
-	status = saa7110_read(decoder);
+	status = saa7110_read(client);
 	if ((status & 0x03) == 0x01) {
-		DEBUG(printk(KERN_INFO "%s: status=0x%02x (SECAM)\n",device->name, status));
-		saa7110_write(decoder,0x0D,0x87);
+		DEBUG(printk(KERN_INFO "%s: status=0x%02x (SECAM)\n",client->name, status));
+		saa7110_write(client,0x0D,0x87);
 		return VIDEO_MODE_SECAM;
 	}
-	DEBUG(printk(KERN_INFO "%s: status=0x%02x (PAL)\n",device->name, status));
+	DEBUG(printk(KERN_INFO "%s: status=0x%02x (PAL)\n",client->name, status));
 	return VIDEO_MODE_PAL;
 }
 
-static
-int saa7110_attach(struct i2c_device *device)
+static int
+saa7110_command(struct i2c_client *client, unsigned int cmd, void *arg)
 {
-	struct	saa7110*	decoder;
-	int			rv;
-
-	device->data = decoder = kmalloc(sizeof(struct saa7110), GFP_KERNEL);
-	if (device->data == 0)
-		return -ENOMEM;
-
-	MOD_INC_USE_COUNT;
-
-	/* clear our private data */
-	memset(decoder, 0, sizeof(struct saa7110));
-	strcpy(device->name, "saa7110");
-	decoder->bus = device->bus;
-	decoder->addr = device->addr;
-	decoder->norm = VIDEO_MODE_PAL;
-	decoder->input = 0;
-	decoder->enable = 1;
-	decoder->bright = 32768;
-	decoder->contrast = 32768;
-	decoder->hue = 32768;
-	decoder->sat = 32768;
-        
-        init_waitqueue_head(&decoder->wq);
-
-	rv = saa7110_write_block(decoder, initseq, sizeof(initseq));
-	if (rv < 0)
-		printk(KERN_ERR "%s_attach: init status %d\n", device->name, rv);
-	else {
-		int ver, status;
-		saa7110_write(decoder,0x21,0x10);
-		saa7110_write(decoder,0x0e,0x18);
-		saa7110_write(decoder,0x0D,0x04);
-		ver = saa7110_read(decoder);
-		saa7110_write(decoder,0x0D,0x06);
-		//mdelay(150);
-		status = saa7110_read(decoder);
-		printk(KERN_INFO "%s_attach: SAA7110A version %x at 0x%02x, status=0x%02x\n", device->name, ver, device->addr, status);
-		saa7110_write(decoder, 0x0D, 0x86);
-		saa7110_write(decoder, 0x0F, 0x10);
-		saa7110_write(decoder, 0x11, 0x59);
-		//saa7110_write(decoder, 0x2E, 0x9A);
-	}
-
-        //saa7110_selmux(device,0);
-        //determine_norm(device);
-	/* setup and implicit mode 0 select has been performed */
-	return 0;
-}
-
-static
-int saa7110_detach(struct i2c_device *device)
-{
-	struct saa7110* decoder = device->data;
-
-	DEBUG(printk(KERN_INFO "%s_detach\n",device->name));
-
-	/* stop further output */
-	saa7110_write(decoder,0x0E,0x00);
-
-	kfree(device->data);
-
-	MOD_DEC_USE_COUNT;
-	return 0;
-}
-
-static
-int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
-{
-	struct saa7110* decoder = device->data;
+	struct saa7110* decoder = client->data;
 	int	v;
 
 	switch (cmd) {
 	 case 0:
-                //saa7110_write_block(decoder, initseq, sizeof(initseq));
+                //saa7110_write_block(client, initseq, sizeof(initseq));
                 break;
                 
          case DECODER_GET_CAPABILITIES:
@@ -329,12 +236,12 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 
 	 case DECODER_GET_STATUS:
 		{
-			struct saa7110* decoder = device->data;
+			struct saa7110* decoder = client->data;
 			int status;
 			int res = 0;
 
-			status = i2c_read(device->bus,device->addr|1);
-			DEBUG(printk(KERN_INFO "%s: status=0x%02x norm=%d\n",device->name, status, decoder->norm));
+			status = saa7110_read(client);
+			DEBUG(printk(KERN_INFO "%s: status=0x%02x norm=%d\n",client->name, status, decoder->norm));
 			if (!(status & 0x40))
 				res |= DECODER_STATUS_GOOD;
 			if (status & 0x03)
@@ -359,32 +266,32 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 		v = *(int*)arg;
 		if (decoder->norm != v) {
 			decoder->norm = v;
-			//saa7110_write(decoder, 0x06, 0x03);
+			//saa7110_write(client, 0x06, 0x03);
 			switch (v) {
 			 case VIDEO_MODE_NTSC:
-				saa7110_write(decoder, 0x0D, 0x86);
-				saa7110_write(decoder, 0x0F, 0x50);
-				saa7110_write(decoder, 0x11, 0x2C);
-				//saa7110_write(decoder, 0x2E, 0x81);
-	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to NTSC\n",device->name));
+				saa7110_write(client, 0x0D, 0x86);
+				saa7110_write(client, 0x0F, 0x50);
+				saa7110_write(client, 0x11, 0x2C);
+				//saa7110_write(client, 0x2E, 0x81);
+	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to NTSC\n",client->name));
 				break;
 			 case VIDEO_MODE_PAL:
-				saa7110_write(decoder, 0x0D, 0x86);
-				saa7110_write(decoder, 0x0F, 0x10);
-				saa7110_write(decoder, 0x11, 0x59);
-				//saa7110_write(decoder, 0x2E, 0x9A);
-	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to PAL\n",device->name));
+				saa7110_write(client, 0x0D, 0x86);
+				saa7110_write(client, 0x0F, 0x10);
+				saa7110_write(client, 0x11, 0x59);
+				//saa7110_write(client, 0x2E, 0x9A);
+	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to PAL\n",client->name));
 				break;
 			 case VIDEO_MODE_SECAM:
-				saa7110_write(decoder, 0x0D, 0x87);
-				saa7110_write(decoder, 0x0F, 0x10);
-				saa7110_write(decoder, 0x11, 0x59);
-				//saa7110_write(decoder, 0x2E, 0x9A);
-	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to SECAM\n",device->name));
+				saa7110_write(client, 0x0D, 0x87);
+				saa7110_write(client, 0x0F, 0x10);
+				saa7110_write(client, 0x11, 0x59);
+				//saa7110_write(client, 0x2E, 0x9A);
+	    	    	    	DEBUG(printk(KERN_INFO "%s: switched to SECAM\n",client->name));
 				break;
 			 case VIDEO_MODE_AUTO:
-	    	    	    	DEBUG(printk(KERN_INFO "%s: TV standard detection...\n",device->name));
-				decoder->norm = determine_norm(device);
+	    	    	    	DEBUG(printk(KERN_INFO "%s: TV standard detection...\n",client->name));
+				decoder->norm = determine_norm(client);
 				*(int*)arg = decoder->norm;
 				break;
 			 default:
@@ -396,12 +303,12 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 	 case DECODER_SET_INPUT:
 		v = *(int*)arg;
 		if (v<0 || v>SAA7110_MAX_INPUT) {
-	    	    	DEBUG(printk(KERN_INFO "%s: input=%d not available\n",device->name, v));
+	    	    	DEBUG(printk(KERN_INFO "%s: input=%d not available\n",client->name, v));
 			return -EINVAL;
 		}
 		if (decoder->input != v) {
-			saa7110_selmux(device, v);
-	    	    	DEBUG(printk(KERN_INFO "%s: switched to input=%d\n",device->name, v));
+			saa7110_selmux(client, v);
+	    	    	DEBUG(printk(KERN_INFO "%s: switched to input=%d\n",client->name, v));
 		}
 		break;
 
@@ -416,8 +323,8 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 		v = *(int*)arg;
 		if (decoder->enable != v) {
 			decoder->enable = v;
-	                saa7110_write(decoder,0x0E, v ? 0x18 : 0x80);
-			DEBUG(printk(KERN_INFO "%s: YUV %s\n",device->name,v ? "on" : "off"));
+	                saa7110_write(client,0x0E, v ? 0x18 : 0x80);
+			DEBUG(printk(KERN_INFO "%s: YUV %s\n",client->name,v ? "on" : "off"));
 		}
 		break;
 
@@ -428,22 +335,22 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 			if (decoder->bright != pic->brightness) {
 				/* We want 0 to 255 we get 0-65535 */
 				decoder->bright = pic->brightness;
-				saa7110_write(decoder, 0x19, decoder->bright >> 8);
+				saa7110_write(client, 0x19, decoder->bright >> 8);
 			}
 			if (decoder->contrast != pic->contrast) {
 				/* We want 0 to 127 we get 0-65535 */
 				decoder->contrast = pic->contrast;
-				saa7110_write(decoder, 0x13, decoder->contrast >> 9);
+				saa7110_write(client, 0x13, decoder->contrast >> 9);
 			}
 			if (decoder->sat != pic->colour) {
 				/* We want 0 to 127 we get 0-65535 */
 				decoder->sat = pic->colour;
-				saa7110_write(decoder, 0x12, decoder->sat >> 9);
+				saa7110_write(client, 0x12, decoder->sat >> 9);
 			}
 			if (decoder->hue != pic->hue) {
 				/* We want -128 to 127 we get 0-65535 */
 				decoder->hue = pic->hue;
-				saa7110_write(decoder, 0x07, (decoder->hue>>8)-128);
+				saa7110_write(client, 0x07, (decoder->hue>>8)-128);
 			}
 		}
 		break;
@@ -451,7 +358,7 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 	 case DECODER_DUMP:
 		for (v=0; v<0x34; v+=16) {
 			int j;
-			DEBUG(printk(KERN_INFO "%s: %03x\n",device->name,v));
+			DEBUG(printk(KERN_INFO "%s: %03x\n",client->name,v));
 			for (j=0; j<16; j++) {
 				DEBUG(printk(KERN_INFO " %02x",decoder->reg[v+j]));
 			}
@@ -468,17 +375,148 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 
 /* ----------------------------------------------------------------------- */
 
+/*
+ * Generic i2c probe
+ * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
+ */
+static unsigned short normal_i2c[] = { I2C_SAA7110>>1, (I2C_SAA7110>>1)+1,
+					I2C_CLIENT_END };
+static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
+
+I2C_CLIENT_INSMOD;
+
+static int saa7110_i2c_id = 0;
+struct i2c_driver i2c_driver_saa7110;
+
+static int
+saa7110_detect_client (struct i2c_adapter *adapter,
+                       int                 address,
+                       unsigned short      flags,
+                       int                 kind)
+{
+	struct i2c_client *	client;
+	struct	saa7110*	decoder;
+	int			rv;
+
+	DEBUG(printk(KERN_INFO "saa7110.c: detecting saa7110 client on address 0x%x\n", address<<1));
+	
+	/* Check if the adapter supports the needed features */
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
+		return 0;
+
+	client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
+	if (client == 0)
+		return -ENOMEM;
+	memset(client, 0, sizeof(struct i2c_client));
+	client->addr = address;
+	client->adapter = adapter;
+	client->driver = &i2c_driver_saa7110;
+	client->flags = 0;
+	client->id = saa7110_i2c_id++;
+	snprintf(client->name, sizeof(client->name)-1, "saa7110[%d]", client->id);
+	
+	client->data = decoder = kmalloc(sizeof(struct saa7110), GFP_KERNEL);
+	if (decoder == 0) {
+		kfree(client);
+		return -ENOMEM;
+	}
+	memset(decoder, 0, sizeof(struct saa7110));
+	decoder->norm = VIDEO_MODE_PAL;
+	decoder->input = 0;
+	decoder->enable = 1;
+	decoder->bright = 32768;
+	decoder->contrast = 32768;
+	decoder->hue = 32768;
+	decoder->sat = 32768;
+        init_waitqueue_head(&decoder->wq);
+
+	rv = i2c_attach_client(client);
+	if (rv) {
+		kfree(client);
+		kfree(decoder);
+		return rv;
+	}
+
+	rv = saa7110_write_block(client, initseq, sizeof(initseq));
+	if (rv < 0)
+		printk(KERN_ERR "%s_attach: init status %d\n", client->name, rv);
+	else {
+		int ver, status;
+		saa7110_write(client,0x21,0x10);
+		saa7110_write(client,0x0e,0x18);
+		saa7110_write(client,0x0D,0x04);
+		ver = saa7110_read(client);
+		saa7110_write(client,0x0D,0x06);
+		//mdelay(150);
+		status = saa7110_read(client);
+		printk(KERN_INFO "%s_attach: SAA7110A version %x at 0x%02x, status=0x%02x\n",
+			client->name, ver, client->addr<<1, status);
+		saa7110_write(client, 0x0D, 0x86);
+		saa7110_write(client, 0x0F, 0x10);
+		saa7110_write(client, 0x11, 0x59);
+		//saa7110_write(client, 0x2E, 0x9A);
+	}
+
+        //saa7110_selmux(client,0);
+        //determine_norm(client);
+	/* setup and implicit mode 0 select has been performed */
+	return 0;
+}
+
+static int
+saa7110_attach_adapter(struct i2c_adapter *adapter)
+{
+	DEBUG(printk(KERN_INFO "saa7110.c: starting probe for adapter %s (0x%x)\n",
+			adapter->name, adapter->id));
+	return i2c_probe(adapter, &addr_data, &saa7110_detect_client);
+}
+
+static int
+saa7110_detach_client(struct i2c_client *client)
+{
+	struct saa7110* decoder = client->data;
+	int err;
+
+	err = i2c_detach_client(client);
+	if (err) {
+		return err;
+	}
+
+	kfree(decoder);
+	kfree(client);
+	return 0;
+}
+
+static void
+saa7110_inc_use (struct i2c_client *client)
+{
+#ifdef MODULE
+	MOD_INC_USE_COUNT;
+#endif
+}
+
+static void
+saa7110_dec_use(struct i2c_client *client)
+{
+#ifdef MODULE
+	MOD_DEC_USE_COUNT;
+#endif
+}
+
+/* ----------------------------------------------------------------------- */
+
 struct i2c_driver i2c_driver_saa7110 =
 {
-	name:       "saa7110",			/* name */
+	name:		"saa7110",
 
-	id:         I2C_DRIVERID_VIDEODECODER,	/* in i2c.h */
-	addr_l:     I2C_SAA7110,
-        addr_h:     I2C_SAA7110+3,	/* Addr range */
+	id:		I2C_DRIVERID_SAA7110,
+	flags:		I2C_DF_NOTIFY,
 
-	attach:     saa7110_attach,
-	detach:     saa7110_detach,
-	command:    saa7110_command
+	attach_adapter:	saa7110_attach_adapter,
+	detach_client:	saa7110_detach_client,
+	command:	saa7110_command,
+	inc_use:	saa7110_inc_use,
+	dec_use:	saa7110_dec_use
 };
 
 EXPORT_NO_SYMBOLS;
@@ -489,12 +527,12 @@ int init_module(void)
 int saa7110_init(void)
 #endif
 {
-	return i2c_register_driver(&i2c_driver_saa7110);
+	return i2c_add_driver(&i2c_driver_saa7110);
 }
 
 #ifdef MODULE
 void cleanup_module(void)
 {
-	i2c_unregister_driver(&i2c_driver_saa7110);
+	i2c_del_driver(&i2c_driver_saa7110);
 }
 #endif
