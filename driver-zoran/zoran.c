@@ -2111,7 +2111,6 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 {
 	static int zero = 0;
 	static int one = 1;
-        unsigned long timeout;
 	struct vfe_settings cap;
 	int field_size = zr->jpg_buffers.buffer_size / zr->jpg_settings.field_per_buff;
 
@@ -2197,9 +2196,8 @@ static void zr36057_enable_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 		btwrite(zr->card->jpeg_int | ZR36057_ICR_JPEGRepIRQ, ZR36057_ISR);
 		btand(~ZR36057_JMC_Go_en, ZR36057_JMC);	// \Go_en
 
-                timeout = jiffies + HZ/20;
-		while (jiffies < timeout)
-			schedule();
+		current->state = TASK_UNINTERRUPTIBLE;
+		schedule_timeout(HZ / 20);
 
 		set_videobus_dir(zr, 0);
 		set_frame(zr, 1); // /FRAME
@@ -4129,7 +4127,6 @@ zoran_do_ioctl (struct inode *inode,
 		{
 			struct zoran_status *bstat = arg;
 			int norm, input, status;
-			unsigned long timeout;
 
 			if (zr->codec_mode != BUZ_MODE_IDLE) {
 				printk(KERN_ERR "%s: BUZIOC_G_STATUS called but Buz in capture/playback mode\n", zr->name);
@@ -4153,10 +4150,8 @@ zoran_do_ioctl (struct inode *inode,
 		        // set_videobus_enable(zr, 1);
 
 			/* sleep 1 second */
-
-			timeout = jiffies + 1 * HZ;
-			while (jiffies < timeout)
-				schedule();
+			current->state = TASK_UNINTERRUPTIBLE;
+			schedule_timeout(1 * HZ);
 
 			/* Get status of video decoder */
 
@@ -5038,15 +5033,13 @@ zoran_do_ioctl (struct inode *inode,
                         }
 
 			if (std->colorstandard == V4L2_COLOR_STD_AUTO) {
-				unsigned long timeout;
 				int norm = VIDEO_MODE_AUTO, status;
 
 				decoder_command(zr, DECODER_SET_NORM, &norm);
 
 				/* let changes come into effect */
-				timeout = jiffies + 1 * HZ;
-				while (jiffies < timeout)
-					schedule();
+				current->state = TASK_UNINTERRUPTIBLE;
+				schedule_timeout(1 * HZ);
 
 				decoder_command(zr, DECODER_GET_STATUS, &status);
 				if (!(status & DECODER_STATUS_GOOD)) {
