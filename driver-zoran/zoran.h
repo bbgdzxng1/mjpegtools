@@ -349,13 +349,10 @@ struct zoran_fh {
 struct card_info {
 	enum card_type type;
 	char name[32];
-	int i2c_decoder, i2c_encoder;			/* I2C types */
-	char i2c_dec_name[16], i2c_enc_name[16];	/* module */
-	int video_vfe, video_codec;			/* videocodec types */
-	char video_vfe_name[16], video_codec_name[16];	/* module */
-	int audio_chip;					/* audio type */
-	char audio_name[16];				/* module */
-	int vendor_id, device_id;	/* subsystem vendor/device ID */
+	u16 i2c_decoder, i2c_encoder;			/* I2C types */
+	u16 video_vfe, video_codec;			/* videocodec types */
+	u16 audio_chip;					/* audio type */
+	u16 vendor_id, device_id;	/* subsystem vendor/device ID */
 
 	int inputs;		/* number of video inputs */
 	struct input {

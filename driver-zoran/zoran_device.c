@@ -1012,9 +1012,8 @@ jpeg_start (struct zoran *zr)
 	       (0 << ZR36057_JCGI_JPEGuestReg);
 	btwrite(reg, ZR36057_JCGI);
 
-	if (zr->card->type == DC10_old ||
-	    zr->card->type == DC30plus ||
-	    zr->card->type == DC30) {
+	if (zr->card->video_vfe == CODEC_TYPE_ZR36016 &&
+	    zr->card->video_codec == CODEC_TYPE_ZR36050) {
 		/* Enable processing on the ZR36016 */
 		if (zr->vfe)
 			zr36016_write(zr->vfe, 0, 1);

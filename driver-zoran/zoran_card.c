@@ -99,6 +99,14 @@ static int card[BUZ_MAX] = { -1, -1, -1, -1 };
 MODULE_PARM(card, "1-4i");
 MODULE_PARM_DESC(card, "The type of card");
 
+static int encoder[BUZ_MAX] = { -1, -1, -1, -1 };
+MODULE_PARM(encoder, "1-4i");
+MODULE_PARM_DESC(encoder, "i2c TV encoder");
+
+static int decoder[BUZ_MAX] = { -1, -1, -1, -1 };
+MODULE_PARM(decoder, "1-4i");
+MODULE_PARM_DESC(decoder, "i2c TV decoder");
+
 /*
    The video mem address of the video card.
    The driver has a little database for some videocards
@@ -321,6 +329,74 @@ lml33_init (struct zoran *zr)
 	GPIO(zr, 2, 1);		// Set Composite input/output
 }
 
+static char *
+i2cid_to_modulename (u16 i2c_id)
+{
+	char *name = NULL;
+
+	switch (i2c_id) {
+	case I2C_DRIVERID_SAA7110:
+		name = "saa7110";
+		break;
+	case I2C_DRIVERID_SAA7111A:
+		name = "saa7111";
+		break;
+	case I2C_DRIVERID_SAA7114:
+		name = "saa7114";
+		break;
+	case I2C_DRIVERID_SAA7185B:
+		name = "saa7185";
+		break;
+	case I2C_DRIVERID_ADV7170:
+		name = "adv7170";
+		break;
+	case I2C_DRIVERID_ADV717X:
+		name = "adv7175";
+		break;
+	case I2C_DRIVERID_BT819:
+		name = "bt819";
+		break;
+	case I2C_DRIVERID_BT856:
+		name = "bt856";
+		break;
+	case I2C_DRIVERID_VPX32XX:
+		name = "vpx3220";
+		break;
+/*	case I2C_DRIVERID_VPX3224:
+		name = "vpx3224";
+		break;*/
+	case I2C_DRIVERID_MSE3000:
+		name = "mse3000";
+		break;
+	default:
+		break;
+	}
+
+	return name;
+}
+
+static char *
+codecid_to_modulename (u16 codecid)
+{
+	char *name = NULL;
+
+	switch (codecid) {
+	case CODEC_TYPE_ZR36060:
+		name = "zr36060";
+		break;
+	case CODEC_TYPE_ZR36050:
+		name = "zr36050";
+		break;
+	case CODEC_TYPE_ZR36016:
+		name = "zr36016";
+		break;
+	default:
+		break;
+	}
+
+	return name;
+}
+
 // struct tvnorm {
 //      u16 Wt, Wa, HStart, HSyncStart, Ht, Ha, VStart;
 // };
@@ -348,17 +424,10 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 	{
 		.type = DC10_old,
 		.name = "DC10(old)",
-		.vendor_id = -1,	/* apparently, the DC10(old) doesn't */
-		.device_id = -1,	/* have subsystem IDs *at all*! */
 		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_dec_name = "vpx3220",
 		.i2c_encoder = I2C_DRIVERID_MSE3000,
-		.i2c_enc_name = "mse3000",
 		.video_codec = CODEC_TYPE_ZR36050,
-		.video_codec_name = "zr36050",
 		.video_vfe = CODEC_TYPE_ZR36016,
-		.video_vfe_name = "zr36016",
-		.audio_chip = -1,
 
 		.inputs = 3,
 		.input = {
@@ -390,16 +459,9 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 	}, {
 		.type = DC10_new,
 		.name = "DC10(new)",
-		.vendor_id = -1,	/* zoran revision too old? */
-		.device_id = -1,
 		.i2c_decoder = I2C_DRIVERID_SAA7110,
-		.i2c_dec_name = "saa7110",
 		.i2c_encoder = I2C_DRIVERID_ADV717X,
-		.i2c_enc_name = "adv7175",
 		.video_codec = CODEC_TYPE_ZR36060,
-		.video_codec_name = "zr36060",
-		.video_vfe = -1,
-		.audio_chip = -1,
 
 		.inputs = 3,
 		.input = {
@@ -426,13 +488,8 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 		.vendor_id = PCI_VENDOR_ID_MIRO,
 		.device_id = PCI_DEVICE_ID_MIRO_DC10PLUS,
 		.i2c_decoder = I2C_DRIVERID_SAA7110,
-		.i2c_dec_name = "saa7110",
 		.i2c_encoder = I2C_DRIVERID_ADV717X,
-		.i2c_enc_name = "adv7175",
 		.video_codec = CODEC_TYPE_ZR36060,
-		.video_codec_name = "zr36060",
-		.video_vfe = -1,
-		.audio_chip = -1,
 
 		.inputs = 3,
 		.input = {
@@ -457,17 +514,10 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 	}, {
 		.type = DC30,
 		.name = "DC30",
-		.vendor_id = -1,	/* zoran revision too old? */
-		.device_id = -1,
 		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_dec_name = "vpx3220",
 		.i2c_encoder = I2C_DRIVERID_ADV717X,
-		.i2c_enc_name = "adv7175",
 		.video_codec = CODEC_TYPE_ZR36050,
-		.video_codec_name = "zr36050",
 		.video_vfe = CODEC_TYPE_ZR36016,
-		.video_vfe_name = "zr36016",
-		.audio_chip = -1,
 
 		.inputs = 3,
 		.input = {
@@ -502,14 +552,9 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 		.vendor_id = PCI_VENDOR_ID_MIRO,
 		.device_id = PCI_DEVICE_ID_MIRO_DC30PLUS,
 		.i2c_decoder = I2C_DRIVERID_VPX32XX,
-		.i2c_dec_name = "vpx3220",
 		.i2c_encoder = I2C_DRIVERID_ADV717X,
-		.i2c_enc_name = "adv7175",
 		.video_codec = CODEC_TYPE_ZR36050,
-		.video_codec_name = "zr36050",
 		.video_vfe = CODEC_TYPE_ZR36016,
-		.video_vfe_name = "zr36016",
-		.audio_chip = -1,
 
 		.inputs = 3,
 		.input = {
@@ -541,16 +586,9 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 	}, {
 		.type = LML33,
 		.name = "LML33",
-		.vendor_id = -1,
-		.device_id = -1,
 		.i2c_decoder = I2C_DRIVERID_BT819,
-		.i2c_dec_name = "bt819",
 		.i2c_encoder = I2C_DRIVERID_BT856,
-		.i2c_enc_name = "bt856",
 		.video_codec = CODEC_TYPE_ZR36060,
-		.video_codec_name = "zr36060",
-		.video_vfe = -1,
-		.audio_chip = -1,
 
 		.inputs = 2,
 		.input = {
@@ -574,16 +612,9 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 	}, {
 		.type = LML33R10,
 		.name = "LML33R10",
-		.vendor_id = -1,
-		.device_id = -1,
 		.i2c_decoder = I2C_DRIVERID_SAA7114,
-		.i2c_dec_name = "saa7114",
 		.i2c_encoder = I2C_DRIVERID_ADV7170,
-		.i2c_enc_name = "adv7170",
 		.video_codec = CODEC_TYPE_ZR36060,
-		.video_codec_name = "zr36060",
-		.video_vfe = -1,
-		.audio_chip = -1,
 
 		.inputs = 2,
 		.input = {
@@ -610,13 +641,8 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 		.vendor_id = PCI_VENDOR_ID_IOMEGA,
 		.device_id = PCI_DEVICE_ID_IOMEGA_BUZ,
 		.i2c_decoder = I2C_DRIVERID_SAA7111A,
-		.i2c_dec_name = "saa7111",
 		.i2c_encoder = I2C_DRIVERID_SAA7185B,
-		.i2c_enc_name = "saa7185",
 		.video_codec = CODEC_TYPE_ZR36060,
-		.video_codec_name = "zr36060",
-		.video_vfe = -1,
-		.audio_chip = -1,
 
 		.inputs = 2,
 		.input = {
@@ -1206,6 +1232,7 @@ find_zr36057 (void)
 	struct videocodec_master *master_vfe = NULL;
 	struct videocodec_master *master_codec = NULL;
 	int card_num;
+	char *i2c_enc_name, *i2c_dec_name, *codec_name, *vfe_name;
 
 	zoran_num = 0;
 	while (zoran_num < BUZ_MAX &&
@@ -1339,10 +1366,35 @@ find_zr36057 (void)
 		/* i2c */
 		dprintk(2, KERN_INFO "%s: Initializing i2c bus...\n",
 			zr->name);
-		if (zr->card->i2c_encoder != -1)
-			request_module(zr->card->i2c_enc_name);
-		if (zr->card->i2c_decoder != -1)
-			request_module(zr->card->i2c_dec_name);
+
+		/* i2c decoder */
+		if (decoder[zr->id] != -1) {
+			i2c_dec_name = i2cid_to_modulename(decoder[zr->id]);
+		} else if (zr->card->i2c_decoder != 0) {
+			i2c_dec_name =
+				i2cid_to_modulename(zr->card->i2c_decoder);
+		} else {
+			i2c_dec_name = NULL;
+		}
+
+		if (i2c_dec_name) {
+			request_module(i2c_dec_name);
+		}
+
+		/* i2c encoder */
+		if (encoder[zr->id] != -1) {
+			i2c_enc_name = i2cid_to_modulename(encoder[zr->id]);
+		} else if (zr->card->i2c_encoder != 0) {
+			i2c_enc_name =
+				i2cid_to_modulename(zr->card->i2c_encoder);
+		} else {
+			i2c_enc_name = NULL;
+		}
+
+		if (i2c_enc_name) {
+			request_module(i2c_enc_name);
+		}
+
 		if (zoran_register_i2c(zr) < 0) {
 			dprintk(1,
 				KERN_ERR
@@ -1354,16 +1406,22 @@ find_zr36057 (void)
 		dprintk(2,
 			KERN_INFO "%s: Initializing videocodec bus...\n",
 			zr->name);
-		if (zr->card->video_codec)
-			request_module(zr->card->video_codec_name);
-		if (zr->card->video_vfe)
-			request_module(zr->card->video_vfe_name);
+
+		if (zr->card->video_codec != 0 &&
+		    (codec_name =
+		     codecid_to_modulename(zr->card->video_codec)) != NULL)
+			request_module(codec_name);
+		if (zr->card->video_vfe != 0 &&
+		    (vfe_name =
+		     codecid_to_modulename(zr->card->video_vfe)) != NULL)
+			request_module(vfe_name);
+
 		/* reset JPEG codec */
 		jpeg_codec_sleep(zr, 1);
 		jpeg_codec_reset(zr);
 		/* video bus enabled */
 		/* display codec revision */
-		if (zr->card->video_codec != -1) {
+		if (zr->card->video_codec != 0) {
 			master_codec = zoran_setup_videocodec(zr,
 							      zr->card->video_codec);
 			if (!master_codec)
@@ -1384,7 +1442,7 @@ find_zr36057 (void)
 				goto zr_detach_codec;
 			}
 		}
-		if (zr->card->video_vfe != -1) {
+		if (zr->card->video_vfe != 0) {
 			master_vfe = zoran_setup_videocodec(zr,
 							    zr->card->video_vfe);
 			if (!master_vfe)

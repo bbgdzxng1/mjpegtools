@@ -57,12 +57,18 @@ $SUDO /sbin/insmod ./videocodec.o
 incompat=""
 cards=""
 cardnum=""
+decnum=""
+encnum=""
 
 function addcardnum {
     if test x$cardnum = x; then
         cardnum="$1"
+        decnum="$2"
+        encnum="$3"
     else
         cardnum="$cardnum,$1"
+        decnum="$decnum,$2"
+        encnum="$encnum,$3"
     fi
 }
 
@@ -75,44 +81,44 @@ do
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
-            addcardnum 1
+            addcardnum 1 -1 -1
             ;;
         'dc10plus')
             $SUDO /sbin/insmod ./saa7110.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
-            addcardnum 2
+            addcardnum 2 -1 -1
             ;;
         'lml33')
             $SUDO /sbin/insmod ./bt819.o
             $SUDO /sbin/insmod ./bt856.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
-            addcardnum 5
+            addcardnum 5 -1 -1
             ;;
         'buz')
             $SUDO /sbin/insmod ./saa7111.o
             $SUDO /sbin/insmod ./saa7185.o
             $SUDO /sbin/insmod ./zr36060.o low_bitrate=1
             cards="$cards $1"
-            addcardnum 7
+            addcardnum 7 -1 -1
             ;;
         'dc30')
-            $SUDO /sbin/insmod ./vpx32xx.o
+            $SUDO /sbin/insmod ./vpx3220.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
-            addcardnum 3
+            addcardnum 3 -1 -1
             ;;
         'dc30plus')
-            $SUDO /sbin/insmod ./vpx32xx.o
+            $SUDO /sbin/insmod ./vpx3220.o
             $SUDO /sbin/insmod ./adv7175.o
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
-            addcardnum 4
+            addcardnum 4 -1 -1
             ;;
         'dc10old')
             $SUDO /sbin/insmod ./vpx3220.o
@@ -121,19 +127,32 @@ do
             $SUDO /sbin/insmod ./zr36016.o
             $SUDO /sbin/insmod ./zr36050.o
             cards="$cards $1"
-            addcardnum 0
+            addcardnum 0 -1 -1
+            ;;
+        'dc10old_vpxadv')
+            $SUDO /sbin/insmod ./vpx3220.o
+            $SUDO /sbin/insmod ./adv7175.o
+            $SUDO /sbin/insmod ./zr36016.o
+            $SUDO /sbin/insmod ./zr36050.o
+            cards="$cards $1"
+            addcardnum 0 48 -1
             ;;
         'lml33r10')
             $SUDO /sbin/insmod ./saa7114.o
             $SUDO /sbin/insmod ./adv7170.o
             $SUDO /sbin/insmod ./zr36060.o
             cards="$cards $1"
-            addcardnum 6
+            addcardnum 6 -1 -1
             ;;
         'PAL'|'SECAM'|'NTSC')
             norm=$1
             ;;
         *)
+            echo "Usage: ./update card [card [..]] norm"
+            echo "  Norm can be PAL, NTSC or SECAM"
+            echo "  Card can be any combination of dc10old, dc10old_vpxadv, dc10new, dc10plus, dc30, dc30plus, lml33, lml33r10 or buz"
+            echo "  See the documentation for more information on these cards"
+            exit 1
             ;;
     esac
     shift
@@ -166,6 +185,6 @@ case "$norm" in
         exit 1
         ;;
 esac
-$SUDO /sbin/insmod ./zoran.o debug=3 card=$cardnum default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
+$SUDO /sbin/insmod ./zoran.o debug=3 card=$cardnum encoder=$encnum decoder=$decnum default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
 sync;sync
 echo "Drivers for '$cards' with norm '$norm' loaded"
