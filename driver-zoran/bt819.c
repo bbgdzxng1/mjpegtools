@@ -530,8 +530,6 @@ bt819_detect_client (struct i2c_adapter *adapter,
 		return -ENOMEM;
 	}
 
-	MOD_INC_USE_COUNT;
-
 	memset(decoder, 0, sizeof(struct bt819));
 	decoder->norm = VIDEO_MODE_NTSC;
 	decoder->input = 0;
