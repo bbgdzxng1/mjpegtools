@@ -1556,7 +1556,7 @@ init_dc10_cards (void)
 			zr->jpg_buffers.need_contiguous = 1;
 			dprintk(1,
 				KERN_INFO
-				"%s: ZR36057/Natoma bug, max. buffer size is 128K\n",
+				"%s: ZR36057/Natoma bug, max. MJPEG buffer size is 128K\n",
 				ZR_DEVNAME(zr));
 		}
 
