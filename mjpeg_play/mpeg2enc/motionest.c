@@ -201,7 +201,7 @@ void motion_subsampled_lum( pict_data_s *picture )
 		linestride = 2*opt_phy_width;
 	}
 
-	subsample_image( picture->curorg[0], 
+	(*psubsample_image)( picture->curorg[0], 
 					 linestride,
 					 picture->curorg[0]+fsubsample_offset, 
 					 picture->curorg[0]+qsubsample_offset );
