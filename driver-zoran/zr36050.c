@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.2 2004-09-16 22:53:27 rbultje Exp $
+ * $Id: zr36050.c,v 1.3 2005-03-29 20:36:45 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -419,7 +419,7 @@ zr36050_set_dri (struct zr36050 *ptr)
 	dri_data[2] = 0x00;
 	dri_data[3] = 0x04;
 	dri_data[4] = ptr->dri >> 8;
-	dri_data[5] = ptr->dri * 0xff;
+	dri_data[5] = ptr->dri & 0xff;
 	return zr36050_pushit(ptr, ZR050_DRI_IDX, 6, dri_data);
 }
 
