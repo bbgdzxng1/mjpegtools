@@ -72,7 +72,7 @@ i2c_set_clientdata (struct i2c_client *client,
 
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 
-#define I2C_NAME(s) (s)->dev.name
+#define I2C_NAME(s) (s)->name
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 
