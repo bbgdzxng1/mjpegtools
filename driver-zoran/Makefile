@@ -11,7 +11,10 @@ DEST = /lib/modules/$(CURRENT)/kernel/drivers/media/video
 MAJ=$(shell grep "\#define MAJOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
 MIN=$(shell grep "\#define MINOR_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
 REL=$(shell grep "\#define RELEASE_VERSION" zoran.h | cut -f3 -d " " | cut -f1)
-DIR=driver-zoran-$(MAJ).$(MIN).$(REL)
+DATE=$(shell date +%Y%m%d)
+BASE_DIR=driver-zoran
+REL_DIR=$(BASE_DIR)-$(MAJ).$(MIN).$(REL)
+SNP_DIR=$(BASE_DIR)-$(DATE)
 
 here:
 	@echo "Making Unified Zoran (zr360x7) driver for $(CURRENT) kernel..."
@@ -41,9 +44,15 @@ clean:
 	-rm -f *.o *.ko .*.cmd .*.flags *.mod.c
 
 release: clean
-	mkdir $(DIR)
-	cp *.[ch] FAQ Makefile ChangeLog update $(DIR)
-	tar -zcf $(DIR).tar.gz $(DIR)
-	rm -fr $(DIR)
+	mkdir $(REL_DIR)
+	cp *.[ch] FAQ Makefile ChangeLog update $(REL_DIR)/
+	tar -zcf $(REL_DIR).tar.gz $(REL_DIR)
+	rm -fr $(REL_DIR)
+
+snapshot: clean
+	mkdir $(SNP_DIR)
+	cp *.[ch] FAQ Makefile ChangeLog update $(SNP_DIR)/
+	tar -zcf $(SNP_DIR).tar.gz $(SNP_DIR)
+	rm -fr $(SNP_DIR)
 
 -include $(KERNEL_LOCATION)/Rules.make
