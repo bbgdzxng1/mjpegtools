@@ -1516,7 +1516,8 @@ setup_window (struct file       *file,
 	      int                width,
 	      int                height,
 	      struct video_clip *clips,
-	      int                clipcount)
+	      int                clipcount,
+	      void              *bitmap)
 {
 	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
@@ -1593,8 +1594,18 @@ setup_window (struct file       *file,
 
 	/*
 	 *   Write the overlay mask if clips are wanted.
+	 *   We prefer a bitmap.
 	 */
-	if (clipcount > 0) {
+	if (bitmap) {
+		/* fake value - it just means we want clips */
+		fh->overlay_settings.clipcount = 1;
+
+		if (copy_from_user(fh->overlay_mask, bitmap,
+				   (width * height + 7) / 8)) {
+			return -EFAULT;
+		}
+	} else if (clipcount > 0) {
+		/* write our own bitmap from the clips */
 		vcp = vmalloc(sizeof(struct video_clip) * (clipcount + 4));
 		if (vcp == NULL) {
 			dprintk(1,
@@ -2172,7 +2183,7 @@ zoran_do_ioctl (struct inode *inode,
 		res =
 		    setup_window(file, vwin->x, vwin->y, vwin->width,
 				 vwin->height, vwin->clips,
-				 vwin->clipcount);
+				 vwin->clipcount, NULL);
 		up(&zr->resource_lock);
 
 		return res;
@@ -2782,20 +2793,22 @@ zoran_do_ioctl (struct inode *inode,
 		switch (fmt->type) {
 		case V4L2_BUF_TYPE_VIDEO_OVERLAY:
 
-			dprintk(3, "x=%d, y=%d, w=%d, h=%d, cnt=%d\n",
+			dprintk(3, "x=%d, y=%d, w=%d, h=%d, cnt=%d, map=0x%p\n",
 				fmt->fmt.win.w.left, fmt->fmt.win.w.top,
 				fmt->fmt.win.w.width,
 				fmt->fmt.win.w.height,
-				fmt->fmt.win.clipcount);
+				fmt->fmt.win.clipcount,
+				fmt->fmt.win.bitmap);
 			down(&zr->resource_lock);
 			res =
 			    setup_window(file, fmt->fmt.win.w.left,
 					 fmt->fmt.win.w.top,
 					 fmt->fmt.win.w.width,
 					 fmt->fmt.win.w.height,
-					 (struct video_clip *) fmt->fmt.
-					 win.clips,
-					 fmt->fmt.win.clipcount);
+					 (struct video_clip *)
+					   fmt->fmt.win.clips,
+					 fmt->fmt.win.clipcount,
+					 fmt->fmt.win.bitmap);
 			up(&zr->resource_lock);
 			return res;
 			break;
