@@ -1082,6 +1082,8 @@ static int zoran_i2c_client_register (struct i2c_client *client)
 	dprintk(1, KERN_DEBUG "%s: i2c_client_register() - driver id = %d\n",
 		zr->name, client->driver->id);
 
+	down(&zr->resource_lock);
+
 	switch (client->driver->id) {
 	case I2C_DRIVERID_VPX32XX:
 		zr->card = &dc10_info;
@@ -1121,6 +1123,8 @@ static int zoran_i2c_client_register (struct i2c_client *client)
 		break;
 	}
 
+	up(&zr->resource_lock);
+
 	return 0;
 }
  
@@ -1128,6 +1132,17 @@ static int zoran_i2c_client_unregister (struct i2c_client *client)
 {
 	struct zoran *zr = (struct zoran *)client->adapter->data;
 	dprintk(1, KERN_DEBUG "%s: i2c_client_unregister()\n", zr->name);
+
+	down(&zr->resource_lock);
+
+	/* try to locate it */
+	if (client == zr->encoder) {
+		zr->encoder = NULL;
+	} else if (client == zr->decoder) {
+		zr->decoder = NULL;
+	}
+
+	up(&zr->resource_lock);
 
 	return 0;
 }
@@ -3307,7 +3322,7 @@ zoran_open (struct inode *inode,
 			break;
 		}
 	}
-	if (!zr)
+	if (!zr || !zr->decoder)
 		return -ENODEV;
 
 	if (zr->user >= 2048)
@@ -6232,8 +6247,6 @@ zr36057_init(struct zoran *zr)
         init_waitqueue_head(&zr->jpg_capq);
         init_waitqueue_head(&zr->test_q);
 
-	init_MUTEX(&zr->resource_lock);
-
  	zr->jpg_buffers.allocated = 0;
 	zr->v4l_buffers.allocated = 0;
 
@@ -6410,6 +6423,7 @@ find_zr36057 (void)
 			"MJPEG[%u]", zr->id);
 
 		spin_lock_init(&zr->spinlock);
+		init_MUTEX(&zr->resource_lock);
 
                 if (pci_enable_device(dev))
                         continue;
