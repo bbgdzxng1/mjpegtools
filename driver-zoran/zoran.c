@@ -1131,20 +1131,27 @@ static int zoran_i2c_client_register (struct i2c_client *client)
 static int zoran_i2c_client_unregister (struct i2c_client *client)
 {
 	struct zoran *zr = (struct zoran *)client->adapter->data;
+	int res = 0;
 	dprintk(1, KERN_DEBUG "%s: i2c_client_unregister()\n", zr->name);
 
 	down(&zr->resource_lock);
+
+	if (zr->user > 0) {
+		res = -EBUSY;
+		goto clientunreg_unlock_and_return;
+	}
 
 	/* try to locate it */
 	if (client == zr->encoder) {
 		zr->encoder = NULL;
 	} else if (client == zr->decoder) {
 		zr->decoder = NULL;
+		snprintf(zr->name, sizeof(zr->name), "MJPEG[%d]", zr->id);
 	}
-
+clientunreg_unlock_and_return:
 	up(&zr->resource_lock);
 
-	return 0;
+	return res;
 }
 
 static struct i2c_algo_bit_data zoran_i2c_bit_data_template = {
@@ -3312,7 +3319,7 @@ zoran_open (struct inode *inode,
 	unsigned int minor = minor(inode->i_rdev);
 	struct zoran *zr = NULL;
 	struct zoran_fh *fh;
-	int i;
+	int i, res, first_open = 0;
 
 	/* find the device */
 	for (i=0;i<zoran_num;i++)
@@ -3322,11 +3329,29 @@ zoran_open (struct inode *inode,
 			break;
 		}
 	}
-	if (!zr || !zr->decoder)
-		return -ENODEV;
 
-	if (zr->user >= 2048)
-		return -EBUSY;
+	down(&zr->resource_lock);
+
+	if (!zr) {
+		dprintk(0, KERN_ERR "%s: device not found!\n",
+			ZORAN_NAME);
+		res = -ENODEV;
+		goto open_unlock_and_return;
+	}
+
+	if (!zr->decoder) {
+		dprintk(0, KERN_ERR "%s: no TV decoder loaded for device!\n",
+			zr->name);
+		res = -EIO;
+		goto open_unlock_and_return;
+	}
+
+	if (zr->user >= 2048) {
+		dprintk(0, KERN_ERR "%s: too many users (%d) on device\n",
+			zr->name, zr->user);
+		res = -EBUSY;
+		goto open_unlock_and_return;
+	}
 
 	dprintk(1, KERN_INFO "%s: zoran_open(%s, pid=[%d]), users(-)=%d\n",
 		zr->name, current->comm, current->pid, zr->user);
@@ -3336,7 +3361,8 @@ zoran_open (struct inode *inode,
 	if (!fh) {
 		dprintk(0, KERN_ERR "%s: zoran_open() - allocation of zoran_fh failed\n",
 			zr->name);
-		return -ENOMEM;
+		res = -ENOMEM;
+		goto open_unlock_and_return;
 	}
 	memset(fh, 0, sizeof(struct zoran_fh));
 	/* used to be BUZ_MAX_WIDTH/HEIGHT, but that gives overflows
@@ -3346,13 +3372,20 @@ zoran_open (struct inode *inode,
 		dprintk(0, KERN_ERR "%s: zoran_open() - allocation of overlay_mask failed\n",
 			zr->name);
 		kfree(fh);
-		return -ENOMEM;
+		res = -ENOMEM;
+		goto open_unlock_and_return;
 	}
 
-	zr->user++;
+	if (zr->user++ == 0)
+		first_open = 1;
+
+	i2c_inc_use_client(zr->decoder);
+	if (zr->encoder)
+		i2c_inc_use_client(zr->encoder);
+	up(&zr->resource_lock);
 
 	/* default setup - TODO: look at flags */
-	if (zr->user == 1) {	/* First device open */
+	if (first_open) {	/* First device open */
 		zr36057_restart(zr);
 		zoran_open_init_params(zr);
 		zoran_init_hardware(zr);
@@ -3367,6 +3400,10 @@ zoran_open (struct inode *inode,
 
 	MOD_INC_USE_COUNT;
 	return 0;
+
+open_unlock_and_return:
+	up(&zr->resource_lock);
+	return res;
 }
 
 static int
@@ -3381,7 +3418,7 @@ zoran_close (struct inode *inode,
 
 	zoran_close_end_session(file);
 
-	if (zr->user == 1) {	/* Last process */
+	if (zr->user-- == 1) {	/* Last process */
 		/* Clean up JPEG process */
 		wake_up_interruptible(&zr->jpg_capq);
 		zr36057_enable_jpg(zr, BUZ_MODE_IDLE);
@@ -3413,12 +3450,17 @@ zoran_close (struct inode *inode,
 		}
 	}
 
-	zr->user--;
 	file->private_data = NULL;
 	kfree(fh->overlay_mask);
 	kfree(fh);
 
+	down(&zr->resource_lock);
+	i2c_dec_use_client(zr->decoder);
+	if (zr->encoder)
+		i2c_dec_use_client(zr->encoder);
+	up(&zr->resource_lock);
 	MOD_DEC_USE_COUNT;
+
 	dprintk(2, KERN_INFO "%s: zoran_close() done\n", zr->name);
 
 	return 0;

@@ -468,7 +468,7 @@ static int vpx3220_detect_client (struct i2c_adapter *adapter, int address,
 	client->data = NULL;
 	client->adapter = adapter;
 	client->driver = &vpx3220_i2c_driver;
-	client->flags = 0;
+	client->flags = I2C_CLIENT_ALLOW_USE;
 
 	/* Check for manufacture ID and part number */
 	if ( kind < 0 ) {

@@ -407,7 +407,7 @@ saa7185_detect_client (struct i2c_adapter *adapter,
    client->addr = address;
    client->adapter = adapter;
    client->driver = &i2c_driver_saa7185;
-   client->flags = 0;
+   client->flags = I2C_CLIENT_ALLOW_USE;
    client->id = saa7185_i2c_id++;
    snprintf(client->name, sizeof(client->name)-1, "saa7185[%d]", client->id);
 
