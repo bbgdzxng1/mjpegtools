@@ -319,6 +319,11 @@ static void
 buz_init (struct zoran *zr)
 {
 	dprintk(3, KERN_DEBUG "%s: buz_init()\n", zr->name);
+
+	/* some stuff from Iomega */
+	pci_write_config_dword(zr->pci_dev, 0xfc, 0x90680f15);
+	pci_write_config_dword(zr->pci_dev, 0x0c, 0x00012020);
+	pci_write_config_dword(zr->pci_dev, 0xe8, 0xc0200000);
 }
 
 static void
@@ -364,10 +369,10 @@ i2cid_to_modulename (u16 i2c_id)
 		break;
 /*	case I2C_DRIVERID_VPX3224:
 		name = "vpx3224";
-		break;*/
+		break;
 	case I2C_DRIVERID_MSE3000:
 		name = "mse3000";
-		break;
+		break;*/
 	default:
 		break;
 	}
