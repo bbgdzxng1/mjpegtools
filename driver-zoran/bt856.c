@@ -370,8 +370,6 @@ bt856_detect_client (struct i2c_adapter *adapter,
 	dprintk(1, KERN_INFO "%s_attach: at address 0x%x\n", client->name,
 		client->addr << 1);
 
-	MOD_INC_USE_COUNT;
-
 	return 0;
 }
 
@@ -398,8 +396,6 @@ bt856_detach_client (struct i2c_client *client)
 
 	kfree(encoder);
 	kfree(client);
-
-	MOD_DEC_USE_COUNT;
 
 	return 0;
 }

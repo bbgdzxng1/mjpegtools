@@ -590,8 +590,6 @@ vpx3220_detach_client (struct i2c_client *client)
 
 	kfree(client);
 
-	MOD_DEC_USE_COUNT;
-
 	return 0;
 }
 
@@ -695,8 +693,6 @@ vpx3220_detect_client (struct i2c_adapter *adapter,
 		client->name, client->addr << 1);
 
 	vpx3220_init_client(client);
-
-	MOD_INC_USE_COUNT;
 
 	return 0;
 }

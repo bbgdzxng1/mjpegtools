@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.c,v 1.1.2.20 2003-03-26 20:30:22 rbultje Exp $
+ * $Id: zr36060.c,v 1.1.2.21 2003-03-29 07:16:05 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -919,13 +919,13 @@ zr36060_setup (struct videocodec *codec)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 	MOD_INC_USE_COUNT;
 #else
-	if ((res = try_module_get(THIS_MODULE)) != 0) {
+	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
 			"zr36060: failed to increase module use count\n");
 		kfree(ptr);
 		zr36060_codecs--;
-		return res;
+		return -ENODEV;
 	}
 #endif
 
@@ -981,9 +981,7 @@ zr36060_init_module (void)
 {
 	//dprintk(1, "zr36060 driver %s\n",ZR060_VERSION);
 	zr36060_codecs = 0;
-	videocodec_register(&zr36060_codec);
-
-	return 0;
+	return videocodec_register(&zr36060_codec);
 }
 
 static void __exit
@@ -993,9 +991,10 @@ zr36060_cleanup_module (void)
 		dprintk(1,
 			"zr36060: something's wrong - %d codecs left somehow.\n",
 			zr36060_codecs);
-	} else {
-		videocodec_unregister(&zr36060_codec);
-	}
+	} 
+
+	/* however, we can't just stay alive */
+	videocodec_unregister(&zr36060_codec);
 }
 
 module_init(zr36060_init_module);

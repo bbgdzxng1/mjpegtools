@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36016.c,v 1.1.2.8 2003-03-26 20:30:21 rbultje Exp $
+ * $Id: zr36016.c,v 1.1.2.9 2003-03-29 07:16:05 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -463,13 +463,13 @@ zr36016_setup (struct videocodec *codec)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 	MOD_INC_USE_COUNT;
 #else
-	if ((res = try_module_get(THIS_MODULE)) != 0) {
+	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
 			"zr36016: failed to increase module use count\n");
 		kfree(ptr);
 		zr36016_codecs--;
-		return res;
+		return -ENODEV;
 	}
 #endif
 
@@ -515,9 +515,7 @@ zr36016_init_module (void)
 {
 	//dprintk(1, "ZR36016 driver %s\n",ZR016_VERSION);
 	zr36016_codecs = 0;
-	videocodec_register(&zr36016_codec);
-
-	return 0;
+	return videocodec_register(&zr36016_codec);
 }
 
 static void __exit
@@ -527,9 +525,8 @@ zr36016_cleanup_module (void)
 		dprintk(1,
 			"zr36016: something's wrong - %d codecs left somehow.\n",
 			zr36016_codecs);
-	} else {
-		videocodec_unregister(&zr36016_codec);
 	}
+	videocodec_unregister(&zr36016_codec);
 }
 
 module_init(zr36016_init_module);

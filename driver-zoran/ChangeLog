@@ -1,5 +1,9 @@
 Version 0.9.4 -> 0.9.5
 ----------------------
+* don't ignore return value of videocodec_register()
+* call videocodec_unregister() no matter what on module unload
+* remove duplicate MOD_INC/DEC_USE_COUNT from i2c clients (oops)
+* a successful call to try_module_get() returns 1, not 0
 
 Version 0.9.3 -> 0.9.4
 ----------------------

@@ -40,7 +40,7 @@ endif
 clean:
 	-rm -f *.o *.ko .*.cmd .*.flags *.mod.c
 
-release:
+release: clean
 	mkdir $(DIR)
 	cp *.[ch] FAQ Makefile ChangeLog update $(DIR)
 	tar -zcf $(DIR).tar.gz $(DIR)

@@ -1298,30 +1298,30 @@ zoran_open (struct inode *inode,
 	if (zr->encoder)
 		i2c_inc_use_client(zr->encoder);
 #else
-	if (try_module_get(THIS_MODULE)) {
+	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
 			"%s: failed to acquire my own lock! PANIC!\n",
 			zr->name);
-		res = -EAGAIN;
+		res = -ENODEV;
 		goto open_unlock_and_return;
 	}
-	if (try_module_get(zr->decoder->driver->owner)) {
+	if (!try_module_get(zr->decoder->driver->owner)) {
 		dprintk(1,
 			KERN_ERR
 			"%s: failed to grab ownership of i2c decoder\n",
 			zr->name);
-		res = -EAGAIN;
+		res = -EIO;
 		module_put(THIS_MODULE);
 		goto open_unlock_and_return;
 	}
 	if (zr->encoder &&
-	    try_module_get(zr->encoder->driver->owner)) {
+	    !try_module_get(zr->encoder->driver->owner)) {
 		dprintk(1,
 			KERN_ERR
 			"%s: failed to grab ownership of i2c encoder\n",
 			zr->name);
-		res = -EAGAIN;
+		res = -EIO;
 		module_put(zr->decoder->driver->owner);
 		module_put(THIS_MODULE);
 		goto open_unlock_and_return;

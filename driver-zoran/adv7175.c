@@ -493,8 +493,6 @@ adv7175_detect_client (struct i2c_adapter *adapter,
 			client->name, i);
 	}
 
-	MOD_INC_USE_COUNT;
-
 	return 0;
 }
 
@@ -521,8 +519,6 @@ adv7175_detach_client (struct i2c_client *client)
 
 	kfree(encoder);
 	kfree(client);
-
-	MOD_DEC_USE_COUNT;
 
 	return 0;
 }

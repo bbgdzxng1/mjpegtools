@@ -450,8 +450,6 @@ saa7185_detect_client (struct i2c_adapter *adapter,
 			client->addr << 1);
 	}
 
-	MOD_INC_USE_COUNT;
-
 	return 0;
 }
 
@@ -481,8 +479,6 @@ saa7185_detach_client (struct i2c_client *client)
 
 	kfree(encoder);
 	kfree(client);
-
-	MOD_DEC_USE_COUNT;
 
 	return 0;
 }

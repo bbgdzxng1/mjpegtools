@@ -545,8 +545,6 @@ saa7110_detect_client (struct i2c_adapter *adapter,
 	//determine_norm(client);
 	/* setup and implicit mode 0 select has been performed */
 
-	MOD_INC_USE_COUNT;
-
 	return 0;
 }
 
@@ -573,8 +571,6 @@ saa7110_detach_client (struct i2c_client *client)
 
 	kfree(decoder);
 	kfree(client);
-
-	MOD_DEC_USE_COUNT;
 
 	return 0;
 }

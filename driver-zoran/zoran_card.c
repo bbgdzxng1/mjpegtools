@@ -705,6 +705,10 @@ zoran_i2c_client_register (struct i2c_client *client)
 	down(&zr->resource_lock);
 
 	if (zr->user > 0) {
+		/* we're already busy, so we keep a reference to
+		 * them... Could do a lot of stuff here, but this
+		 * is easiest. (Did I ever mention I'm a lazy ass?)
+		 */
 		res = -EBUSY;
 		goto clientreg_unlock_and_return;
 	}
@@ -713,8 +717,10 @@ zoran_i2c_client_register (struct i2c_client *client)
 		zr->decoder = client;
 	else if (client->driver->id == zr->card.i2c_encoder)
 		zr->encoder = client;
-	else
-		return -ENODEV;
+	else {
+		res = -ENODEV;
+		goto clientreg_unlock_and_return;
+	}
 
 clientreg_unlock_and_return:
 	up(&zr->resource_lock);

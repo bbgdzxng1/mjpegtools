@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: zr36050.c,v 1.1.2.8 2003-03-26 20:30:22 rbultje Exp $
+ * $Id: zr36050.c,v 1.1.2.9 2003-03-29 07:16:05 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -797,13 +797,13 @@ zr36050_setup (struct videocodec *codec)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 	MOD_INC_USE_COUNT;
 #else
-	if ((res = try_module_get(THIS_MODULE)) != 0) {
+	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
 			"zr36050: failed to increase module use count\n");
 		kfree(ptr);
 		zr36050_codecs--;
-		return res;
+		return -ENODEV;
 	}
 #endif
 
@@ -858,9 +858,7 @@ zr36050_init_module (void)
 {
 	//dprintk(1, "ZR36050 driver %s\n",ZR050_VERSION);
 	zr36050_codecs = 0;
-	videocodec_register(&zr36050_codec);
-
-	return 0;
+	return videocodec_register(&zr36050_codec);
 }
 
 static void __exit
@@ -870,9 +868,8 @@ zr36050_cleanup_module (void)
 		dprintk(1,
 			"zr36050: something's wrong - %d codecs left somehow.\n",
 			zr36050_codecs);
-	} else {
-		videocodec_unregister(&zr36050_codec);
 	}
+	videocodec_unregister(&zr36050_codec);
 }
 
 module_init(zr36050_init_module);

@@ -6,7 +6,7 @@
  *
  * (c) 2002 Wolfgang Scherr <scherr@net4you.at>
  *
- * $Id: videocodec.c,v 1.1.2.7 2003-03-26 20:30:13 rbultje Exp $
+ * $Id: videocodec.c,v 1.1.2.8 2003-03-29 07:16:04 rbultje Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -132,7 +132,7 @@ videocodec_attach (struct videocodec_master *master)
 				if (!ptr) {
 					dprintk(1,
 						KERN_ERR
-						"videocodec_register: no memory\n");
+						"videocodec_attach: no memory\n");
 					kfree(codec);
 					return NULL;
 				}
@@ -143,7 +143,7 @@ videocodec_attach (struct videocodec_master *master)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 				MOD_INC_USE_COUNT;
 #else
-				if ((res = try_module_get(THIS_MODULE)) != 0) {
+				if (!try_module_get(THIS_MODULE)) {
 					dprintk(1,
 						KERN_ERR
 						"videocodec: failed to increment usecount\n");
@@ -255,9 +255,6 @@ int
 videocodec_register (const struct videocodec *codec)
 {
 	struct codec_list *ptr, *h = codeclist_top;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
-	int res;
-#endif
 
 	if (!codec) {
 		dprintk(1, KERN_ERR "videocodec_register: no data!\n");
@@ -281,12 +278,12 @@ videocodec_register (const struct videocodec *codec)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
 	MOD_INC_USE_COUNT;
 #else
-	if ((res = try_module_get(THIS_MODULE)) != 0) {
+	if (!try_module_get(THIS_MODULE)) {
 		dprintk(1,
 			KERN_ERR
 			"videocodec: failed to increment module count\n");
 		kfree(ptr);
-		return res;
+		return -ENODEV;
 	}
 #endif
 
