@@ -1,10 +1,9 @@
 #################################################
 # config
-CONFIG_SHELL := /bin/bash
 
 # where the kernel sources are located
-TOPDIR := /usr/src/linux
-export TOPDIR CONFIG_SHELL
+KERNEL_LOCATION=/usr/src/linux
+TOPDIR=/usr/src/linux
 #################################################
 # some magic for using linux kernel settings
 # when compiling module(s)
@@ -13,13 +12,13 @@ EXTRA_CFLAGS = -DEXPORT_SYMTAB # -save-temps
 CURRENT = $(shell uname -r)
 
 here:
-	@echo Making Zoran 36060+36057/67 driver for $(CURRENT) kernel...
-	DIR=`pwd`; (cd $(TOPDIR); make SUBDIRS=$$DIR modules)
+	@echo Making Zoran 36060+36057/67\(/50\-16\) driver for $(CURRENT) kernel...
+	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
 
 ifneq (,$(findstring 2.2.,$(CURRENT)))
 # This part is for 2.2.x kernels
 
-M_OBJS       = zoran.o saa7111.o saa7110.o saa7185.o adv7175.o bt819.o bt856.o
+M_OBJS       = zoran.o saa7111.o saa7110.o saa7185.o adv7175.o bt819.o bt856.o vpx3220.o vpx32xx.o tea6415.o zr36060.o zr36050.o videocodec.o zr36016.o
 
 install:
 	su -c "cp -v $(M_OBJS) /lib/modules/$(CURRENT)/misc;/sbin/depmod -a"
@@ -30,7 +29,7 @@ clean:
 else
 # This part is for 2.4.x kernels (but not for 2.4.0test series!!!)
 
-obj-m       = zoran.o saa7111.o saa7110.o saa7185.o adv7175.o bt819.o bt856.o
+obj-m       = zoran.o saa7111.o saa7110.o saa7185.o adv7175.o bt819.o bt856.o vpx3220.o vpx32xx.o tea6415.o zr36060.o zr36050.o videocodec.o zr36016.o
 
 install:
 	su -c "cp -v $(obj-m) /lib/modules/$(CURRENT)/kernel/drivers/media/video/;/sbin/depmod -a"
@@ -41,6 +40,6 @@ clean:
 endif
 
 
-include $(TOPDIR)/Rules.make
+include $(KERNEL_LOCATION)/Rules.make
 
 zoran.o:  zoran_procfs.c

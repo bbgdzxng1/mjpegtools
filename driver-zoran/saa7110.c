@@ -32,6 +32,10 @@
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
+MODULE_DESCRIPTION("Philips SAA7110 video decoder driver");
+MODULE_AUTHOR("Pauline Middelink");
+MODULE_LICENSE("GPL");
+
 #if LINUX_VERSION_CODE < 0x20400
 #include <linux/i2c.h>
 #else

@@ -8,6 +8,9 @@ Adapted for DC10/DC10plus by Wolfgang Scherr <scherr@net4you.net>
 Further changes for DC10/DC10plus and LML33 cards by
 Serguei Miridonov <mirsev@cicese.mx>
 
+Changes for videodev2/v4l2 by
+Ronald Bultje <rbultje@ronald.bitfreak.net>
+
 Current homepage: http://www.cicese.mx/~mirsev/Linux/DC10plus/
 Current maintainer: Serguei Miridonov <mirsev@cicese.mx>
 
@@ -451,6 +454,9 @@ Additional notes for software developers:
    square pixel format. Remember that users now can lock the norm to
    avoid any ambiguity.
 
+The driver is fully video4linux2 compliant. A full description of the
+video4linux2 API can be found at http://www.thedirks.org/v4l2/.
+
 Features for testing
 ====================
 
@@ -481,12 +487,10 @@ There are two mailing lists available to discuss application issues and
 suggest driver improvements:
 
 1. A mailing list buz-linux was set up to discuss Iomega Buz driver.
-Since this driver is derivative of that driver, you can also post your
-questions and suggestions there. Subscribe with a message (with
-"subscribe" in the subject) to  buz-linux-subscribe@webmages.com.
-Unsubscribe with a message (with "unsubscribe" in the subject) to
-buz-linux-unsubscribe@webmages.com. The mailing list archive can be
-found at http://buz.webmages.com/list/. 
+The mailing list archive can be found at http://buz.webmages.com/list/.
+This list is no longer used and has been moved to sourceforge. The
+new mailinglist's address is <mjpeg-users@lists.sourceforge.net>. For
+subscribing/archives, visit http://sourceforge.net/mail/?group_id=5776.
 
 2. Video4Linux mailing list is set for more general discussions related
 to uncompressed video capture, V4L and V4L2 API, many Video4Linux
@@ -514,4 +518,7 @@ If you have found a bug, please, do the following:
    attach it using base64, uuencode, or any other encoding).
    
    If you have a Buz card, please, also mail the same message to
-   Wolfgang Scherr <scherr@net4you.net>
+   Wolfgang Scherr <scherr@net4you.net>.
+
+   It is usually a good idea to send the message CC'ed to the
+   general mailinglist, <mjpeg-users@lists.sourceforge.net>.

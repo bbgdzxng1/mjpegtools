@@ -27,7 +27,7 @@
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/major.h>
-#include <linux/malloc.h>
+#include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/pci.h>
 #include <linux/signal.h>
@@ -42,6 +42,10 @@
 #include <linux/videodev.h>
 #include <linux/version.h>
 #include <asm/uaccess.h>
+
+MODULE_DESCRIPTION("Philips SAA7185 video encoder driver");
+MODULE_AUTHOR("Dave Perks");
+MODULE_LICENSE("GPL");
 
 #if LINUX_VERSION_CODE < 0x20400
 #include <linux/i2c.h>

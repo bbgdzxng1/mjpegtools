@@ -166,6 +166,8 @@ Private IOCTL to set up for displaying MJPEG
 #define BUZ_MAX_FRAME     256	/* Must be a power of 2 */
 #define BUZ_MASK_FRAME    255	/* Must be BUZ_MAX_FRAME-1 */
 
+#define BUZ_MAX_INPUT       8
+
 #if VIDEO_MAX_FRAME <= 32
 #   define   V4L_MAX_FRAME   32
 #elif VIDEO_MAX_FRAME <= 64
@@ -183,7 +185,8 @@ enum card_type {
         DC10,
         DC10plus,
         LML33,
-        BUZ
+        BUZ,
+	DC30plus
 };
 
 enum zoran_codec_mode {
@@ -201,85 +204,199 @@ enum zoran_buffer_state {
 	BUZ_STATE_DONE		/* buffer is ready to return to application */
 };
 
-struct zoran_gbuffer {
+enum zoran_map_mode {
+	ZORAN_MAP_MODE_RAW,
+	ZORAN_MAP_MODE_JPG_REC,
+	ZORAN_MAP_MODE_JPG_PLAY,
+};
+
+enum gpio_type {
+	GPIO_JPEG_SLEEP = 0,
+	GPIO_JPEG_RESET,
+	GPIO_JPEG_FRAME,
+	GPIO_VID_DIR,
+	GPIO_VID_EN,
+	GPIO_VID_RESET,
+	GPIO_CLK_SEL1,
+	GPIO_CLK_SEL2,
+	GPIO_MAX,
+};
+
+enum gpcs_type {
+	GPCS_JPEG_RESET = 0,
+	GPCS_JPEG_START,
+	GPCS_MAX,
+};
+
+struct zoran_format {
+	char *name;
+	int palette;
+	__u32 fourcc;
+	int depth;
+	__u32 flags;
+};
+/* flags */
+#define ZORAN_FORMAT_COMPRESSED 1<<0
+#define ZORAN_FORMAT_OVERLAY    1<<1
+#define ZORAN_FORMAT_RAWCAPTURE 1<<2
+
+/* overlay-settings */
+struct zoran_overlay_settings {
+	int is_set;
+	int x, y, width, height;		/* position */
+	int clipcount;				/* position and number of clips */
+};
+
+/* v4l-capture settings */
+struct zoran_v4l_settings {
+	int width, height, bytesperline;	/* capture size */
+	const struct zoran_format *format;	/* capture format */
+};
+
+/* jpg-capture/-playback settings */
+struct zoran_jpg_settings {
+	int decimation;				/* this bit is used to set everything to default */
+	int HorDcm, VerDcm, TmpDcm;		/* capture decimation settings (TmpDcm=1 means both fields) */
+	int field_per_buff, odd_even;		/* field-settings (odd_even=1 (+TmpDcm=1) means top-field-first) */
+	int img_x, img_y, img_width, img_height; /* crop settings (subframe capture) */
+	struct v4l2_jpegcompression jpg_comp;	/* JPEG-specific capture settings */
+};
+
+struct zoran_mapping {
+	struct file		*file;
+	int			count;
+};
+
+struct zoran_jpg_buffer {
+	struct zoran_mapping	*map;
 	u32 			*frag_tab;		/* addresses of frag table */
-	u32 			frag_tab_bus;	/* same value cached to save time in ISR */
-	enum zoran_buffer_state state;	/* non-zero if corresponding buffer is in use in grab queue */
-	struct zoran_sync 	bs;	/* DONE: info to return to application */
+	u32 			frag_tab_bus;		/* same value cached to save time in ISR */
+	enum zoran_buffer_state state;			/* non-zero if corresponding buffer is in use in grab queue */
+	struct zoran_sync 	bs;			/* DONE: info to return to application */
 };
 
-struct v4l_gbuffer {
+struct zoran_v4l_buffer {
+	struct zoran_mapping	*map;
 	char 			*fbuffer;		/* virtual  address of frame buffer */
-	unsigned long 		fbuffer_phys;	/* physical address of frame buffer */
-	unsigned long 		fbuffer_bus;	/* bus      address of frame buffer */
-	enum zoran_buffer_state state;	/* state: unused/pending/done */
+	unsigned long 		fbuffer_phys;		/* physical address of frame buffer */
+	unsigned long 		fbuffer_bus;		/* bus      address of frame buffer */
+	enum zoran_buffer_state state;			/* state: unused/pending/done */
+	struct zoran_sync 	bs;			/* DONE: info to return to application */
 };
 
-struct tvnorm {
-	u16 			Wt, Wa, HStart, HSyncStart, Ht, Ha, VStart;
+enum zoran_lock_activity {
+	ZORAN_FREE,	/* free for use */
+	ZORAN_ACTIVE,	/* active but unlocked */
+	ZORAN_LOCKED,	/* locked */
+};
+
+/* buffer collections */
+struct zoran_jpg_struct {
+	enum zoran_lock_activity 	active; 		/* feature currently in use? */
+	struct zoran_jpg_buffer 	buffer[BUZ_MAX_FRAME]; 	/* buffers */
+	int 				num_buffers, buffer_size;
+	int 				allocated;		/* Flag if buffers are allocated  */
+	int 				need_contiguous; 	/* Flag if contiguous buffers are needed */
+};
+
+struct zoran_v4l_struct {
+	enum zoran_lock_activity 	active; 			/* feature currently in use? */
+	struct zoran_v4l_buffer 	buffer[VIDEO_MAX_FRAME]; 	/* buffers */
+	int 				num_buffers, buffer_size;
+	int 				allocated; 			/* Flag if buffers are allocated  */
+};
+
+struct zoran;
+
+/* zoran_fh contains per-open() settings */
+struct zoran_fh {
+	struct zoran *zr;
+
+	enum zoran_map_mode	map_mode;	/* Flag which bufferset will map by next mmap() */
+
+	struct zoran_overlay_settings 	overlay_settings;
+	u32 				*overlay_mask;	/* overlay mask */
+	enum zoran_lock_activity 	overlay_active; /* feature currently in use? */
+
+	struct zoran_v4l_settings 	v4l_settings;	/* structure with a lot of things to play with */
+	struct zoran_v4l_struct 	v4l_buffers;	/* V4L buffers' info */
+
+	struct zoran_jpg_settings 	jpg_settings;	/* structure with a lot of things to play with */
+	struct zoran_jpg_struct 	jpg_buffers;	/* MJPEG buffers' info */
+};
+
+struct card_info {
+	enum card_type type;
+
+	int inputs;			/* number of video inputs */
+	struct input {
+		int muxsel;
+		char *name;
+	} input[BUZ_MAX_INPUT];
+
+	int norms;
+	struct tvnorm *tvn[3];		/* supported TV norms */
+
+	u32 jpeg_int;			/* JPEG interrupt */
+	u32 vsync_int;			/* VSYNC interrupt */
+        u8  gpio[GPIO_MAX];
+	u8  gpcs[GPCS_MAX];
+
+	struct vfe_polarity vfe_pol;
+	u8  gpio_pol[GPIO_MAX];
+
+	void (*init)(struct zoran *zr);
 };
 
 struct zoran {
 	struct video_device     video_dev;
 	struct i2c_bus          i2c;
+	struct videocodec       *codec;
+	struct videocodec       *vfe;
 
 	int                     initialized;	/* flag if zoran has been correctly initalized */
-	int                     user;		/* number of current users (0 or 1) */
-        enum card_type          card;
+	int                     user;		/* number of current users */
+        struct card_info	*card;
         struct tvnorm           *timing;
 
-	unsigned short          id;	/* number of this device */
-	char                    name[32];		/* name of this device */
+	unsigned short          id;		/* number of this device */
+	char                    name[32];	/* name of this device */
 	struct pci_dev          *pci_dev;	/* PCI device */
 	unsigned char           revision;	/* revision of zr36057 */
 	unsigned int            zr36057_adr;	/* bus address of IO mem returned by PCI BIOS */
 	unsigned char           *zr36057_mem;	/* pointer to mapped IO memory */
 
-	int                     map_mjpeg_buffers;	/* Flag which bufferset will map by next mmap() */
-
-	spinlock_t              lock;	/* Spinlock */
+	spinlock_t              spinlock;	/* Spinlock */
 
 	/* Video for Linux parameters */
+	int			input, norm;		/* card's norm and input - norm=VIDEO_MODE_* */
+	int			hue, saturation, contrast, brightness;	/* Current picture params */
+	struct video_buffer     buffer;			/* Current buffer params */
+	struct zoran_overlay_settings overlay_settings;
+	u32 			*overlay_mask;		/* overlay mask */
+	enum zoran_lock_activity overlay_active; 	/* feature currently in use? */
 
-	struct video_picture    picture;	/* Current picture params */
-	struct video_buffer     buffer;	/* Current buffer params */
-	struct video_window     window;	/* Current window params */
-	int                     buffer_set, window_set;	/* Flags if the above structures are set */
-	int                     video_interlace;	/* Image on screen is interlaced */
-
-	u32                     *overlay_mask;
         wait_queue_head_t       v4l_capq;
 
 	int                     v4l_overlay_active;	/* Overlay grab is activated */
 	int                     v4l_memgrab_active;	/* Memory grab is activated */
 
-	int                     v4l_grab_frame;	/* Frame number being currently grabbed */
+	int                     v4l_grab_frame;		/* Frame number being currently grabbed */
 #define NO_GRAB_ACTIVE (-1)
-	int                     v4l_grab_seq;	/* Number of frames grabbed */
-	int 			gwidth;		/* Width of current memory capture */
-	int 			gheight;		/* Height of current memory capture */
-	int 			gformat;		/* Format of ... */
-	int 			gbpl;		/* byte per line of ... */
+	int                     v4l_grab_seq;		/* Number of frames grabbed */
+	struct zoran_v4l_settings v4l_settings;		/* structure with a lot of things to play with */
 
 	/* V4L grab queue of frames pending */
-
 	unsigned 		v4l_pend_head;
 	unsigned 		v4l_pend_tail;
 	int 			v4l_pend[V4L_MAX_FRAME];
-
-	struct v4l_gbuffer 	v4l_gbuf[VIDEO_MAX_FRAME];	/* V4L   buffers' info */
+	struct zoran_v4l_struct v4l_buffers;		/* V4L buffers' info */
 
 	/* Buz MJPEG parameters */
+	enum zoran_codec_mode 	codec_mode;		/* status of codec */
+	struct zoran_jpg_settings jpg_settings;		/* structure with a lot of things to play with */
 
-	unsigned long 		jpg_nbufs;	/* Number of buffers */
-	unsigned long 		jpg_bufsize;	/* Size of mjpeg buffers in bytes */
-	int 			jpg_buffers_allocated;	/* Flag if buffers are allocated  */
-	int 			need_contiguous;	/* Flag if contiguous buffers are needed */
-
-	enum zoran_codec_mode 	codec_mode;	/* status of codec */
-	struct zoran_params 	params;	/* structure with a lot of things to play with */
-
-	wait_queue_head_t 	jpg_capq;	/* wait here for grab to finish */
+	wait_queue_head_t 	jpg_capq;		/* wait here for grab to finish */
 
 	/* grab queue counts/indices, mask with BUZ_MASK_STAT_COM before using as index */
 	/* (dma_head - dma_tail) is number active in DMA, must be <= BUZ_NUM_STAT_COM */
@@ -300,13 +417,11 @@ struct zoran {
 	int 			jpg_pend[BUZ_MAX_FRAME];
 
 	/* array indexed by frame number */
-	struct zoran_gbuffer 	jpg_gbuf[BUZ_MAX_FRAME];	/* MJPEG buffers' info */
+	struct zoran_jpg_struct jpg_buffers;	/* MJPEG buffers' info */
 
 	/* Additional stuff for testing */
 #ifdef CONFIG_PROC_FS
-
 	struct proc_dir_entry 	*zoran_proc;
-
 #endif
 	int 			testing;
 	int 			jpeg_error;

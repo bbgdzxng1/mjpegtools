@@ -5,6 +5,13 @@ Hardware-dependent stuff (data for LML33 were taken from lml33 driver by
 
 IRQ_MASK:
 
+    DC10 cards:
+    ===========
+    GIRQ0	:   VSync interrupt (from vpx3216b)
+    GIRQ1	:   VSync interrupt (on main pixel bus)
+    CodRepIRQ
+    JPEGRepIRQ
+
     DC10plus cards:
     ===============
     GIRQ0       :   Interrupt from ZR36060
@@ -27,6 +34,19 @@ IRQ_MASK:
 
 GPIO:
 
+    DC10 cards:
+    ===========
+    GPIO0 = /RESET VPX3216B & MSE3000
+    GPIO1 = /RESET ZR 36050
+    GPIO2 = CLKEN ZR 36050
+    GPIO3 = /PIXOE ZR 36016
+    GPIO4 = ZORAN FREQUENCY  (0: 24.5454 and 12.2727 MHz (quartz),
+    GPIO5 =                   1: 29.50 and 17.25 MHz (quarz),
+                              2: LLC and LLC2 (VPX3216B),
+			      3: GND and GND)
+    GPIO6 = IMbus Ident MSE3000
+    GPIO7 = VPX3216B VSYNC & HSYNC ENABLE (0: ON, 1: OFF)
+    
     DC10plus cards:
     ===============
     GPIO0 = /RESET ZR 36060
@@ -65,6 +85,13 @@ GPIO:
 
 GUESTS:
 
+    DC10 cards:
+    ===========
+    G0, sub 0-3, RW bit 7-0, ZR 36050 (uses adr. bits 0-1)
+    G1, sub X,    W bit 7-0, HIGHADRESS (bit 9-2) ZR 36050 
+    G2, sub 0-3, RW bit 7-0, ZR 36016
+    G7, sub X,   R  bit 1-0, VREF (vfe) [1], PREF (vfe) [0]
+
     DC10plus cards:
     ===============
     TODO
@@ -84,9 +111,14 @@ GUESTS:
     G2, sub 0-3, RW bit 7-0, ZR 36016
     G3, sub X,    W bit 0,   ???? TODO
     G4, sub ?-?, RW bit ?-?, possibly audio codec
+    G5, sub ?-?, RW bit ?-?, possibly audio codec
     G7, sub X,   R  bit 1-0, VREF (vfe) [1], PREF (vfe) [0]
 
 VIDEO OUTPUT MATRIX:
+
+    DC10 cards:
+    ===========
+    ??? TODO
 
     DC10plus cards:
     Buz cards:
@@ -125,6 +157,11 @@ VIDEO OUTPUT MATRIX:
     
 
 Video norms settings:
+
+    DC10 cards:
+    ===========
+            Wt,     Wa,     HStart, Hjpeg,              Ht,     Ha,     VStart,  Vjpeg;
+    TODO
 
     DC10plus cards:
     ===============
