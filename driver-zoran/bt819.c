@@ -98,7 +98,9 @@ struct timing {
 
 /* for values, see the bt819 datasheet */
 struct timing timing_data[] = {
-	{864 - 24, 20 /*2*/, 625 - 3 /*- 2*/, 3 /*1*/, 0x0504, 0x0000},
+// From Ronald	{864 - 24, 20 /*2*/, 625 - 3 /*- 2*/, 3 /*1*/, 0x0504, 0x0000},
+// Seems to hang capture with -f A	
+	{864 - 24, 20 , 625 - 2 /*- 2*/, 1 /*1*/, 0x0504, 0x0000},
 	{858 - 24, 20 /*2*/, 525 - 3 /*- 2*/, 3 /*1*/, 0x00f8, 0x0000},
 //      { 858-68, 64, 523, 1, 0x00f8, 0x0000 },
 };
@@ -205,9 +207,17 @@ bt819_init (struct i2c_client *client)
 		0x0e, 0xb4,	/* 0x0e Chroma Gain (V) msb */
 		0x0f, 0x00,	/* 0x0f Hue control */
 		0x12, 0x04,	/* 0x12 Output Format */
-		0x13, 0x20,	/* 0x13 Vertial Scaling msb 0x60, */
+		0x13, 0x20,	/* 0x13 Vertial Scaling msb 0x00
+					   chroma comb OFF, line drop scaling, interlace scaling
+					   BUG? Why does turning the chroma comb on fuck up color?
+					   Bug in the bt819 stepping on my board?
+					*/
 		0x14, 0x00,	/* 0x14 Vertial Scaling lsb */
-		0x16, 0x04,	/* 0x16 Video Timing Polarity 0x02, */
+		0x16, 0x06,	/* 0x16 Video Timing Polarity 
+					   ACTIVE=active low
+					   FIELD: high=odd, 
+					   vreset=active low,
+					   hreset=active high */
 		0x18, 0x68,	/* 0x18 AGC Delay */
 		0x19, 0x5d,	/* 0x19 Burst Gate Delay */
 		0x1a, 0x80,	/* 0x1a ADC Interface */
@@ -215,20 +225,20 @@ bt819_init (struct i2c_client *client)
 
 	struct timing *timing = &timing_data[decoder->norm];
 
-	init[3 * 2 - 1] =
+	init[0x03 * 2 - 1] =
 	    (((timing->vdelay >> 8) & 0x03) << 6) | (((timing->
 						       vactive >> 8) &
 						      0x03) << 4) |
 	    (((timing->hdelay >> 8) & 0x03) << 2) | ((timing->
 						      hactive >> 8) &
 						     0x03);
-	init[4 * 2 - 1] = timing->vdelay & 0xff;
-	init[5 * 2 - 1] = timing->vactive & 0xff;
-	init[6 * 2 - 1] = timing->hdelay & 0xff;
-	init[7 * 2 - 1] = timing->hactive & 0xff;
-	init[8 * 2 - 1] = timing->hscale >> 8;
-	init[9 * 2 - 1] = timing->hscale & 0xff;
-
+	init[0x04 * 2 - 1] = timing->vdelay & 0xff;
+	init[0x05 * 2 - 1] = timing->vactive & 0xff;
+	init[0x06 * 2 - 1] = timing->hdelay & 0xff;
+	init[0x07 * 2 - 1] = timing->hactive & 0xff;
+	init[0x08 * 2 - 1] = timing->hscale >> 8;
+	init[0x09 * 2 - 1] = timing->hscale & 0xff;
+	init[0x19*2-1] = decoder->norm == 0 ? 115 : 93;	/* Chroma burst delay */
 	/* reset */
 	bt819_write(client, 0x1f, 0x00);
 	mdelay(1);

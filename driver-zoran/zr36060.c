@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
  *
- * $Id: zr36060.c,v 1.1.2.14 2003-01-14 21:18:31 rbultje Exp $
+ * $Id: zr36060.c,v 1.1.2.15 2003-03-13 21:04:43 wackston2 Exp $
  *
  * ------------------------------------------------------------------------
  *
@@ -640,8 +640,11 @@ zr36060_set_video (struct videocodec   *codec,
 
 	zr36060_write(ptr, ZR060_LOAD, ZR060_LOAD_SyncRst);
 
-	/* Note that CSPol/HSPol bits in zr26060 have the opposite
-	 * meaning of their zr360x7 counterparts with the same names */
+	/* Note that VSPol/HSPol bits in zr26060 have the opposite
+	 * meaning of their zr360x7 counterparts with the same names
+	 * N.b. for VSPol this is only true if FIVEdge = 0 (default,
+	 * left unchaned here).
+	*/
 	reg = (!pol->vsync_pol ? ZR060_VPR_VSPol : 0)
 	    | (!pol->hsync_pol ? ZR060_VPR_HSPol : 0)
 	    | (pol->field_pol ? ZR060_VPR_FIPol : 0)

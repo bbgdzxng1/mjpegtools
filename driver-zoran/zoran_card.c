@@ -408,7 +408,7 @@ static struct tvnorm f60sqpixel = { 780, 640, 51, 716, 525, 480, 12 };
 static struct tvnorm f50ccir601 = { 864, 720, 75, 804, 625, 576, 18 };
 static struct tvnorm f60ccir601 = { 858, 720, 57, 788, 525, 480, 16 };
 
-static struct tvnorm f50ccir601_lml33 = { 864, 720, 75+62, 804, 625, 576, 18 };
+static struct tvnorm f50ccir601_lml33 = { 864, 720, 75+34, 804, 625, 576, 18 };
 static struct tvnorm f60ccir601_lml33 = { 858, 720, 57+62, 788, 525, 480, 16 };
 
 static struct tvnorm f50sqpixel_dc10 = { 944, 768, 0, 880, 625, 576, 16 };
@@ -585,7 +585,7 @@ static struct card_info zoran_cards[NUM_CARDS] = {
 		.gpio = { 1, -1, 3, 5, 7, -1, -1, -1 },
 		.gpio_pol = { 0, 0, 0, 0, 1, 0, 0, 0 },
 		.gpcs = { 3, 1 },
-		.vfe_pol = { 1, 0, 0, 0, 0, 1, 0, 0 },
+		.vfe_pol = { 1, 1, 0, 0, 0, 1, 0, 0 },
 		.gws_not_connected = 1,
 		.init = &lml33_init,
 	}, {

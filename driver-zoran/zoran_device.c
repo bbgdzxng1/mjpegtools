@@ -838,7 +838,14 @@ zr36057_set_jpg (struct zoran          *zr,
 	btwrite(reg, ZR36057_FVAP);
 
 	/* horizontal */
-	btor(ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);
+#ifndef LEAVE_OUT_FIX
+	if (zr->card->vfe_pol.hsync_pol)
+#endif
+		btor(ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);
+#ifndef LEAVE_OUT_FIX
+	else
+		btand(~ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);		
+#endif
 	reg =
 	    ((tvn->HSyncStart) << ZR36057_HSP_HsyncStart) | (tvn->
 							     Wt <<
