@@ -212,10 +212,10 @@ bt819_init (struct i2c_client *client)
 					   Bug in the bt819 stepping on my board?
 					*/
 		0x14, 0x00,	/* 0x14 Vertial Scaling lsb */
-		0x16, 0x06,	/* 0x16 Video Timing Polarity 
+		0x16, 0x07,	/* 0x16 Video Timing Polarity 
 					   ACTIVE=active low
 					   FIELD: high=odd, 
-					   vreset=active low,
+					   vreset=active high,
 					   hreset=active high */
 		0x18, 0x68,	/* 0x18 AGC Delay */
 		0x19, 0x5d,	/* 0x19 Burst Gate Delay */
