@@ -1960,7 +1960,7 @@ zoran_do_ioctl (struct inode *inode,
 			zr->name, vchan->channel);
 
 		memset(vchan, 0, sizeof(struct video_channel));
-		if (channel > zr->card.inputs) {
+		if (channel > zr->card.inputs || channel < 0) {
 			dprintk(1,
 				KERN_ERR
 				"%s: VIDIOCGCHAN on not existing channel %d\n",

@@ -1,3 +1,9 @@
+Version 0.9.3 -> 0.9.4
+
+Version 0.9.2 -> 0.9.3
+----------------------
+* Fix missing check for channel < 0 in VIDIOCGCHAN (results in oops)
+
 Version 0.9.1 -> 0.9.2
 ----------------------
 * change default debug level 0 -> 1 ('display errors')
