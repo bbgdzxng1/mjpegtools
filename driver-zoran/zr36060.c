@@ -3,7 +3,7 @@
 
    Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
 
-   $Id: zr36060.c,v 1.1.2.9 2002-12-26 22:19:32 rbultje Exp $
+   $Id: zr36060.c,v 1.1.2.10 2002-12-27 13:27:37 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -928,7 +928,7 @@ static int __init zr36060_init_module(void)
         return 0;
 }
 
-static void __init zr36060_cleanup_module(void)
+static void __exit zr36060_cleanup_module(void)
 {
         if (zr36060_codecs) {
                 printk("zr36060: something's wrong - %d codecs left somehow.\n",

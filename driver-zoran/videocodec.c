@@ -6,7 +6,7 @@
    
    (c) 2002 Wolfgang Scherr <scherr@net4you.at>
   
-   $Id: videocodec.c,v 1.1.2.4 2002-12-26 22:19:32 rbultje Exp $
+   $Id: videocodec.c,v 1.1.2.5 2002-12-27 13:27:37 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -417,7 +417,7 @@ static int __init videocodec_init(void)
         return 0;
 }
 
-static void __init videocodec_exit(void)
+static void __exit videocodec_exit(void)
 {
 #ifdef CONFIG_PROC_FS
         remove_proc_entry("videocodecs", 0);

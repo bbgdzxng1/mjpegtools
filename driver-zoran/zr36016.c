@@ -3,7 +3,7 @@
 
    Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
 
-   $Id: zr36016.c,v 1.1.2.3 2002-12-26 22:19:32 rbultje Exp $
+   $Id: zr36016.c,v 1.1.2.4 2002-12-27 13:27:37 rbultje Exp $
 
    ------------------------------------------------------------------------
 
@@ -453,7 +453,7 @@ static int __init zr36016_init_module(void)
         return 0;
 }
 
-static void __init zr36016_cleanup_module(void)
+static void __exit zr36016_cleanup_module(void)
 {
         if (zr36016_codecs) {
                 printk("zr36016: something's wrong - %d codecs left somehow.\n",
