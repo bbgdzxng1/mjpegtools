@@ -5746,20 +5746,14 @@ sjpegc_unlock_and_return:
 			dprintk(2, KERN_DEBUG "%s: VIDIOC_QUERY_STD - std=0x%llx\n",
 				zr->name, *std);
 
-			switch (*std) {
-				case V4L2_STD_ALL:
-				case V4L2_STD_NTSC:
-				case V4L2_STD_PAL:
-					break;
-				case V4L2_STD_SECAM:
-					if (zr->card->norms == 3)
-						break;
-					/* else ... fall-through */
-				default:
-					return -EINVAL;
+			if (*std == V4L2_STD_ALL ||
+			    *std == V4L2_STD_NTSC ||
+			    *std == V4L2_STD_PAL ||
+			   (*std == V4L2_STD_SECAM && zr->card->norms == 3)) {
+				return 0;
 			}
 
-			return 0;
+			return -EINVAL;
 		}
 		break;
 
