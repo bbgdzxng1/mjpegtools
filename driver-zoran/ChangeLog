@@ -15,6 +15,7 @@ Version 0.9.4 -> 0.9.5
 * Add pci_disable_device() in card release function
 * fix memleaks in i2c client error cases
 * fix DC30 field order problem and +/- 64 lines noise at top
+* fix DC30 quality (by Kieran Morrissey <linux@mgpenguin.net>)
 
 Version 0.9.3 -> 0.9.4
 ----------------------
