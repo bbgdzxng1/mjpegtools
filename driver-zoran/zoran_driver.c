@@ -370,6 +370,7 @@ v4l_fbuffer_alloc (struct file *file)
 			int n =
 			    (fh->v4l_buffers.buffer_size + PAGE_SIZE -
 			     1) / PAGE_SIZE;
+
 			mem =
 			    (unsigned char *) bigphysarea_alloc_pages(n, 0,
 								      GFP_KERNEL);
@@ -412,6 +413,7 @@ v4l_fbuffer_alloc (struct file *file)
 				int size =
 				    fh->v4l_buffers.num_buffers *
 				    fh->v4l_buffers.buffer_size;
+
 				pmem = get_high_mem(size);
 				if (pmem == 0) {
 					dprintk(1,
@@ -847,9 +849,10 @@ v4l_grab (struct file       *file,
 		if (res)
 			return res;
 	}
-	if ((res =
-	     zoran_v4l_set_format(file, mp->width, mp->height,
-				  &zoran_formats[i])))
+	if ((res = zoran_v4l_set_format(file,
+					mp->width,
+					mp->height,
+					&zoran_formats[i])))
 		return res;
 	zr->v4l_settings = fh->v4l_settings;
 
@@ -2053,6 +2056,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCGCAP:
 	{
 		struct video_capability *vcap = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOCGCAP\n", ZR_DEVNAME(zr));
 
 		memset(vcap, 0, sizeof(struct video_capability));
@@ -2175,6 +2179,7 @@ zoran_do_ioctl (struct inode *inode,
 
 		for (i = 0; i < zoran_num_formats; i++) {
 			const struct zoran_format *fmt = &zoran_formats[i];
+
 			if (fmt->palette != -1 &&
 			    fmt->flags & ZORAN_FORMAT_OVERLAY &&
 			    fmt->palette == vpict->palette &&
@@ -2224,7 +2229,9 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCGWIN:
 	{
 		struct video_window *vwin = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOCGWIN\n", ZR_DEVNAME(zr));
+
 		memset(vwin, 0, sizeof(struct video_window));
 		down(&zr->resource_lock);
 		vwin->x = fh->overlay_settings.x;
@@ -2262,7 +2269,9 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCGFBUF:
 	{
 		struct video_buffer *vbuf = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOCGFBUF\n", ZR_DEVNAME(zr));
+
 		down(&zr->resource_lock);
 		*vbuf = zr->buffer;
 		up(&zr->resource_lock);
@@ -2306,8 +2315,10 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCSYNC:
 	{
 		int *frame = arg, res;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOCSYNC - frame=%d\n",
 			ZR_DEVNAME(zr), *frame);
+
 		down(&zr->resource_lock);
 		res = v4l_sync(file, *frame);
 		up(&zr->resource_lock);
@@ -2321,11 +2332,13 @@ zoran_do_ioctl (struct inode *inode,
 	{
 		struct video_mmap *vmap = arg;
 		int res;
+
 		dprintk(3,
 			KERN_DEBUG
 			"%s: VIDIOCMCAPTURE - frame=%d, geom=%dx%d, fmt=%d\n",
 			ZR_DEVNAME(zr), vmap->frame, vmap->width, vmap->height,
 			vmap->format);
+
 		down(&zr->resource_lock);
 		res = v4l_grab(file, vmap);
 		up(&zr->resource_lock);
@@ -2379,6 +2392,7 @@ zoran_do_ioctl (struct inode *inode,
 		struct video_unit *vunit = arg;
 
 		dprintk(3, KERN_DEBUG "%s: VIDIOCGUNIT\n", ZR_DEVNAME(zr));
+
 		vunit->video = zr->video_dev->minor;
 		vunit->vbi = VIDEO_NO_UNIT;
 		vunit->radio = VIDEO_NO_UNIT;
@@ -2414,6 +2428,7 @@ zoran_do_ioctl (struct inode *inode,
 	case BUZIOC_G_PARAMS:
 	{
 		struct zoran_params *bparams = arg;
+
 		dprintk(3, KERN_DEBUG "%s: BUZIOC_G_PARAMS\n", ZR_DEVNAME(zr));
 
 		memset(bparams, 0, sizeof(struct zoran_params));
@@ -2707,6 +2722,7 @@ zoran_do_ioctl (struct inode *inode,
 		struct v4l2_fmtdesc *fmt = arg;
 		int index = fmt->index, num = -1, i, flag = 0, type =
 		    fmt->type;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_ENUM_FMT - index=%d\n",
 			ZR_DEVNAME(zr), fmt->index);
 
@@ -3551,6 +3567,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_QUERYCTRL:
 	{
 		struct v4l2_queryctrl *ctrl = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_QUERYCTRL - id=%d\n",
 			ZR_DEVNAME(zr), ctrl->id);
 
@@ -3592,6 +3609,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_G_CTRL:
 	{
 		struct v4l2_control *ctrl = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_CTRL - id=%d\n",
 			ZR_DEVNAME(zr), ctrl->id);
 
@@ -3673,6 +3691,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_ENUMSTD:
 	{
 		struct v4l2_standard *std = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_ENUMSTD - index=%d\n",
 			ZR_DEVNAME(zr), std->index);
 
@@ -3728,6 +3747,7 @@ zoran_do_ioctl (struct inode *inode,
 	{
 		v4l2_std_id *std = arg;
 		int norm;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_STD\n", ZR_DEVNAME(zr));
 
 		down(&zr->resource_lock);
@@ -3825,6 +3845,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_G_INPUT:
 	{
 		int *input = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_INPUT\n", ZR_DEVNAME(zr));
 
 		down(&zr->resource_lock);
@@ -3838,6 +3859,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_S_INPUT:
 	{
 		int *input = arg, res = 0;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_S_INPUT - input=%d\n",
 			ZR_DEVNAME(zr), *input);
 
@@ -3856,6 +3878,7 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_ENUMOUTPUT:
 	{
 		struct v4l2_output *outp = arg;
+
 		dprintk(3, KERN_DEBUG "%s: VIDIOC_ENUMOUTPUT - index=%d\n",
 			ZR_DEVNAME(zr), outp->index);
 
@@ -4026,7 +4049,9 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOC_G_JPEGCOMP:
 	{
 		struct v4l2_jpegcompression *params = arg;
-		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_JPEGCOMP\n", ZR_DEVNAME(zr));
+
+		dprintk(3, KERN_DEBUG "%s: VIDIOC_G_JPEGCOMP\n",
+			ZR_DEVNAME(zr));
 
 		memset(params, 0, sizeof(*params));
 
@@ -4196,6 +4221,7 @@ zoran_do_ioctl (struct inode *inode,
 			} else if (fmt->type ==
 				   V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 				int i;
+
 				for (i = 0; i < zoran_num_formats; i++)
 					if (zoran_formats[i].fourcc ==
 					    fmt->fmt.pix.pixelformat)
@@ -4343,6 +4369,7 @@ static void
 zoran_vm_open (struct vm_area_struct *vma)
 {
 	struct zoran_mapping *map = vma->vm_private_data;
+
 	map->count++;
 }
 

@@ -624,6 +624,7 @@ static int
 zoran_i2c_getsda (void *data)
 {
 	struct zoran *zr = (struct zoran *) data;
+
 	return (btread(ZR36057_I2CBR) >> 1) & 1;
 }
 
@@ -631,6 +632,7 @@ static int
 zoran_i2c_getscl (void *data)
 {
 	struct zoran *zr = (struct zoran *) data;
+
 	return btread(ZR36057_I2CBR) & 1;
 }
 
@@ -639,6 +641,7 @@ zoran_i2c_setsda (void *data,
 		  int   state)
 {
 	struct zoran *zr = (struct zoran *) data;
+
 	if (state)
 		zr->i2cbr |= 2;
 	else
@@ -651,6 +654,7 @@ zoran_i2c_setscl (void *data,
 		  int   state)
 {
 	struct zoran *zr = (struct zoran *) data;
+
 	if (state)
 		zr->i2cbr |= 1;
 	else
@@ -767,6 +771,7 @@ zoran_check_jpg_settings (struct zoran              *zr,
 			  struct zoran_jpg_settings *settings)
 {
 	int err = 0, err0 = 0;
+
 	dprintk(4,
 		KERN_DEBUG
 		"%s: check_jpg_settings() - dec: %d, Hdcm: %d, Vdcm: %d, Tdcm: %d\n",
@@ -1228,6 +1233,7 @@ find_zr36057 (void)
 		} else {
 			int i;
 			unsigned short ss_vendor, ss_device;
+
 			ss_vendor = zr->pci_dev->subsystem_vendor;
 			ss_device = zr->pci_dev->subsystem_device;
 			dprintk(1,
@@ -1488,6 +1494,7 @@ static int __init
 init_dc10_cards (void)
 {
 	int i;
+
 	memset(zoran, 0, sizeof(zoran));
 	printk(KERN_INFO "Zoran MJPEG board driver version %d.%d.%d\n",
 	       MAJOR_VERSION, MINOR_VERSION, RELEASE_VERSION);
@@ -1544,6 +1551,7 @@ init_dc10_cards (void)
 	/* take care of Natoma chipset and a revision 1 zr36057 */
 	for (i = 0; i < zoran_num; i++) {
 		struct zoran *zr = &zoran[i];
+
 		if (pci_pci_problems & PCIPCI_NATOMA && zr->revision <= 1) {
 			zr->jpg_buffers.need_contiguous = 1;
 			dprintk(1,
@@ -1567,6 +1575,7 @@ static void __exit
 unload_dc10_cards (void)
 {
 	int i;
+
 	for (i = 0; i < zoran_num; i++)
 		zoran_release(&zoran[i]);
 }
