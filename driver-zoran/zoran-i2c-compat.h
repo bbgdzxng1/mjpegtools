@@ -70,6 +70,8 @@ i2c_set_clientdata (struct i2c_client *client,
 #define I2C_NAME(s) (s)->name
 #define I2C_DEVNAME(n) .name = n
 
+#define iminor(inode) minor(inode->i_rdev)
+
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) */
 
 #define I2C_NAME(s) (s)->name
