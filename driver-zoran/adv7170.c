@@ -1,33 +1,32 @@
-#define DEBUGLEVEL 0
 /* 
-    adv7170 - adv7170, adv7171 video encoder driver version 0.0.1
-
-    Copyright (C) 2002 Maxim Yevtyushkin <max@linuxmedialabs.com>
-
-    Based on adv7176 driver by:    
-
-    Copyright (C) 1998 Dave Perks <dperks@ibm.net>
-    Copyright (C) 1999 Wolfgang Scherr <scherr@net4you.net>
-    Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
-       - some corrections for Pinnacle Systems Inc. DC10plus card.
-
-    Changes by Ronald Bultje <rbultje@ronald.bitfreak.net>
-       - moved over to linux>=2.4.x i2c protocol (1/1/2003)
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ * adv7170 - adv7170, adv7171 video encoder driver version 0.0.1
+ *
+ * Copyright (C) 2002 Maxim Yevtyushkin <max@linuxmedialabs.com>
+ *
+ * Based on adv7176 driver by:    
+ *
+ * Copyright (C) 1998 Dave Perks <dperks@ibm.net>
+ * Copyright (C) 1999 Wolfgang Scherr <scherr@net4you.net>
+ * Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
+ *    - some corrections for Pinnacle Systems Inc. DC10plus card.
+ *
+ * Changes by Ronald Bultje <rbultje@ronald.bitfreak.net>
+ *    - moved over to linux>=2.4.x i2c protocol (1/1/2003)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
 
 #include <linux/version.h>
 
@@ -69,98 +68,109 @@ MODULE_LICENSE("GPL");
 
 #include <linux/video_encoder.h>
 
-#if (DEBUGLEVEL > 0)
-#define DEBUG(x...)  x   /* Debug driver */
-#else
-#define DEBUG(x...)
-#endif
+static int debug = 0;
+MODULE_PARM(debug, "i");
+MODULE_PARM_DESC(debug, "Debug level (0-1)");
+
+#define dprintk(num, format, args...) \
+	do { \
+		if (debug >= num) \
+			printk(format, ##args); \
+	} while (0)
 
 /* ----------------------------------------------------------------------- */
 
-struct adv7170
-{
-   unsigned char   reg[128];
+struct adv7170 {
+	unsigned char reg[128];
 
-   int      norm;
-   int      input;
-   int      enable;
-   int      bright;
-   int      contrast;
-   int      hue;
-   int      sat;
+	int norm;
+	int input;
+	int enable;
+	int bright;
+	int contrast;
+	int hue;
+	int sat;
 };
 
 #define   I2C_ADV7170        0xd4
 #define   I2C_ADV7171        0x54
 
-static char adv7170_name[] = "adv7170"; 
-static char adv7171_name[] = "adv7171"; 
+static char adv7170_name[] = "adv7170";
+static char adv7171_name[] = "adv7171";
 
-#if (DEBUGLEVEL > 0)
-static char *inputs[] = {"pass_through", "play_back", "color_bar"};
-static char *norms[] = {"PAL", "NTSC", "SECAM->PAL (may not work!)"};
-#endif
+static char *inputs[] = { "pass_through", "play_back" };
+static char *norms[] = { "PAL", "NTSC" };
 
 /* ----------------------------------------------------------------------- */
 
 static inline int
-adv7170_write(struct i2c_client *client, u8 reg, u8 value)
+adv7170_write (struct i2c_client *client,
+	       u8                 reg,
+	       u8                 value)
 {
-   struct adv7170 *encoder = client->data;
-   encoder->reg[reg] = value;
-   return i2c_smbus_write_byte_data(client, reg, value);
+	struct adv7170 *encoder = client->data;
+	encoder->reg[reg] = value;
+	return i2c_smbus_write_byte_data(client, reg, value);
 }
 
 static inline int
-adv7170_read(struct i2c_client *client, u8 reg)
+adv7170_read (struct i2c_client *client,
+	      u8                 reg)
 {
-   return i2c_smbus_read_byte_data(client, reg);
+	return i2c_smbus_read_byte_data(client, reg);
 }
 
 static int
-adv7170_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
+adv7170_write_block (struct i2c_client *client,
+		     const u8          *data,
+		     unsigned int       len)
 {
-   int ret = -1;
-   u8 reg;
+	int ret = -1;
+	u8 reg;
 
-   /* the adv7170 has an autoincrement function, use it if
-    * the adapter understands raw I2C */
-   if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-      /* do raw I2C, not smbus compatible */
-      struct adv7170 *encoder = client->data;
-      struct i2c_msg msg;
-      u8 block_data[32];
-      msg.addr = client->addr;
-      msg.flags = client->flags;
-      while (len >= 2) {
-         msg.buf = (char *) block_data;
-         msg.len = 0;
-         block_data[msg.len++] = reg = data[0];
-         do {
-            block_data[msg.len++] = encoder->reg[reg++] = data[1];
-            len -= 2; data += 2;
-         } while (len >= 2 && data[0] == reg && msg.len < 32);
-         if ((ret = i2c_transfer(client->adapter, &msg, 1)) < 0)
-            break;
-      }
-   } else {
-      /* do some slow I2C emulation kind of thing */
-      while (len >= 2) {
-         reg = *data++;
-         if ((ret = adv7170_write(client, reg, *data++)) < 0)
-            break;
-         len-=2;
-      }
-   }
+	/* the adv7170 has an autoincrement function, use it if
+	 * the adapter understands raw I2C */
+	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+		/* do raw I2C, not smbus compatible */
+		struct adv7170 *encoder = client->data;
+		struct i2c_msg msg;
+		u8 block_data[32];
+		msg.addr = client->addr;
+		msg.flags = client->flags;
+		while (len >= 2) {
+			msg.buf = (char *) block_data;
+			msg.len = 0;
+			block_data[msg.len++] = reg = data[0];
+			do {
+				block_data[msg.len++] =
+				    encoder->reg[reg++] = data[1];
+				len -= 2;
+				data += 2;
+			} while (len >= 2 && data[0] == reg &&
+				 msg.len < 32);
+			if ((ret =
+			     i2c_transfer(client->adapter, &msg, 1)) < 0)
+				break;
+		}
+	} else {
+		/* do some slow I2C emulation kind of thing */
+		while (len >= 2) {
+			reg = *data++;
+			if ((ret =
+			     adv7170_write(client, reg, *data++)) < 0)
+				break;
+			len -= 2;
+		}
+	}
 
-   return ret;
+	return ret;
 }
 
 /* ----------------------------------------------------------------------- */
 // Output filter:  S-Video  Composite
 
-#define MR050       0x11    //0x09
-#define MR060       0x14    //0x0c
+#define MR050       0x11	//0x09
+#define MR060       0x14	//0x0c
 
 //---------------------------------------------------------------------------
 
@@ -172,223 +182,201 @@ adv7170_write_block(struct i2c_client *client, const u8 *data, unsigned int len)
 
 
 static const unsigned char init_NTSC[] = {
-   0x00, 0x10,   // MR0
-   0x01, 0x20,   // MR1
-   0x02, 0x0e,   // MR2 RTC control: bits 2 and 1 
-   0x03, 0x80,   // MR3
-   0x04, 0x30,   // MR4
-   0x05, 0x00,   // Reserved
-   0x06, 0x00,   // Reserved
-   0x07, TR0MODE,   // TM0
-   0x08, TR1CAPT,   // TM1
-   0x09, 0x16,   // Fsc0
-   0x0a, 0x7c,   // Fsc1
-   0x0b, 0xf0,   // Fsc2
-   0x0c, 0x21,   // Fsc3
-   0x0d, 0x00,   // Subcarrier Phase
-   0x0e, 0x00,   // Closed Capt. Ext 0
-   0x0f, 0x00,   // Closed Capt. Ext 1
-   0x10, 0x00,   // Closed Capt. 0
-   0x11, 0x00,   // Closed Capt. 1
-   0x12, 0x00,   // Pedestal Ctl 0
-   0x13, 0x00,   // Pedestal Ctl 1
-   0x14, 0x00,   // Pedestal Ctl 2
-   0x15, 0x00,   // Pedestal Ctl 3
-   0x16, 0x00,   // CGMS_WSS_0
-   0x17, 0x00,   // CGMS_WSS_1
-   0x18, 0x00,   // CGMS_WSS_2
-   0x19, 0x00,   // Teletext Ctl 
+	0x00, 0x10,		// MR0
+	0x01, 0x20,		// MR1
+	0x02, 0x0e,		// MR2 RTC control: bits 2 and 1 
+	0x03, 0x80,		// MR3
+	0x04, 0x30,		// MR4
+	0x05, 0x00,		// Reserved
+	0x06, 0x00,		// Reserved
+	0x07, TR0MODE,		// TM0
+	0x08, TR1CAPT,		// TM1
+	0x09, 0x16,		// Fsc0
+	0x0a, 0x7c,		// Fsc1
+	0x0b, 0xf0,		// Fsc2
+	0x0c, 0x21,		// Fsc3
+	0x0d, 0x00,		// Subcarrier Phase
+	0x0e, 0x00,		// Closed Capt. Ext 0
+	0x0f, 0x00,		// Closed Capt. Ext 1
+	0x10, 0x00,		// Closed Capt. 0
+	0x11, 0x00,		// Closed Capt. 1
+	0x12, 0x00,		// Pedestal Ctl 0
+	0x13, 0x00,		// Pedestal Ctl 1
+	0x14, 0x00,		// Pedestal Ctl 2
+	0x15, 0x00,		// Pedestal Ctl 3
+	0x16, 0x00,		// CGMS_WSS_0
+	0x17, 0x00,		// CGMS_WSS_1
+	0x18, 0x00,		// CGMS_WSS_2
+	0x19, 0x00,		// Teletext Ctl 
 };
 
 static const unsigned char init_PAL[] = {
-   0x00, 0x71,   // MR0
-   0x01, 0x20,   // MR1
-   0x02, 0x0e,   // MR2 RTC control: bits 2 and 1
-   0x03, 0x80,   // MR3
-   0x04, 0x30,   // MR4
-   0x05, 0x00,   // Reserved
-   0x06, 0x00,   // Reserved
-   0x07, TR0MODE,   // TM0
-   0x08, TR1CAPT,   // TM1
-   0x09, 0xcb,   // Fsc0
-   0x0a, 0x8a,   // Fsc1
-   0x0b, 0x09,   // Fsc2
-   0x0c, 0x2a,   // Fsc3
-   0x0d, 0x00,   // Subcarrier Phase
-   0x0e, 0x00,   // Closed Capt. Ext 0
-   0x0f, 0x00,   // Closed Capt. Ext 1
-   0x10, 0x00,   // Closed Capt. 0
-   0x11, 0x00,   // Closed Capt. 1
-   0x12, 0x00,   // Pedestal Ctl 0
-   0x13, 0x00,   // Pedestal Ctl 1
-   0x14, 0x00,   // Pedestal Ctl 2
-   0x15, 0x00,   // Pedestal Ctl 3
-   0x16, 0x00,   // CGMS_WSS_0
-   0x17, 0x00,   // CGMS_WSS_1
-   0x18, 0x00,   // CGMS_WSS_2
-   0x19, 0x00,   // Teletext Ctl
+	0x00, 0x71,		// MR0
+	0x01, 0x20,		// MR1
+	0x02, 0x0e,		// MR2 RTC control: bits 2 and 1
+	0x03, 0x80,		// MR3
+	0x04, 0x30,		// MR4
+	0x05, 0x00,		// Reserved
+	0x06, 0x00,		// Reserved
+	0x07, TR0MODE,		// TM0
+	0x08, TR1CAPT,		// TM1
+	0x09, 0xcb,		// Fsc0
+	0x0a, 0x8a,		// Fsc1
+	0x0b, 0x09,		// Fsc2
+	0x0c, 0x2a,		// Fsc3
+	0x0d, 0x00,		// Subcarrier Phase
+	0x0e, 0x00,		// Closed Capt. Ext 0
+	0x0f, 0x00,		// Closed Capt. Ext 1
+	0x10, 0x00,		// Closed Capt. 0
+	0x11, 0x00,		// Closed Capt. 1
+	0x12, 0x00,		// Pedestal Ctl 0
+	0x13, 0x00,		// Pedestal Ctl 1
+	0x14, 0x00,		// Pedestal Ctl 2
+	0x15, 0x00,		// Pedestal Ctl 3
+	0x16, 0x00,		// CGMS_WSS_0
+	0x17, 0x00,		// CGMS_WSS_1
+	0x18, 0x00,		// CGMS_WSS_2
+	0x19, 0x00,		// Teletext Ctl
 };
 
 
 static int
-adv7170_command(struct i2c_client *client, unsigned int cmd, void * arg)
+adv7170_command (struct i2c_client *client,
+		 unsigned int       cmd,
+		 void *             arg)
 {
-   struct adv7170 *encoder = client->data;
+	struct adv7170 *encoder = client->data;
 
-   switch (cmd) {
+	switch (cmd) {
 
-   case 0:  // This is just for testing!!!
-//           adv7170_write_block(client, init_common, sizeof(init_common));
-//           adv7170_write(client, 0x07, TR0MODE | TR0RST);
-//           adv7170_write(client, 0x07, TR0MODE);
-        break;
-        
-   case ENCODER_GET_CAPABILITIES:
-      {
-         struct video_encoder_capability *cap = arg;
+	case 0:
+#if 0
+		/* This is just for testing!!! */
+		adv7170_write_block(client, init_common,
+				    sizeof(init_common));
+		adv7170_write(client, 0x07, TR0MODE | TR0RST);
+		adv7170_write(client, 0x07, TR0MODE);
+#endif
+		break;
 
-         cap->flags
-            = VIDEO_ENCODER_PAL
-            | VIDEO_ENCODER_NTSC
-            // | VIDEO_ENCODER_SECAM
-            // | VIDEO_ENCODER_CCIR
-            ;
-         cap->inputs = 2;
-         cap->outputs = 1;
-      }
-      break;
+	case ENCODER_GET_CAPABILITIES:
+	{
+		struct video_encoder_capability *cap = arg;
 
-   case ENCODER_SET_NORM:
-      {
-         int iarg =  *(int *)arg;
-         
-         DEBUG(printk(KERN_DEBUG "%s_command: set norm",client->name));
+		cap->flags = VIDEO_ENCODER_PAL |
+			     VIDEO_ENCODER_NTSC;
+		cap->inputs = 2;
+		cap->outputs = 1;
+	}
+		break;
 
-         //adv7170_write_block(client, init_common, sizeof(init_common));
-         //if(client->norm != iarg) {
-            switch (iarg) {
+	case ENCODER_SET_NORM:
+	{
+		int iarg = *(int *) arg;
 
-                case VIDEO_MODE_NTSC:
-                    DEBUG(printk(" NTSC\n"));
-                    adv7170_write_block(client, init_NTSC, sizeof(init_NTSC));
-     	            if (encoder->input == 0)
-                        adv7170_write(client, 0x02, 0x0e);  // Enable genlock
-     	            adv7170_write(client, 0x07, TR0MODE | TR0RST);
-     	            adv7170_write(client, 0x07, TR0MODE);
-     	            break;
+		dprintk(1, KERN_DEBUG "%s_command: set norm %d",
+			client->name, iarg);
 
-                case VIDEO_MODE_PAL:
-                    DEBUG(printk(" PAL\n"));
-     	            adv7170_write_block(client, init_PAL, sizeof(init_PAL));
-     	            if (encoder->input == 0)
-                        adv7170_write(client, 0x02, 0x0e);  // Enable genlock
-     	            adv7170_write(client, 0x07, TR0MODE | TR0RST);
-     	            adv7170_write(client, 0x07, TR0MODE);
-                    break;
+		switch (iarg) {
 
-                case VIDEO_MODE_SECAM: // WARNING! ADV7170(1) does not support SECAM.
-                                       // This is an attempt to convert SECAM->PAL (typically
-                                       // it does not work due to genlock: when decoder
-                                       // is in SECAM and encoder in in PAL the subcarrier
-                                       // can not be syncronized with horizontal frequency)
-//     	            adv7170_write_block(client, init_pal, sizeof(init_pal));
-//     	            if (encoder->input == 0)
-//                        adv7170_write(client, 0x0d, 0x49);  // Disable genlock
-//                    adv7170_write(client, 0x07, TR0MODE | TR0RST);
-//     	            adv7170_write(client, 0x07, TR0MODE);
-		    DEBUG(printk(" SECAM\n"));
-                    break;
-                default:
-                    DEBUG(printk("\n"));
-                    printk(KERN_ERR "%s: illegal norm: %d\n",client->name,iarg);
-                    return -EINVAL;
+		case VIDEO_MODE_NTSC:
+			adv7170_write_block(client, init_NTSC,
+					    sizeof(init_NTSC));
+			if (encoder->input == 0)
+				adv7170_write(client, 0x02, 0x0e);	// Enable genlock
+			adv7170_write(client, 0x07, TR0MODE | TR0RST);
+			adv7170_write(client, 0x07, TR0MODE);
+			break;
 
-            }
-            DEBUG(printk(KERN_DEBUG "%s: switched to %s\n",client->name, norms[iarg]));
-            encoder->norm = iarg;
-         //}
-      }
-      break;
+		case VIDEO_MODE_PAL:
+			adv7170_write_block(client, init_PAL,
+					    sizeof(init_PAL));
+			if (encoder->input == 0)
+				adv7170_write(client, 0x02, 0x0e);	// Enable genlock
+			adv7170_write(client, 0x07, TR0MODE | TR0RST);
+			adv7170_write(client, 0x07, TR0MODE);
+			break;
 
-   case ENCODER_SET_INPUT:
-      {
-         int iarg = *(int *)arg;
+		default:
+			dprintk(1, KERN_ERR "%s: illegal norm: %d\n",
+			       client->name, iarg);
+			return -EINVAL;
 
-         /* RJ: *iarg = 0: input is from decoder
-                *iarg = 1: input is from ZR36060
-                *iarg = 2: color bar */
+		}
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", client->name,
+			norms[iarg]);
+		encoder->norm = iarg;
+	}
+		break;
 
-        DEBUG(printk(KERN_DEBUG "%s_command: set input from %s\n", client->name, 
-                 iarg == 0 ? "decoder" : (iarg == 1 ? "ZR36060" : "color bars generator")));
+	case ENCODER_SET_INPUT:
+	{
+		int iarg = *(int *) arg;
 
-         //if(encoder->input != iarg) {
-             switch (iarg) {
+		/* RJ: *iarg = 0: input is from decoder
+		 *iarg = 1: input is from ZR36060
+		 *iarg = 2: color bar */
 
-             case 0:
-	        adv7170_write(client, 0x01, 0x20);
-    	        adv7170_write(client, 0x08, TR1CAPT);   /* TR1 */
-                if (encoder->norm == VIDEO_MODE_SECAM)
-                    adv7170_write(client, 0x02, 0x09);  // Disable genlock
-                else
-                    adv7170_write(client, 0x02, 0x0e);  // Enable genlock
-     	        adv7170_write(client, 0x07, TR0MODE | TR0RST);
-     	        adv7170_write(client, 0x07, TR0MODE);
-	        //udelay(10);
-                break;
+		dprintk(1, KERN_DEBUG "%s_command: set input from %s\n",
+			client->name,
+			iarg == 0 ? "decoder" : "ZR36060");
 
-             case 1:
-		
-	        adv7170_write(client, 0x01, 0x00);
-    	        adv7170_write(client, 0x08, TR1PLAY);   /* TR1 */
-	        adv7170_write(client, 0x02, 0x08);
-     	        adv7170_write(client, 0x07, TR0MODE | TR0RST);
-     	        adv7170_write(client, 0x07, TR0MODE);
-	        //udelay(10);
-                break;
+		switch (iarg) {
 
-              case 2:
-//	        adv7170_write(client, 0x01, 0x80);
-//                adv7170_write(client, 0x0d, 0x49);
-//     	        adv7170_write(client, 0x07, TR0MODE | TR0RST);
-//     	        adv7170_write(client, 0x07, TR0MODE);
-	        //udelay(10);
-                break;
+		case 0:
+			adv7170_write(client, 0x01, 0x20);
+			adv7170_write(client, 0x08, TR1CAPT);	/* TR1 */
+			adv7170_write(client, 0x02, 0x0e);	// Enable genlock
+			adv7170_write(client, 0x07, TR0MODE | TR0RST);
+			adv7170_write(client, 0x07, TR0MODE);
+			//udelay(10);
+			break;
 
-              default:
-                printk(KERN_ERR "%s: illegal input: %d\n",client->name,iarg);
-                return -EINVAL;
+		case 1:
+			adv7170_write(client, 0x01, 0x00);
+			adv7170_write(client, 0x08, TR1PLAY);	/* TR1 */
+			adv7170_write(client, 0x02, 0x08);
+			adv7170_write(client, 0x07, TR0MODE | TR0RST);
+			adv7170_write(client, 0x07, TR0MODE);
+			//udelay(10);
+			break;
 
-             }
-             DEBUG(printk(KERN_DEBUG "%s: switched to %s\n",client->name, inputs[iarg]));
-             encoder->input = iarg;
-         //}
-      }
-      break;
+		default:
+			dprintk(1, KERN_ERR "%s: illegal input: %d\n",
+				client->name, iarg);
+			return -EINVAL;
 
-   case ENCODER_SET_OUTPUT:
-      {
-         int * iarg = arg;
+		}
+		dprintk(1, KERN_DEBUG "%s: switched to %s\n", client->name,
+			inputs[iarg]);
+		encoder->input = iarg;
+	}
+		break;
 
-         /* not much choice of outputs */
-         if (*iarg != 0) {
-            return -EINVAL;
-         }
-      }
-      break;
+	case ENCODER_SET_OUTPUT:
+	{
+		int *iarg = arg;
 
-   case ENCODER_ENABLE_OUTPUT:
-      {
-         int * iarg = arg;
+		/* not much choice of outputs */
+		if (*iarg != 0) {
+			return -EINVAL;
+		}
+	}
+		break;
 
-         encoder->enable = !!*iarg;
-      }
-      break;
+	case ENCODER_ENABLE_OUTPUT:
+	{
+		int *iarg = arg;
 
-   default:
-      return -EINVAL;
-   }
+		encoder->enable = !!*iarg;
+	}
+		break;
 
-   return 0;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -397,15 +385,15 @@ static void
 adv7170_inc_use (struct i2c_client *client)
 {
 #ifdef MODULE
-   MOD_INC_USE_COUNT;
+	MOD_INC_USE_COUNT;
 #endif
 }
 
 static void
-adv7170_dec_use(struct i2c_client *client)
+adv7170_dec_use (struct i2c_client *client)
 {
 #ifdef MODULE
-   MOD_DEC_USE_COUNT;
+	MOD_DEC_USE_COUNT;
 #endif
 }
 
@@ -413,9 +401,11 @@ adv7170_dec_use(struct i2c_client *client)
  * Generic i2c probe
  * concerning the addresses: i2c wants 7 bit (without the r/w bit), so '>>1'
  */
-static unsigned short normal_i2c[] = { I2C_ADV7170>>1, (I2C_ADV7170>>1)+1,
-					I2C_ADV7171>>1, (I2C_ADV7171>>1)+1,
-					I2C_CLIENT_END };
+static unsigned short normal_i2c[] =
+    { I2C_ADV7170 >> 1, (I2C_ADV7170 >> 1) + 1,
+	I2C_ADV7171 >> 1, (I2C_ADV7171 >> 1) + 1,
+	I2C_CLIENT_END
+};
 static unsigned short normal_i2c_range[] = { I2C_CLIENT_END };
 
 I2C_CLIENT_INSMOD;
@@ -425,121 +415,132 @@ struct i2c_driver i2c_driver_adv7170;
 
 static int
 adv7170_detect_client (struct i2c_adapter *adapter,
-                       int                 address,
-                       unsigned short      flags,
-                       int                 kind)
+		       int                 address,
+		       unsigned short      flags,
+		       int                 kind)
 {
-   int i;
-   struct i2c_client *client;
-   struct adv7170* encoder;
-   char *dname;
+	int i;
+	struct i2c_client *client;
+	struct adv7170 *encoder;
+	char *dname;
 
-   DEBUG(printk(KERN_INFO "adv7170.c: detecting adv7170 client on address 0x%x\n", address<<1));
-	
-   /* Check if the adapter supports the needed features */
-   if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
-      return 0;
+	dprintk(1,
+		KERN_INFO
+		"adv7170.c: detecting adv7170 client on address 0x%x\n",
+		address << 1);
 
-   client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
-   if (client == 0)
-      return -ENOMEM;
-   memset(client, 0, sizeof(struct i2c_client));
-   client->addr = address;
-   client->adapter = adapter;
-   client->driver = &i2c_driver_adv7170;
-   client->flags = I2C_CLIENT_ALLOW_USE;
-   client->id = adv7170_i2c_id++;
-   if ((client->addr == I2C_ADV7170>>1) ||
-       (client->addr == (I2C_ADV7170>>1)+1)) {
-    	dname = adv7170_name;
-   } else if ((client->addr == I2C_ADV7171>>1) ||
-              (client->addr == (I2C_ADV7171>>1)+1)) {
-    	dname = adv7171_name;
-   } else {
-    	// We should never get here!!!
-    	return 0;
-   }
-   snprintf(client->name, sizeof(client->name)-1, "%s[%d]", dname, client->id);
+	/* Check if the adapter supports the needed features */
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA))
+		return 0;
 
-   client->data = encoder = kmalloc(sizeof(struct adv7170), GFP_KERNEL);
-   if (encoder == NULL) {
-      return -ENOMEM;
-   }
-   memset(encoder, 0, sizeof(struct adv7170));
-   encoder->norm = VIDEO_MODE_NTSC;
-   encoder->input = 0;
-   encoder->enable = 1;
+	client = kmalloc(sizeof(struct i2c_client), GFP_KERNEL);
+	if (client == 0)
+		return -ENOMEM;
+	memset(client, 0, sizeof(struct i2c_client));
+	client->addr = address;
+	client->adapter = adapter;
+	client->driver = &i2c_driver_adv7170;
+	client->flags = I2C_CLIENT_ALLOW_USE;
+	client->id = adv7170_i2c_id++;
+	if ((client->addr == I2C_ADV7170 >> 1) ||
+	    (client->addr == (I2C_ADV7170 >> 1) + 1)) {
+		dname = adv7170_name;
+	} else if ((client->addr == I2C_ADV7171 >> 1) ||
+		   (client->addr == (I2C_ADV7171 >> 1) + 1)) {
+		dname = adv7171_name;
+	} else {
+		/* We should never get here!!! */
+		return 0;
+	}
+	snprintf(client->name, sizeof(client->name) - 1, "%s[%d]", dname,
+		 client->id);
 
-   i = i2c_attach_client(client);
-   if (i) {
-      kfree(client);
-      kfree(encoder);
-      return i;
-   }
+	client->data = encoder =
+	    kmalloc(sizeof(struct adv7170), GFP_KERNEL);
+	if (encoder == NULL) {
+		return -ENOMEM;
+	}
+	memset(encoder, 0, sizeof(struct adv7170));
+	encoder->norm = VIDEO_MODE_NTSC;
+	encoder->input = 0;
+	encoder->enable = 1;
 
-   i = adv7170_write_block(client, init_NTSC, sizeof(init_NTSC));
-   if (i >= 0) {
-      i = adv7170_write(client, 0x07, TR0MODE | TR0RST);
-      i = adv7170_write(client, 0x07, TR0MODE);
-      i = adv7170_read(client, 0x12);
-      printk(KERN_INFO "%s_attach: rev. %d at 0x%02x\n", client->name, i&1, client->addr<<1);
-   }
-   if (i < 0) {
-      printk(KERN_ERR "%s_attach: init error 0x%x\n", client->name, i);
-   }
+	i = i2c_attach_client(client);
+	if (i) {
+		kfree(client);
+		kfree(encoder);
+		return i;
+	}
 
-   return 0;
+	i = adv7170_write_block(client, init_NTSC, sizeof(init_NTSC));
+	if (i >= 0) {
+		i = adv7170_write(client, 0x07, TR0MODE | TR0RST);
+		i = adv7170_write(client, 0x07, TR0MODE);
+		i = adv7170_read(client, 0x12);
+		dprintk(1, KERN_INFO "%s_attach: rev. %d at 0x%02x\n",
+			client->name, i & 1, client->addr << 1);
+	}
+	if (i < 0) {
+		dprintk(1, KERN_ERR "%s_attach: init error 0x%x\n",
+		       client->name, i);
+	}
+
+	return 0;
 }
 
 static int
-adv7170_attach_adapter(struct i2c_adapter *adapter)
+adv7170_attach_adapter (struct i2c_adapter *adapter)
 {
-   DEBUG(printk(KERN_INFO "adv7170.c: starting probe for adapter %s (0x%x)\n",
-		adapter->name, adapter->id));
-   return i2c_probe(adapter, &addr_data, &adv7170_detect_client);
+	dprintk(1,
+		KERN_INFO
+		"adv7170.c: starting probe for adapter %s (0x%x)\n",
+		adapter->name, adapter->id);
+	return i2c_probe(adapter, &addr_data, &adv7170_detect_client);
 }
 
 static int
-adv7170_detach_client(struct i2c_client *client)
+adv7170_detach_client (struct i2c_client *client)
 {
-   struct adv7170* encoder = client->data;
-   int err;
+	struct adv7170 *encoder = client->data;
+	int err;
 
-   err = i2c_detach_client(client);
-   if (err) {
-      return err;
-   }
+	err = i2c_detach_client(client);
+	if (err) {
+		return err;
+	}
 
-   kfree(encoder);
-   kfree(client);
-   return 0;
+	kfree(encoder);
+	kfree(client);
+	return 0;
 }
 
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_adv7170 = {
-   .name		= "adv7170",      /* name */
+	.name = "adv7170",	/* name */
 
-   .id			= I2C_DRIVERID_ADV7170,
-   .flags		= I2C_DF_NOTIFY,
+	.id = I2C_DRIVERID_ADV7170,
+	.flags = I2C_DF_NOTIFY,
 
-   .attach_adapter	= adv7170_attach_adapter,
-   .detach_client 	= adv7170_detach_client,
-   .command		= adv7170_command,
-   .inc_use		= adv7170_inc_use,
-   .dec_use		= adv7170_dec_use,
+	.attach_adapter = adv7170_attach_adapter,
+	.detach_client = adv7170_detach_client,
+	.command = adv7170_command,
+	.inc_use = adv7170_inc_use,
+	.dec_use = adv7170_dec_use,
 };
 
 EXPORT_NO_SYMBOLS;
 
-static int __init adv7170_init(void)
+static int __init
+adv7170_init (void)
 {
-   return i2c_add_driver(&i2c_driver_adv7170);
+	return i2c_add_driver(&i2c_driver_adv7170);
 }
 
-static void __exit adv7170_exit(void)
+static void __exit
+adv7170_exit (void)
 {
-   i2c_del_driver(&i2c_driver_adv7170);
+	i2c_del_driver(&i2c_driver_adv7170);
 }
 
 module_init(adv7170_init);

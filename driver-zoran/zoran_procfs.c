@@ -1,5 +1,62 @@
-#include <linux/ctype.h>
+/*
+ * Zoran zr36057/zr36067 PCI controller driver, for the
+ * Pinnacle/Miro DC10/DC10+/DC30/DC30+, Iomega Buz, Linux
+ * Media Labs LML33/LML33R10.
+ *
+ * This part handles the procFS entries (/proc/ZORAN[%d])
+ * 
+ * Copyright (C) 2000 Serguei Miridonov <mirsev@cicese.mx>
+ *
+ * Currently maintained by:
+ *   Ronald Bultje    <rbultje@ronald.bitfreak.net>
+ *   Laurent Pinchart <laurent.pinchart@skynet.be>
+ *   Mailinglist      <mjpeg-users@lists.sf.net>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
 
+#include <linux/config.h>
+#include <linux/version.h>
+#include <linux/types.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/vmalloc.h>
+
+#include <linux/proc_fs.h>
+#include <linux/i2c.h>
+#include <linux/i2c-algo-bit.h>
+#include <linux/videodev.h>
+#include <linux/spinlock.h>
+#include <linux/sem.h>
+
+#include <linux/ctype.h>
+#include <asm/io.h>
+
+#include "videocodec.h"
+#include "zoran.h"
+#include "zoran_procfs.h"
+
+extern int debug;
+
+#define dprintk(num, format, args...) \
+	do { \
+		if (debug >= num) \
+			printk(format, ##args); \
+	} while (0)
+
+#ifdef CONFIG_PROC_FS
 struct procfs_params_zr36067 {
 	char *name;
 	short reg;
@@ -7,7 +64,7 @@ struct procfs_params_zr36067 {
 	short bit;
 };
 
-static struct procfs_params_zr36067 zr67[] = {
+static const struct procfs_params_zr36067 zr67[] = {
 	{"HSPol", 0x000, 1, 30},
 	{"HStart", 0x000, 0x3ff, 10},
 	{"HEnd", 0x000, 0x3ff, 0},
@@ -30,15 +87,27 @@ static struct procfs_params_zr36067 zr67[] = {
 
 	{"NAY", 0x114, 0xffff, 16},
 	{"PAY", 0x114, 0xffff, 0},
-/*    {"",,,}, */
+
+	/* {"",,,}, */
 
 	{NULL, 0, 0, 0},
 };
 
-static void setparam(struct zoran *zr, char *name, char *sval)
+struct procfs_io {
+	char *buffer;
+	char *end;
+	int neof;
+	int count;
+	int count_current;
+};
+
+static void
+setparam (struct zoran *zr,
+	  char         *name,
+	  char         *sval)
 {
-	int i, reg0, reg, val;
-	i = 0;
+	int i = 0, reg0, reg, val;
+
 	while (zr67[i].name != NULL) {
 		if (!strncmp(name, zr67[i].name, strlen(zr67[i].name))) {
 			reg = reg0 = btread(zr67[i].reg);
@@ -49,8 +118,11 @@ static void setparam(struct zoran *zr, char *name, char *sval)
 			if ((val & ~zr67[i].mask))
 				break;
 			reg |= (val & zr67[i].mask) << zr67[i].bit;
-			dprintk(0, KERN_INFO "%s: setparam: setting ZR36067 register 0x%03x: 0x%08x=>0x%08x %s=%d\n",
-			       zr->name, zr67[i].reg, reg0, reg, zr67[i].name, val);
+			dprintk(4,
+				KERN_INFO
+				"%s: setparam: setting ZR36067 register 0x%03x: 0x%08x=>0x%08x %s=%d\n",
+				zr->name, zr67[i].reg, reg0, reg,
+				zr67[i].name, val);
 			btwrite(reg, zr67[i].reg);
 			break;
 		}
@@ -58,33 +130,30 @@ static void setparam(struct zoran *zr, char *name, char *sval)
 	}
 }
 
-struct procfs_io {
-        char *buffer;
-        char *end;
-        int  neof;
-        int  count;
-        int  count_current;
-};
-
-static int print_procfs (struct procfs_io *io, const char *fmt, ...)
+static int
+print_procfs (struct procfs_io *io,
+	      const char       *fmt,
+	      ...)
 {
-        va_list args;
-        int i;
+	va_list args;
+	int i;
 
-        if (io->buffer >= io->end) {
-            io->neof++;
-            return 0;
-        }
-        if (io->count > io->count_current++)
-            return 0;
-        va_start(args, fmt);
-        i = vsprintf(io->buffer, fmt, args);
-        io->buffer += i;
-        va_end(args);
-        return i;
+	if (io->buffer >= io->end) {
+		io->neof++;
+		return 0;
+	}
+	if (io->count > io->count_current++)
+		return 0;
+	va_start(args, fmt);
+	i = vsprintf(io->buffer, fmt, args);
+	io->buffer += i;
+	va_end(args);
+	return i;
 }
 
-static void zoran_procfs_output(struct procfs_io *io,  void *data)
+static void
+zoran_procfs_output (struct procfs_io *io,
+		     void             *data)
 {
 	int i;
 	struct zoran *zr;
@@ -100,29 +169,37 @@ static void zoran_procfs_output(struct procfs_io *io,  void *data)
 	print_procfs(io, "\n");
 }
 
-static int zoran_read_proc(char *buffer, char **start, off_t offset, int size, int *eof, void *data)
+static int
+zoran_read_proc (char  *buffer,
+		 char **start,
+		 off_t  offset,
+		 int    size,
+		 int   *eof,
+		 void  *data)
 {
-#ifdef CONFIG_PROC_FS
-        struct procfs_io io;
-        int    nbytes;
+	struct procfs_io io;
+	int nbytes;
 
-        io.buffer = buffer;
-        io.end    = buffer + size - 128; // Just to make it a little bit safer
-        io.count  = offset;
-        io.count_current = 0;
-        io.neof   = 0;
-        zoran_procfs_output(&io, data);
-        *start    = (char *)(io.count_current - io.count);
-        nbytes = (int)(io.buffer - buffer);
-        *eof = !io.neof;
-        return nbytes;
-#endif
+	io.buffer = buffer;
+	io.end = buffer + size - 128;	// Just to make it a little bit safer
+	io.count = offset;
+	io.count_current = 0;
+	io.neof = 0;
+	zoran_procfs_output(&io, data);
+	*start = (char *) (io.count_current - io.count);
+	nbytes = (int) (io.buffer - buffer);
+	*eof = !io.neof;
+	return nbytes;
+
 	return 0;
 }
 
-static int zoran_write_proc(struct file *file, const char *buffer, unsigned long count, void *data)
+static int
+zoran_write_proc (struct file   *file,
+		  const char    *buffer,
+		  unsigned long  count,
+		  void          *data)
 {
-#ifdef CONFIG_PROC_FS
 	char *string, *sp;
 	char *line, *ldelim, *varname, *svar, *tdelim;
 	struct zoran *zr;
@@ -131,12 +208,16 @@ static int zoran_write_proc(struct file *file, const char *buffer, unsigned long
 
 	string = sp = vmalloc(count + 1);
 	if (!string) {
-		dprintk(0, KERN_ERR "%s: write_proc: can not allocate memory\n", zr->name);
+		dprintk(1,
+			KERN_ERR
+			"%s: write_proc: can not allocate memory\n",
+			zr->name);
 		return -ENOMEM;
 	}
 	memcpy(string, buffer, count);
 	string[count] = 0;
-	dprintk(2, KERN_INFO "%s: write_proc: name=%s count=%lu data=%x\n", zr->name, file->f_dentry->d_name.name, count, (int) data);
+	dprintk(4, KERN_INFO "%s: write_proc: name=%s count=%lu data=%x\n",
+		zr->name, file->f_dentry->d_name.name, count, (int) data);
 	ldelim = " \t\n";
 	tdelim = "=";
 	line = strpbrk(sp, ldelim);
@@ -153,11 +234,12 @@ static int zoran_write_proc(struct file *file, const char *buffer, unsigned long
 		line = strpbrk(sp, ldelim);
 	}
 	vfree(string);
-#endif
+
 	return count;
 }
+#endif
 
-static int __init
+int
 zoran_proc_init (struct zoran *zr)
 {
 #ifdef CONFIG_PROC_FS
@@ -167,11 +249,13 @@ zoran_proc_init (struct zoran *zr)
 		zr->zoran_proc->read_proc = zoran_read_proc;
 		zr->zoran_proc->write_proc = zoran_write_proc;
 		zr->zoran_proc->data = zr;
-                zr->zoran_proc->owner = THIS_MODULE;
-		dprintk(0, KERN_INFO "%s: procfs entry /proc/%s allocated. data=%p\n",
+		zr->zoran_proc->owner = THIS_MODULE;
+		dprintk(2,
+			KERN_INFO
+			"%s: procfs entry /proc/%s allocated. data=%p\n",
 			zr->name, name, zr->zoran_proc->data);
 	} else {
-		dprintk(0, KERN_ERR "%s: Unable to initialise /proc/%s\n",
+		dprintk(1, KERN_ERR "%s: Unable to initialise /proc/%s\n",
 			zr->name, name);
 		return 1;
 	}
@@ -179,7 +263,7 @@ zoran_proc_init (struct zoran *zr)
 	return 0;
 }
 
-static void __init
+void
 zoran_proc_cleanup (struct zoran *zr)
 {
 #ifdef CONFIG_PROC_FS

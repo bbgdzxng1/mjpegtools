@@ -21,4 +21,13 @@ Version 0.9.0 -> 0.9.1
 * removed videobus_enable() code (obsolete/unused)
 * use struct bla bla = { .item = value, }; for struct initialization instead
     of struct bla bla = { item: value, };
+* added saa7174/adv7170 modules for LML33R10
+* added cropping/streamparm ioctl()s to zoran (v4l2)
+* changes card structs into something else
+* separated zoran.c/zoran_procfs.c into zoran_{procfs,driver,device,card}.c
+* s/DEBUGX/dprintk(x,/
+* added debug options to all i2c clients
+* identd'ed all files to kernel stile (linux/Documentation/CodingStyle)
+* added a fix to not list SECAM or AUTO norms if not supported
+* added card= option (which autoloads all modules)
 * many random fixes that don't matter at all

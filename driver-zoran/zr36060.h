@@ -1,56 +1,56 @@
 /*
-   Zoran ZR36060 basic configuration functions - header file
-
-   Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
-
-   $Id: zr36060.h,v 1.1.1.1.2.2 2002-10-17 18:09:27 rbultje Exp $
-
-   ------------------------------------------------------------------------
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-   ------------------------------------------------------------------------
-*/
+ * Zoran ZR36060 basic configuration functions - header file
+ *
+ * Copyright (C) 2002 Laurent Pinchart <laurent.pinchart@skynet.be>
+ *
+ * $Id: zr36060.h,v 1.1.1.1.2.3 2003-01-14 21:18:47 rbultje Exp $
+ *
+ * ------------------------------------------------------------------------
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * ------------------------------------------------------------------------
+ */
 
 #ifndef ZR36060_H
 #define ZR36060_H
 
 /* data stored for each zoran jpeg codec chip */
 struct zr36060 {
-    char                  name[32];
-    int                   num;
-    /* io datastructure */
-    struct videocodec     *codec;
-    // last coder status
-    __u8                  status;
-    // actual coder setup
-    int                   mode;
+	char name[32];
+	int num;
+	/* io datastructure */
+	struct videocodec *codec;
+	// last coder status
+	__u8 status;
+	// actual coder setup
+	int mode;
 
-    __u16                 width;
-    __u16                 height;
+	__u16 width;
+	__u16 height;
 
-    __u16                 bitrate_ctrl;
+	__u16 bitrate_ctrl;
 
-    __u32                 total_code_vol;
-    __u32                 real_code_vol;
-    __u16                 max_block_vol;
+	__u32 total_code_vol;
+	__u32 real_code_vol;
+	__u16 max_block_vol;
 
-    __u8                  h_samp_ratio[8];
-    __u8                  v_samp_ratio[8];
-    __u16                 scalefact;
-    __u16                 dri;
+	__u8 h_samp_ratio[8];
+	__u8 v_samp_ratio[8];
+	__u16 scalefact;
+	__u16 dri;
 };
 
 /* ZR36060 register addresses */
@@ -211,4 +211,4 @@ struct zr36060 {
 #define ZR060_SR_HScale2		(1 << 0)
 #define ZR060_SR_HScale4		(2 << 0)
 
-#endif /*fndef ZR36060_H*/
+#endif				/*fndef ZR36060_H */

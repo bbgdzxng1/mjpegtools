@@ -49,8 +49,8 @@ Drivers to use: videodev, i2c-core, i2c-algo-bit,
 Inputs: Composite and S-video
 Norms: PAL (720x576 @ 25 fps), NTSC (720x480 @ 29.97 fps)
 
-Pinnacle/Miro DC10(new)/DC10+:
-* Zoran zr36057/zr36067 PCI controller
+Pinnacle/Miro DC10(new):
+* Zoran zr36057 PCI controller
 * Zoran zr36060 MJPEG codec
 * Philips saa7110a TV decoder
 * Analog Devices adv7176 TV encoder
@@ -58,6 +58,14 @@ Drivers to use: videodev, i2c-core, i2c-algo-bit,
                 videocodec, saa7110, adv7175, zr36060, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
+
+Pinnacle/Miro DC10+:
+* Zoran zr36067 PCI controller
+* Zoran zr36060 MJPEG codec
+* Philips saa7110a TV decoder
+* Analog Devices adv7176 TV encoder
+Drivers to use: videodev, i2c-core, i2c-algo-bit,
+		videocodec, sa7110, adv7175, zr36060, zoran
 
 Pinnacle/Miro DC10(old):
 * Zoran zr36057 PCI controller
@@ -70,8 +78,6 @@ Drivers to use: videodev, i2c-core, i2c-algo-bit,
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 
-Note: no module for the mse3000 is available yet.
-
 Pinnacle/Miro DC30/DC30+:
 * Zoran zr36057 PCI controller
 * Zoran zr36050 MJPEG codec
@@ -79,12 +85,23 @@ Pinnacle/Miro DC30/DC30+:
 * Micronas vpx3225d TV decoder
 * Analog Devices adv7176 TV encoder
 Drivers to use: videodev, i2c-core, i2c-algo-bit,
-                videocodec, vpx3220, adv7175, zr36050, zr36016, zoran
+                videocodec, vpx32xx, adv7175, zr36050, zr36016, zoran
 Inputs: Composite, S-video and Internal
 Norms: PAL, SECAM (768x576 @ 25 fps), NTSC (640x480 @ 29.97 fps)
 
-Note: both the DC10(old) as well as the DC30/DC30+ don't work yet - work
-        in progress.
+Pinnacle/Miro DC30+:
+* Zoran zr36067 PCI controller
+* Zoran zr36050 MJPEG codec
+* Zoran zr36016 Video Front End
+* Micronas vpx3225d TV decoder
+* Analog Devices adv7176 TV encoder
+Drivers to use: videodev, i2c-core, i2c-algo-bit,
+		videocodec, vpx32xx, adv7175, zr36050, zr36015, zoran
+
+Note: No module for the mse3000 is available yet
+Note: DC10(old)/DC30/DC30+ don't work yet
+DC10(old) status: 36050/36016 don't deliver interrupts
+DC30(+) status  : vpx32xx doesn't work, input numbers wrong + see DC10(old)
 
 ===========================
 
@@ -379,8 +396,8 @@ For bug reports, be sure to include all the information as described in
 the section 'It hangs/crashes/fails/whatevers! Help!'.
 
 Previous maintainers/developers of this driver include Serguei Miridonov
-<mirsev@cicese.mx>, Wolfgang Scherr <scherr@net4you.net> and Dave Perks
-<dperks@ibm.net>.
+<mirsev@cicese.mx>, Wolfgang Scherr <scherr@net4you.net>, Dave Perks
+<dperks@ibm.net> and Rainer Johanni <Rainer@Johanni.de>.
 
 ===========================
 

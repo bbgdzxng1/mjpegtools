@@ -1,55 +1,55 @@
 /*
-   Zoran ZR36050 basic configuration functions - header file
-
-   Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
-
-   $Id: zr36050.h,v 1.1.2.1 2002-08-01 11:05:44 rbultje Exp $
-
-   ------------------------------------------------------------------------
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-   ------------------------------------------------------------------------
-*/
+ * Zoran ZR36050 basic configuration functions - header file
+ *
+ * Copyright (C) 2001 Wolfgang Scherr <scherr@net4you.at>
+ *
+ * $Id: zr36050.h,v 1.1.2.2 2003-01-14 21:18:22 rbultje Exp $
+ *
+ * ------------------------------------------------------------------------
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * ------------------------------------------------------------------------
+ */
 
 #ifndef ZR36050_H
 #define ZR36050_H
 
 /* data stored for each zoran jpeg codec chip */
 struct zr36050 {
-    char                  name[32];
-    int                   num;
-    /* io datastructure */
-    struct videocodec     *codec;
-    // last coder status
-    __u8                  status1;
-    // actual coder setup
-    int                   mode;
+	char name[32];
+	int num;
+	/* io datastructure */
+	struct videocodec *codec;
+	// last coder status
+	__u8 status1;
+	// actual coder setup
+	int mode;
 
-    __u16                 width;
-    __u16                 height;
+	__u16 width;
+	__u16 height;
 
-    __u16                 bitrate_ctrl;
+	__u16 bitrate_ctrl;
 
-    __u32                 total_code_vol;
-    __u16                 max_block_vol;
+	__u32 total_code_vol;
+	__u16 max_block_vol;
 
-    __u8                  h_samp_ratio[8];
-    __u8                  v_samp_ratio[8];
-    __u16                 scalefact;
-    __u16                 dri;
+	__u8 h_samp_ratio[8];
+	__u8 v_samp_ratio[8];
+	__u16 scalefact;
+	__u16 dri;
 };
 
 /* zr36050 register addresses */
@@ -174,4 +174,4 @@ struct zr36050 {
 #define ZR050_U_COMPONENT         1
 #define ZR050_V_COMPONENT         2
 
-#endif /*fndef ZR36050_H*/
+#endif				/*fndef ZR36050_H */
