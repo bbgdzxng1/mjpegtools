@@ -331,9 +331,14 @@ vpx3220_command (struct i2c_client *client,
 			vpx3220_write_fp_block(client, init_pal,
 				       	       sizeof(init_pal) >> 1);
 			break;
+		case VIDEO_MODE_SECAM:
+			vpx3220_write_fp_block(client, init_secam,
+					       sizeof(init_secam) >> 1);
+			break;
 		default:
 			vpx3220_write_fp_block(client, init_pal,
 				       	       sizeof(init_pal) >> 1);
+			break;
 		}
 	}		
 		break;
