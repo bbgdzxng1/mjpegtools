@@ -921,7 +921,7 @@ static struct card_info dc10_info = {
 static struct card_info dc10plus_info = {
   type: DC10plus,
   inputs: 3,
-  input: { { 0, "Composite" }, { 5, "SVHS" } , { 7, "Internal/comp" } },
+  input: { { 0, "Composite" }, { 7, "SVHS" } , { 5, "Internal/comp" } },
   norms: 3,
   tvn: { &f50sqpixel, &f60sqpixel, &f50sqpixel },
   jpeg_int: ZR36057_ISR_GIRQ0,
@@ -2246,7 +2246,7 @@ zoran_jpg_queue_frame (struct file           *file,
 {
  	struct zoran_fh *fh = file->private_data;
 	struct zoran *zr = fh->zr;
-	unsigned long flags1, flags2;
+	unsigned long flags;
 	int res = 0;
 
 	/* Check if buffers are allocated */
@@ -2270,7 +2270,7 @@ zoran_jpg_queue_frame (struct file           *file,
 		return -EINVAL;
 	}
 
-	spin_lock_irqsave(&zr->spinlock, flags1);
+	spin_lock_irqsave(&zr->spinlock, flags);
 
 	if (fh->jpg_buffers.active == ZORAN_FREE) {
 		if (zr->jpg_buffers.active == ZORAN_FREE) {
@@ -2283,16 +2283,12 @@ zoran_jpg_queue_frame (struct file           *file,
 		}
 	}
 
-	spin_unlock_irqrestore(&zr->spinlock, flags1);
-
 	if (!res && zr->codec_mode == BUZ_MODE_IDLE) {
 		/* Ok load up the jpeg codec */
 		zr36057_enable_jpg(zr, mode);
 	}
 
 	if (!res) {
-		spin_lock_irqsave(&zr->spinlock, flags2);
-
 		switch (zr->jpg_buffers.buffer[num].state) {
 			case BUZ_STATE_DONE:
 				dprintk(1, KERN_WARNING "%s: Warning: queing frame in BUZ_STATE_DONE state\n",
@@ -2315,9 +2311,9 @@ zoran_jpg_queue_frame (struct file           *file,
 				res = -EBUSY;	/* what are you doing? */
 				break;
 		}
-
-		spin_unlock_irqrestore(&zr->spinlock, flags2);
 	}
+
+	spin_unlock_irqrestore(&zr->spinlock, flags);
 
 	if (!res && zr->jpg_buffers.active == ZORAN_FREE) {
 		zr->jpg_buffers.active = fh->jpg_buffers.active;
@@ -3217,6 +3213,9 @@ zoran_open (struct inode *inode,
 	if (!zr)
 		return -ENODEV;
 
+	if (zr->user >= 2048)
+		return -EBUSY;
+
 	dprintk(1, KERN_INFO "%s: zoran_open (%s - pid=[%d]), users(-)=%d\n",
 		zr->name, current->comm, current->pid, zr->user);
 
@@ -3605,6 +3604,120 @@ zoran_v4l2_buffer_status (struct file        *file,
 }
 #endif
 
+static int
+zoran_set_norm (struct zoran *zr,
+                int           norm) /* VIDEO_MODE_* */
+{
+	int norm_encoder;
+	int on;
+
+	if (zr->v4l_buffers.active != ZORAN_FREE ||
+	    zr->jpg_buffers.active != ZORAN_FREE) {
+		printk(KERN_WARNING "%s: set_norm() called while in playback/capture mode\n",
+			zr->name);
+		return -EBUSY;
+	}
+
+	if (lock_norm && norm != zr->norm) {
+		if (lock_norm > 1) {
+			printk(KERN_WARNING "%s: set_norm(): TV standard is locked, can not switch norm\n",
+				zr->name);
+			return -EPERM;
+		} else {
+			printk(KERN_WARNING "%s: set_norm(): TV standard is locked, norm was not changed\n",
+				zr->name);
+			norm = zr->norm;
+		}
+	}
+
+	if (norm != VIDEO_MODE_AUTO &&
+	    (norm < 0 || norm >= zr->card->norms || !zr->card->tvn[norm]))
+	{
+		printk(KERN_ERR "%s: set_norm(): unsupported norm %d\n",
+			zr->name, norm);
+		return -EINVAL;
+	}
+
+	if (norm == VIDEO_MODE_AUTO) {
+		int status;
+
+		decoder_command(zr, DECODER_SET_NORM, &norm);
+
+		/* let changes come into effect */
+		current->state = TASK_UNINTERRUPTIBLE;
+		schedule_timeout(1 * HZ);
+
+		decoder_command(zr, DECODER_GET_STATUS, &status);
+		if (!(status & DECODER_STATUS_GOOD)) {
+			printk(KERN_ERR "%s: set_norm(): no norm detected\n",
+				zr->name);
+			/* reset norm */
+			decoder_command(zr, DECODER_SET_NORM, &zr->norm);
+			return -EIO;
+		}
+
+		if (status & DECODER_STATUS_NTSC)
+			norm = VIDEO_MODE_NTSC;
+		else if (status & DECODER_STATUS_SECAM)
+			norm = VIDEO_MODE_SECAM;
+		else
+			norm = VIDEO_MODE_PAL;
+	}
+	zr->timing = zr->card->tvn[norm];
+	norm_encoder = norm;
+
+	/* We switch overlay off and on since a change in the
+	   norm needs different VFE settings */
+	on = zr->overlay_active && !zr->v4l_memgrab_active;
+	if (on)
+		zr36057_overlay(zr, 0);
+
+        // set_videobus_enable(zr, 0);
+	decoder_command(zr, DECODER_SET_NORM, &norm);
+	encoder_command(zr, ENCODER_SET_NORM, &norm_encoder);
+       	// set_videobus_enable(zr, 1);
+
+	if (on)
+		zr36057_overlay(zr, 1);
+
+	/* Make sure the changes come into effect */
+	zr->norm = norm;
+
+	return 0;
+}
+
+static int
+zoran_set_input (struct zoran *zr,
+                 int           input)
+{
+	int realinput;
+
+	if (input == zr->input)
+		return 0;
+
+	if (zr->v4l_buffers.active != ZORAN_FREE ||
+	    zr->jpg_buffers.active != ZORAN_FREE) {
+		printk(KERN_WARNING "%s: set_input() called while in playback/capture mode\n",
+			zr->name);
+		return -EBUSY;
+	}
+
+	if (input < 0 || input >= zr->card->inputs) {
+		printk(KERN_ERR "%s: ioctl VIDIOC_S_INPUT: unnsupported input %d\n",
+			zr->name, input);
+		return -EINVAL;
+	}
+
+	realinput = zr->card->input[input].muxsel;
+	zr->input = input;
+
+	// set_videobus_enable(zr, 0);
+	decoder_command(zr, DECODER_SET_INPUT, &realinput);
+	// set_videobus_enable(zr, 1);
+
+	return 0;
+}
+
 /*
  *   ioctl routine
  */
@@ -3649,19 +3762,19 @@ zoran_do_ioctl (struct inode *inode,
 				zr->name, vchan->channel);
 
 			memset(vchan, 0, sizeof(struct video_channel));
-			vchan->channel = channel;
-			if (vchan->channel > zr->card->inputs) {
+			if (channel > zr->card->inputs) {
 				printk(KERN_ERR "%s: VIDIOCGCHAN on not existing channel %d\n",
-					zr->name, vchan->channel);
+					zr->name, channel);
 				return -EINVAL;
 			}
 
-			strcpy (vchan->name, zr->card->input[vchan->channel].name);
+			strcpy (vchan->name, zr->card->input[channel].name);
 
 			vchan->tuners = 0;
 			vchan->flags = 0;
 			vchan->type = VIDEO_TYPE_CAMERA;
 			vchan->norm = zr->norm;
+			vchan->channel = channel;
 
 			return 0;
 		}
@@ -3680,80 +3793,18 @@ zoran_do_ioctl (struct inode *inode,
 	case VIDIOCSCHAN:
 		{
 			struct video_channel *vchan = arg;
-			int input;
-			int on, res;
-			int encoder_norm;
-
-			if (zr->codec_mode != BUZ_MODE_IDLE || zr->v4l_memgrab_active) {
-				if (vchan->norm != zr->norm || vchan->channel != zr->input) {
-					printk(KERN_ERR "%s: VIDIOCSCHAN called while the card in capture/playback mode\n",
-						zr->name);
-					return -EINVAL;
-				} else {
-					printk(KERN_WARNING
-					       "%s: Warning: VIDIOCSCHAN called while the card in capture/playback mode\n",
-						zr->name);
-				}
-			}
+			int res;
 
 			dprintk(2, KERN_DEBUG "%s: ioctl VIDIOCSCHAN: channel=%d, norm=%d\n",
 				zr->name, vchan->channel, vchan->norm);
 
-			if (vchan->channel > zr->card->inputs) {
-				dprintk(1, KERN_ERR
-				       "%s: VIDIOCSCHAN on not existing channel %d\n",
-				       zr->name, vchan->channel);
-				return -EINVAL;
-			}
-
-			input = zr->card->input[vchan->channel].muxsel;
-
-			if (lock_norm && vchan->norm != zr->norm) {
-				if (lock_norm > 1) {
-					printk(KERN_WARNING "%s: VIDIOCSCHAN: TV standard is locked, can not switch norm.\n",
-						zr->name);
-					return -EPERM;
-				} else {
-					printk(KERN_WARNING "%s: VIDIOCSCHAN: TV standard is locked, norm was not changed.\n",
-						zr->name);
-					vchan->norm = zr->norm;
-				}
-			}
-
-			if(vchan->norm >= zr->card->norms)
-				return -EINVAL;
-			if (!zr->card->tvn[vchan->norm]) {
-				printk(KERN_ERR "%s: VIDIOCSCHAN with not supported norm %d\n",
-					zr->name, vchan->norm);
-				return -EINVAL;
-			}
-			encoder_norm = vchan->norm;
-
-			zr->norm = vchan->norm;
-			zr->input = vchan->channel;
-			zr->timing = zr->card->tvn[zr->norm];
-
-			/* We switch overlay off and on since a change in the norm
-			   needs different VFE settings */
-			on = zr->v4l_overlay_active && !zr->v4l_memgrab_active;
-			if (on)
-				zr36057_overlay(zr, 0);
-
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_INPUT, &input);
-			decoder_command(zr, DECODER_SET_NORM, &zr->norm);
-			encoder_command(zr, ENCODER_SET_NORM, &encoder_norm);
-		        // set_videobus_enable(zr, 1);
-
-			if (on)
-				zr36057_overlay(zr, 1);
-
-			/* Make sure the changes come into effect */
-			res = wait_grab_pending(zr);
-			if (res)
+			if ((res = zoran_set_input(zr, vchan->channel)))
+				return res;
+			if ((res = zoran_set_norm(zr, vchan->norm)))
 				return res;
 
-			return 0;
+			/* Make sure the changes come into effect */
+			return wait_grab_pending(zr);
 		}
 		break;
 
@@ -3796,11 +3847,11 @@ zoran_do_ioctl (struct inode *inode,
 		{
 			struct video_picture *vpict = arg;
 
-			decoder_command(zr, DECODER_SET_PICTURE, vpict);
-
 			dprintk(2, KERN_DEBUG "%s: ioctl VIDIOCSPICT bri=%d hue=%d col=%d con=%d dep=%d pal=%d\n",
 			              zr->name, vpict->brightness, vpict->hue, vpict->colour, vpict->contrast,
 			              vpict->depth, vpict->palette);
+
+			decoder_command(zr, DECODER_SET_PICTURE, vpict);
 
 			/* The depth and palette values have no meaning to us,
 			   should we return  -EINVAL if they don't fit ? */
@@ -5051,88 +5102,29 @@ zoran_do_ioctl (struct inode *inode,
 
 	case VIDIOC_S_STD:
 		{
-			int on, norm1 = -1, norm2 = -1;
+			int norm = -1, res;
 			v4l2_std_id *std = arg;
 			dprintk(2, "%s: ioctl VIDIOC_S_STD (v4l2): norm=0x%llx\n",
 				zr->name, *std);
 
-                        if (*std == V4L2_STD_PAL)
-				norm1 = norm2 = VIDEO_MODE_PAL;
-			else if (*std == V4L2_STD_NTSC)
-				norm1 = norm2 = VIDEO_MODE_NTSC;
-			else if (*std == V4L2_STD_SECAM)
-				norm1 = norm2 = VIDEO_MODE_SECAM;
-			else if (*std == V4L2_STD_ALL)
-				norm1 = norm2 = VIDEO_MODE_AUTO;
-
-			if (zr->v4l_buffers.active != ZORAN_FREE ||
-			    zr->jpg_buffers.active != ZORAN_FREE) {
-				printk(KERN_WARNING "%s: ioctl VIDIOC_S_STD called while in playback/capture mode\n",
-					zr->name);
-				return -EBUSY;
+			switch (*std) {
+				case V4L2_STD_PAL:
+					norm = VIDEO_MODE_PAL;
+					break;
+				case V4L2_STD_NTSC:
+					norm = VIDEO_MODE_NTSC;
+					break;
+				case V4L2_STD_SECAM:
+					norm = VIDEO_MODE_SECAM;
+					break;
+				case V4L2_STD_ALL:
+					norm = VIDEO_MODE_AUTO;
+					break;
 			}
 
-			if (lock_norm && norm1 != zr->norm) {
-				if (lock_norm > 1) {
-					printk(KERN_WARNING "%s: ioctl VIDIOC_S_STD: TV standard is locked, can not switch norm.\n", zr->name);
-					return -EPERM;
-				} else {
-					printk(KERN_WARNING "%s: VIDIOC_S_STD: TV standard is locked, norm was not changed.\n", zr->name);
-					norm1 = norm2 = zr->norm;
-				}
-			}
+			if ((res = zoran_set_norm(zr, norm)))
+				return res;
 
-			if (norm1 != VIDEO_MODE_AUTO &&
-			    (norm1 < 0 || norm1 >= zr->card->norms || !zr->card->tvn[norm1]))
-			{
-				printk(KERN_ERR "%s: ioctl VIDIOC_S_STD: unsupported norm 0x%llx\n",
-					zr->name, *std);
-				return -EOPNOTSUPP;
-                        }
-
-			if (norm1 == VIDEO_MODE_AUTO) {
-				int norm = VIDEO_MODE_AUTO, status;
-
-				decoder_command(zr, DECODER_SET_NORM, &norm);
-
-				/* let changes come into effect */
-				current->state = TASK_UNINTERRUPTIBLE;
-				schedule_timeout(1 * HZ);
-
-				decoder_command(zr, DECODER_GET_STATUS, &status);
-				if (!(status & DECODER_STATUS_GOOD)) {
-					printk(KERN_ERR "%s: ioctl VIDIOC_S_STD (v4l2) - no norm detected\n",
-						zr->name);
-					/* reset norm */
-					decoder_command(zr, DECODER_SET_NORM, &zr->norm);
-					return -EIO;
-				}
-
-				if (status & DECODER_STATUS_NTSC)
-					norm1 = norm2 = VIDEO_MODE_NTSC;
-				else if (status & DECODER_STATUS_SECAM)
-					norm1 = norm2 = VIDEO_MODE_SECAM;
-				else
-					norm1 = norm2 = VIDEO_MODE_PAL;
-			}
-			zr->timing = zr->card->tvn[norm1];
-
-			/* We switch overlay off and on since a change in the
-			   norm needs different VFE settings */
-			on = zr->overlay_active && !zr->v4l_memgrab_active;
-			if (on)
-				zr36057_overlay(zr, 0);
-
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_NORM, &norm1);
-			encoder_command(zr, ENCODER_SET_NORM, &norm2);
-	        	// set_videobus_enable(zr, 1);
-
-			if (on)
-				zr36057_overlay(zr, 1);
-
-			/* Make sure the changes come into effect */
-			zr->norm = norm1;
 			return wait_grab_pending(zr);
 		}
 		break;
@@ -5183,31 +5175,11 @@ zoran_do_ioctl (struct inode *inode,
 
 	case VIDIOC_S_INPUT:
 		{
-			int *input = arg;
-			int realinput;
+			int *input = arg, res;
 			dprintk(2, "%s: ioctl VIDIOC_S_INPUT (v4l2): input=%d\n", zr->name, *input);
 
-			if (*input == zr->input)
-				return 0;
-
-			if (zr->v4l_buffers.active != ZORAN_FREE || zr->jpg_buffers.active != ZORAN_FREE) {
-				printk(KERN_WARNING "%s: ioctl VIDIOC_S_INPUT called while in playback/capture mode\n",
-					zr->name);
-				return -EBUSY;
-			}
-
-			if (*input < 0 || *input >= zr->card->inputs) {
-				printk(KERN_ERR "%s: ioctl VIDIOC_S_INPUT: unnsupported input %d\n",
-					zr->name, *input);
-				return -EOPNOTSUPP;
-			}
-
-			realinput = zr->card->input[*input].muxsel;
-			zr->input = *input;
-
-		        // set_videobus_enable(zr, 0);
-			decoder_command(zr, DECODER_SET_INPUT, &realinput);
-		        // set_videobus_enable(zr, 1);
+			if ((res = zoran_set_input(zr, *input)))
+				return res;
 
 			/* Make sure the changes come into effect */
 			return wait_grab_pending(zr);
@@ -5352,13 +5324,20 @@ zoran_do_ioctl (struct inode *inode,
 			dprintk(2, "%s: ioctl VIDIOC_QUERY_STD (v4l2): std=0x%llx\n",
 				zr->name, *std);
 
-                        if (*std == V4L2_STD_ALL ||
-			    *std == V4L2_STD_NTSC ||
-			    *std == V4L2_STD_PAL ||
-			    (*std == V4L2_STD_SECAM && zr->card->norms == 3))
-			    return 0;
+			switch (*std) {
+				case V4L2_STD_ALL:
+				case V4L2_STD_NTSC:
+				case V4L2_STD_PAL:
+					break;
+				case V4L2_STD_SECAM:
+					if (zr->card->norms == 3)
+						break;
+					/* else ... fall-through */
+				default:
+					return -EINVAL;
+			}
 
-			return -EINVAL;
+			return 0;
 		}
 		break;
 
@@ -5830,6 +5809,8 @@ static int zr36057_init(int i)
         init_waitqueue_head(&zr->v4l_capq);
         init_waitqueue_head(&zr->jpg_capq);
         init_waitqueue_head(&zr->test_q);
+
+	init_MUTEX(&zr->res_lock);
 
  	zr->jpg_buffers.allocated = 0;
 	zr->v4l_buffers.allocated = 0;
