@@ -1,9 +1,0 @@
-#!/usr/bin/python2
-
-from events import *
-from Tkinter import *
-
-root = Tk()
-test = EventList(root)
-test.display_events(None)
-
