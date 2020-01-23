@@ -1,5 +1,4 @@
-.TH "png2yuv" "1" "2 February 2003" "MJPEG Tools Team" "MJPEG tools manual"
-
+.TH "png2yuv" "1" "22 January 2020" "MJPEG Tools Team" "MJPEG tools manual"
 .SH "NAME"
 png2yuv \- Convert PNG images to the YUV4MPEG stream format. 
 
@@ -15,8 +14,6 @@ png2yuv \- Convert PNG images to the YUV4MPEG stream format.
 .IR num ]
 .RB [ \-n 
 .RB num ]
-.RB [ \-l
-.IR num ]
 .RB [ \-j
 .IR filename ]
 
@@ -56,16 +53,11 @@ No default, this option has to be specified.
 .br
 1 = interleaved fields
 .TP 5
-.BI \-l " num"
-Specifies the number of loops (default: 0 loops )
-.TP 5
 .BI \-S " samp_mode"
 chroma subsampling mode, only for professionals, for more info see ppmtoy4m and
 the YUV guide on http://www.mir.com/DMG/.
 .br
 default: 420_jpeg
-.br
-When this option is not used the given range of images is only processed once. If you use this option and as number 1, jpeg2yv will loop forever writing the image to stdout. When you use n > 1 it will loop. n-time till it finishes.
 .TP 5
 .BI \-n " num"
 Specifies the nummber of frames to process. (default: all = -1)
