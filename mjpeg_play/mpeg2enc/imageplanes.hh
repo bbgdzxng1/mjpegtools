@@ -20,6 +20,8 @@
  *
  */
 
+#include <vector>
+#include "picture.hh"
 #include "mjpeg_types.h"
 #include "encoderparams.hh"
 
@@ -43,6 +45,9 @@ class ImagePlanes
 
         inline uint8_t *Plane( unsigned int plane) { return planes[plane]; }
         inline uint8_t **Planes() { return planes; }
+        void AddUserData(PictureUserData *pdata);
+        void DiscardUserData();
+        std::vector<PictureUserData *> user_data;
     
     protected:
         static void BorderMark( uint8_t *frame,  

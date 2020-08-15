@@ -46,8 +46,24 @@ ImagePlanes::ImagePlanes( EncoderParams &encparams )
         if( planes[c] != 0 )
             delete [] planes[c];
     }
+    DiscardUserData();
 }
 
+void ImagePlanes::AddUserData(PictureUserData *pdata)
+{
+  user_data.push_back(pdata);
+}
+
+void ImagePlanes::DiscardUserData()
+{
+    int i;
+
+    for( i = 0; i < user_data.size(); i++ )
+    {
+        delete user_data[i];
+    }
+    user_data.clear();
+}
 
 void ImagePlanes::BorderMark( uint8_t *frame,  
                               int total_width, int total_height,

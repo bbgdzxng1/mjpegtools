@@ -61,6 +61,17 @@
 #include "imageplanes.hh"
 
 
+PictureUserData::PictureUserData(uint8_t *data, int len) :
+  data( data ),
+  len( len )
+{
+}
+
+PictureUserData::~PictureUserData()
+{
+  free(data);
+}
+
 Picture::Picture( EncoderParams &_encparams, 
                   ElemStrmWriter &writer, 
                   Quantizer &_quantizer ) :
@@ -665,6 +676,7 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
  
 void Picture::PutHeaders()
 {
+    int i;
     /* Sequence header if new sequence or we're generating for a
        format like (S)VCD that mandates sequence headers every GOP to
        do fast forward, rewind etc.
@@ -685,6 +697,11 @@ void Picture::PutHeaders()
    if( encparams.svcd_scan_data && pict_type == I_TYPE )
    {
       coding->PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
+   }
+
+   for( i = 0; i < org_img->user_data.size(); i++ )
+   {
+       coding->PutUserData(org_img->user_data[i]->data, org_img->user_data[i]->len);
    }
 }
 
@@ -757,6 +774,7 @@ double Picture::IntraCodedBlocks() const
  {
     coding->ResetBuffer();
  }
+
 
 /* 
  * Local variables:

@@ -68,6 +68,16 @@ class ElemStrmWriter;
 class MPEG2CodingBuf;
 class ImagePlanes;
 
+class PictureUserData
+{
+public:
+  PictureUserData(uint8_t *data, int len);
+  ~PictureUserData();
+
+  uint8_t *data;
+  int len;
+};
+
 class Picture : public CodingPredictors
 {
 public:
@@ -245,8 +255,6 @@ public:
 	double SQ;
 	double avg_act;
 	double sum_avg_act;
-
-    
 };
 
 

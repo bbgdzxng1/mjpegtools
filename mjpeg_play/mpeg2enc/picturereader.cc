@@ -65,6 +65,7 @@ void PictureReader::ReleaseFrame( int num_frame)
 {
     while( frames_released <= num_frame )
     {
+        input_imgs_buf.front()->DiscardUserData();
         input_imgs_buf.push_back( input_imgs_buf.front() );
         input_imgs_buf.pop_front();
         ++frames_released;
