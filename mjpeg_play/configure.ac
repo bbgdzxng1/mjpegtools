@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([mjpegtools],[2.3.0],[mjpeg-developer@lists.sourceforge.net])
+AC_INIT([mjpegtools],[2.2.0],[mjpeg-developer@lists.sourceforge.net])
 AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
