@@ -121,6 +121,10 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
+* Sat Jan 31 2021 Bernhard Praschinger <shadowlord@utanet.at>
+  This some more change for the release made
+  A lot of minor bux fixed are merged in the sourcecode since the last release
+
 * Sat Sep 21 2013 Bernhard Praschinger <shadowlord@utanet.at>
   This some more change for the release made
 
