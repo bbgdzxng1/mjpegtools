@@ -24,8 +24,7 @@ SUBDIRS = \
 	y4mdenoise \
 	y4mscaler \
 	y4munsharp \
-        y4mutils \
-	debian
+        y4mutils
 
 #
 # Add any non autoconf'd files here, extra readmes and other misc 
