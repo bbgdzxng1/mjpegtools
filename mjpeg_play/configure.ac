@@ -512,8 +512,6 @@ dnl Output a Makefile or two and the lib/header descriptor script
 dnl **********************************************************************
 AC_CONFIG_FILES([
      Makefile
-     debian/Makefile
-     debian/control
      docs/Makefile
      lavtools/Makefile
      yuvcorrect/Makefile
