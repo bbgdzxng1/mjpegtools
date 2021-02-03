@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 #
-# lav2tc.bash - use transcode to convert MJPEG avi files to another 
+# lav2tc.sh - use transcode to convert MJPEG avi files to another 
 #               video/audio format.
 #
 # copyright 2003 Shawn Sulma <mjpeg@athos.cx>
@@ -103,20 +103,20 @@
 # Example usage:
 #
 # simple case:
-#   lav2tc.bash -o out.avi -b 1000 -a 128 in.eli
+#   lav2tc.sh -o out.avi -b 1000 -a 128 in.eli
 #     use lots of defaults, no clipping, or resize or deinterlace, just use
 #     1000kbps for video and 128kbps for audio)
 #
 # something more complicated:
-#   lav2tc.bash -o out.avi --two-pass --max-length 700 in.eli
+#   lav2tc.sh -o out.avi --two-pass --max-length 700 in.eli
 #     mostly use defaults, but do two-pass encoding, and determine the bitrates
 #     necessary to fit the resulting output.avi onto an 80 min CDR )
 #
-#   lav2tc.bash --clip 20,20,10,10 --scale 0.75 -o out.avi -b 1000 in.eli
+#   lav2tc.sh --clip 20,20,10,10 --scale 0.75 -o out.avi -b 1000 in.eli
 #     clip 20 pixels from the top and left and 10 from the bottom and right,
 #     then scale the result by 75%.
 #
-#   lav2tc.bash --pulldown=kineco -o out.avi --ogg --luma 75 --chroma 75 in.eli
+#   lav2tc.sh --pulldown=kineco -o out.avi --ogg --luma 75 --chroma 75 in.eli
 #     uses yuvkineco to perform inverse telecine, adjusts the luma and chroma
 #     contrasts, and creates an ogg media file as output.  The final output is
 #     written to "out.ogm".
