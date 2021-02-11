@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # A convenient front-end for the various mpeg encoding tools.
 # Allows "1 command" production of a video stream...
