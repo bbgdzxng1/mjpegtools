@@ -14,8 +14,7 @@ info_INFO = mjpeg-howto.info
 	
 EXTRA_DIST = \
 	$(man_MANS) \
-	FAQ.txt \
-	lavtools.sgml
+	FAQ.txt
 
 MAINTAINERCLEANFILES = Makefile.in
 
