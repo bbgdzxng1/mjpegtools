@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([mjpegtools],[2.2.0],[mjpeg-developer@lists.sourceforge.net])
+AC_INIT([mjpegtools],[2.2.1],[mjpeg-developer@lists.sourceforge.net])
 AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
@@ -209,9 +209,6 @@ dnl *********************************************************************
 have_libpng=false
 if test x$with_libpng != xno ; then
   PKG_CHECK_MODULES(LIBPNG, [libpng], [have_libpng=true], [have_libpng=false])
-  if test x$have_libpng = xfalse ; then
-    PKG_CHECK_MODULES(LIBPNG, [libpng12], [have_libpng=true], [have_libpng=false])
-  fi
 fi
 AM_CONDITIONAL(HAVE_LIBPNG, test x$have_libpng = xtrue)
 
