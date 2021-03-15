@@ -445,9 +445,8 @@ static char *parse_next(char **sptr, const char *delim)
 {
 	char *start, *ret;
 	start = ret = *sptr;
-	if ((ret == NULL) || ret == '\0') {
+	if (ret == NULL)
 	   return (NULL);
-	}
 
 	while (*ret != '\0' &&
 		   strchr(delim, *ret) == NULL) {
