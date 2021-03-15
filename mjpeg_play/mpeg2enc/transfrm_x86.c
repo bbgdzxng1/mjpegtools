@@ -194,7 +194,6 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
 	int topvar, botvar;
 	mmx_t sumtop_accs, sumbot_accs;
 	mmx_t sumsqtop_accs, sumsqbot_accs, sumxprod_accs;
-	int32_t sumtop_acc, sumbot_acc;
 	int32_t sumsqtop_acc, sumsqbot_acc, sumxprod_acc;
 
 	pxor_r2r(mm0,mm0);
@@ -205,7 +204,7 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
 	movq_r2m( mm0, *(&sumxprod_accs) );
 	
 	sumtop = sumsqtop = sumbot = sumsqbot = sumbottop = 0;
-	sumtop_acc = sumbot_acc = sumsqtop_acc = sumsqbot_acc = sumxprod_acc = 0; 
+	sumsqtop_acc = sumsqbot_acc = sumxprod_acc = 0; 
 	for (j=0; j<8; j++)
 	{
 #ifdef ORIGINAL_CODE
