@@ -1178,7 +1178,7 @@ main (int argc, char *argv[])
   float *a = NULL, *b = NULL;
   int16_t *cspline_w=NULL,*cspline_h=NULL;
   uint16_t width_offset=0,height_offset=0,left_offset=0,top_offset=0,right_offset=0,bottom_offset=0;
-  uint16_t height_pad=0,width_pad=0,width_neighbors=0,height_neighbors=0;
+  uint16_t width_pad=0,width_neighbors=0,height_neighbors=0;
    // On constate que souvent, le dernier coeff cspline est nul => 
    // pas la peine de le prendre en compte dans les calculs
    // Attention ! optimisation vitesse yuvscaler_bicubic.c suppose que zero_width_neighbors=0 ou 1 seulement
@@ -1559,7 +1559,6 @@ main (int argc, char *argv[])
        if (height_neighbors < 4)
 	 height_neighbors = 4;
        height_offset = top_offset = height_neighbors/2-1;
-       height_pad=height_neighbors - 1;
        bottom_offset=height_neighbors/2;
 
        mjpeg_debug("height_scale=%f, width_scale=%f, width_neighbors=%d, height_neighbors=%d",height_scale,width_scale,width_neighbors,height_neighbors);
