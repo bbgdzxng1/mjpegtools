@@ -178,12 +178,12 @@ extern int    II_bits_for_nonoise(double[2][SBLIMIT], unsigned int[2][SBLIMIT],
 extern void   II_main_bit_allocation(double[2][SBLIMIT],
                            unsigned int[2][SBLIMIT], unsigned int[2][SBLIMIT],
                            int*, frame_params*);
-extern int    II_a_bit_allocation(double[2][SBLIMIT], unsigned int[2][SBLIMIT],
+extern void   II_a_bit_allocation(double[2][SBLIMIT], unsigned int[2][SBLIMIT],
                            unsigned int[2][SBLIMIT], int*, frame_params*);
 extern int    I_bits_for_nonoise(double[2][SBLIMIT], frame_params*);
 extern void   I_main_bit_allocation(double[2][SBLIMIT],
                            unsigned int[2][SBLIMIT], int*, frame_params*);
-extern int    I_a_bit_allocation(double[2][SBLIMIT], unsigned int[2][SBLIMIT],
+extern void   I_a_bit_allocation(double[2][SBLIMIT], unsigned int[2][SBLIMIT],
                            int*, frame_params*);
 extern void   I_subband_quantization(unsigned int[2][3][SBLIMIT],
                            double[2][3][SCALE_BLOCK][SBLIMIT], unsigned int[3][SBLIMIT],

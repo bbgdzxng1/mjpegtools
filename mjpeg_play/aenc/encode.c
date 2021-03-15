@@ -947,7 +947,6 @@ unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
 {
-   int  noisy_sbs;
    int  mode, mode_ext, lay, i;
    int  rq_db;
 static  int init = 0;
@@ -975,7 +974,7 @@ static  int init = 0;
        fr_ps->header->mode_ext = mode_ext;
      }    /* well we either eliminated noisy sbs or mode_ext == 0 */
    }
-   noisy_sbs = I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps);
+   I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps);
 }
  
 /***************************** Layer II  ********************************/
@@ -987,7 +986,6 @@ unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
 {
-   int  noisy_sbs;
    int  mode, mode_ext, lay;
    int  rq_db;
  
@@ -1007,7 +1005,7 @@ frame_params *fr_ps;
        fr_ps->header->mode_ext = mode_ext;
      }    /* well we either eliminated noisy sbs or mode_ext == 0 */
    }
-   noisy_sbs = II_a_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps);
+   II_a_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps);
 }
  
 /************************************************************************
@@ -1033,17 +1031,16 @@ frame_params *fr_ps;
  *    number of bits for the subband has been allocated, or there
  *    aren't enough bits to go to the next higher resolution in the
  *    subband.)
- *
  ************************************************************************/
  
-int I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps) /* return noisy sbs */
+void I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps) /* return noisy sbs */
 double perm_smr[2][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
 {
    int i, k, smpl_bits, scale_bits, min_sb, min_ch, oth_ch;
-   int bspl, bscf, ad, noisy_sbs, bbal ;
+   int bspl, bscf, ad, bbal ;
    double mnr[2][SBLIMIT], small;
    char used[2][SBLIMIT];
    int stereo  = fr_ps->stereo;
@@ -1109,29 +1106,19 @@ static int banc=32, berr=0;
    /* Calculate the number of bits left, add on to pointed var */
    ad -= bspl+bscf;
    *adb = ad;
-
-   /* see how many channels are noisy */
-   noisy_sbs = 0; small = mnr[0][0];
-   for(k=0; k<stereo; ++k) {
-     for(i = 0; i< SBLIMIT; ++i) {
-       if(mnr[k][i] < NOISY_MIN_MNR)   ++noisy_sbs;
-       if(small > mnr[k][i])           small = mnr[k][i];
-     }
-   }
-   return noisy_sbs;
 }
 
 /***************************** Layer II  ********************************/
  
-int II_a_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps)
-double perm_smr[2][SBLIMIT];
-unsigned int scfsi[2][SBLIMIT];
-unsigned int bit_alloc[2][SBLIMIT];
-int *adb;
-frame_params *fr_ps;
+void II_a_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps)
+    double perm_smr[2][SBLIMIT];
+    unsigned int scfsi[2][SBLIMIT];
+    unsigned int bit_alloc[2][SBLIMIT];
+    int *adb;
+    frame_params *fr_ps;
 {
    int i, min_ch, min_sb, oth_ch, k, increment, scale, seli, ba;
-   int bspl, bscf, bsel, ad, noisy_sbs, bbal=0;
+   int bspl, bscf, bsel, ad, bbal=0;
    double mnr[2][SBLIMIT], small;
    char used[2][SBLIMIT];
    int stereo  = fr_ps->stereo;
@@ -1214,20 +1201,9 @@ static int sfsPerScfsi[] = { 3,2,1,2 };    /* lookup # sfs per scfsi */
    /* Calculate the number of bits left */
    ad -= bspl+bscf+bsel;   *adb = ad;
    for (i=sblimit;i<SBLIMIT;i++) for (k=0;k<stereo;k++) bit_alloc[k][i]=0;
- 
-   noisy_sbs = 0;  small = mnr[0][0];      /* calc worst noise in case */
-   for(k=0;k<stereo;++k) {
-     for (i=0;i<sblimit;i++) {
-       if (small > mnr[k][i]) small = mnr[k][i];
-       if(mnr[k][i] < NOISY_MIN_MNR) ++noisy_sbs; /* noise is not masked */
-
-     }
-   }
-   return noisy_sbs;
 }
  
 /************************************************************************
- *
  * I_subband_quantization  (Layer I)
  * II_subband_quantization (Layer II)
  *
@@ -1241,7 +1217,6 @@ static int sfsPerScfsi[] = { 3,2,1,2 };    /* lookup # sfs per scfsi */
  *
  * Note that for fractional 2's complement, inverting the MSB for a
  * negative number x is equivalent to adding 1 to it.
- *
  ************************************************************************/
  
 static double a[17] = {

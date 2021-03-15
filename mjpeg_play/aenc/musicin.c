@@ -161,19 +161,17 @@ static void Usage(char *str)
 
 static void
 get_params(argc, argv,fr_ps,psy,num_samples,encoded_file_name)
-int             argc;
-char**          argv;
-frame_params    *fr_ps;
-int             *psy;
-unsigned long   *num_samples;
-char            **encoded_file_name;
+	int argc;
+	char **argv;
+	frame_params *fr_ps;
+	int *psy;
+	unsigned long   *num_samples;
+	char **encoded_file_name;
 {
     char * pos, *end;
     layer *info = fr_ps->header;
     int brt=224;
     char *outfilename = 0;
-    int stereo = 1;
-    int mono = 0;
     int video_cd = 0;
     int j, n;
     int audio_format;
@@ -236,13 +234,9 @@ char            **encoded_file_name;
        			mjpeg_error_exit1("-l requires 1 or 2!");
 			break;
 		case 's':
-			stereo = 1;
-			mono = 0;
 			chans_out = 2;
 			break;
 		case 'm':
-			mono = 1;
-			stereo = 0;
     			chans_out = 1;
 			break;
 		case 'e':
