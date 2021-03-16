@@ -880,7 +880,7 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
    unsigned char *frame = NULL; /* Make sure un-init segfaults! */
    long len;
-   int jpg_height, jpg_width, ncomps, hf[3], vf[3];
+   int jpg_height, ncomps, hf[3], vf[3];
    int ierr;
 
    lav_file_t *lav_fd = (lav_file_t*) malloc(sizeof(lav_file_t));
@@ -1139,9 +1139,6 @@ lav_file_t *lav_open_input_file(char *filename)
    /* height and width are encoded in the JPEG SOF marker at offsets 5 and 7 */
 
    jpg_height = get_int2(frame + jpeg_image_offset + 5);
-   jpg_width  = get_int2(frame + jpeg_image_offset + 7);
-
-   /* check height */
 
    if( jpg_height == lav_video_height(lav_fd))
       lav_fd->interlacing = Y4M_ILACE_NONE;
