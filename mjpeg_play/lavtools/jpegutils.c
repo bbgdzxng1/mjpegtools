@@ -519,7 +519,6 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
       vsf[i] = dinfo.comp_info[i].v_samp_factor;
    }
 
-   //mjpeg_info( "Sampling factors, hsf=(%d, %d, %d) vsf=(%d, %d, %d) !", hsf[0], hsf[1], hsf[2], vsf[0], vsf[1], vsf[2]);
    if ((hsf[0] != 2 && hsf[0] != 1) || hsf[1] != 1 || hsf[2] != 1 ||
        (vsf[0] != 1 && vsf[0] != 2) || vsf[1] != 1 || vsf[2] != 1) {
       mjpeg_error( "Unsupported sampling factors, hsf=(%d, %d, %d) vsf=(%d, %d, %d) !", hsf[0], hsf[1], hsf[2], vsf[0], vsf[1], vsf[2]);
@@ -780,7 +779,7 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
 			  unsigned char *raw0, unsigned char *raw1,
 			  unsigned char *raw2)
 {
-   int numfields, hsf[3], vsf[3], field, yl, yc, x, y, xsl, xsc, xs, xd,
+   int numfields, vsf[3], field, yl, yc, x, y, xsl, xsc, xs, xd,
        hdown;
 
    JSAMPROW row0[16] = { buf0[0], buf0[1], buf0[2], buf0[3],
@@ -826,7 +825,6 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
    guarantee_huff_tables(&dinfo);
    jpeg_start_decompress (&dinfo);
 
-   hsf[0] = 1; hsf[1] = 1; hsf[2] = 1;
    vsf[0]= 1; vsf[1] = 1; vsf[2] = 1;
 
    /* Height match image height or be exact twice the image height */
