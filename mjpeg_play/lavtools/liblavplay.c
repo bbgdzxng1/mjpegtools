@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -1570,11 +1571,11 @@ static int lavplay_init(lavplay_t *info)
 
 #ifdef HAVE_V4L 
    struct video_capability vc;
+   int hn;
 #endif 
 
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    EditList *editlist = info->editlist;
-   int hn;
 
    if (editlist->video_frames == 0 && !info->get_video_frame)
    {
@@ -1698,11 +1699,10 @@ static int lavplay_init(lavplay_t *info)
    bp.norm = (editlist->video_norm == 'n') ? VIDEO_MODE_NTSC : VIDEO_MODE_PAL;
    lavplay_msg(LAVPLAY_MSG_INFO, info,
       "Output norm: %s", bp.norm==VIDEO_MODE_NTSC?"NTSC":"PAL");
-   hn = bp.norm==VIDEO_MODE_NTSC?480:576; /* Height of norm */
-
    if (info->playback_mode != 'S')
    {
 #ifdef HAVE_V4L
+      hn = bp.norm==VIDEO_MODE_NTSC?480:576; /* Height of norm */
       /* set correct width of device for hardware
        * DC10(+): 768 (PAL/SECAM) or 640 (NTSC), Buz/LML33: 720
        */
@@ -1860,7 +1860,6 @@ static void lavplay_playback_cycle(lavplay_t *info)
    double tdiff1, tdiff2;
    int n;
    int first_free, frame, skipv, skipa, skipi, nvcorr;
-   long frame_number[256]; /* Must be at least as big as the number of buffers used */
 
    stats.stats_changed = 0;
    stats.num_corrs_a = 0;
@@ -1882,7 +1881,6 @@ static void lavplay_playback_cycle(lavplay_t *info)
    }
    for(n=0;n<settings->br.count;n++) /* TODO: maybe br.count-1? */
    {
-      frame_number[n] = settings->current_frame_num;
       lavplay_mjpeg_queue_buf(info, n, 1);
    }
    stats.nqueue = settings->br.count;
@@ -1979,7 +1977,6 @@ static void lavplay_playback_cycle(lavplay_t *info)
 
          /* Read one frame, break if EOF is reached */
          frame = n % settings->br.count;
-         frame_number[frame] = settings->current_frame_num;
 #ifdef HAVE_SDL
 	 settings->buffer_entry[frame] = editlist->frame_list[settings->current_frame_num];
 #endif
