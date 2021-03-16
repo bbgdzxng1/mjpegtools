@@ -311,7 +311,6 @@ main(int argc, char **argv)
 static void 
 do_audio(quicktime_t *qtf, uint8_t *buff, int channels, int bps, int samps)
 	{
-	int	res;
 	int	i, j;
 	int16_t *qt_audio = (int16_t *)buff, **qt_audion;
 
@@ -325,7 +324,7 @@ do_audio(quicktime_t *qtf, uint8_t *buff, int channels, int bps, int samps)
 		for	(j = 0; j < channels; j++)
 			qt_audion[j][i] = qt_audio[(channels*i) + j];
 		}
-	res = lqt_encode_audio_track(qtf, qt_audion, NULL, samps, 0);
+	lqt_encode_audio_track(qtf, qt_audion, NULL, samps, 0);
 	for	(j = 0; j < channels; j++)
 		free(qt_audion[j]);
 	free(qt_audion);
