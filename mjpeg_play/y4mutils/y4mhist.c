@@ -18,7 +18,7 @@ unsigned long long y_stats[256], u_stats[256], v_stats[256];
 unsigned long long fy_stats[256], fu_stats[256], fv_stats[256];
 unsigned long long ly_stats[256], lu_stats[256], lv_stats[256];
 unsigned char vectorfield[260][260];
-int scalepercent;
+	int scalepercent = 0;
 /* the l?_stats means till last frame, and f?_stat means the actual frame */
 
 /* For the graphical history output */
@@ -465,40 +465,46 @@ void make_stat()
 static void
 usage(void)
 	{
-	fprintf(stderr, "usage: [-t] [-p] [-s num] \n");
+	fprintf(stderr, "usage: [-t] [-p]");
+#ifdef	HAVE_SDLgfx
+	fprintf(stderr, " [-s num]");
+#endif
+	fputc('\n', stderr);
 	fprintf(stderr, "  -t      emit text summary even if graphical mode enabled\n");
 	fprintf(stderr, "  -p      label the scale in percent not absolute numbers\n");
+#ifdef	HAVE_SDLgfx
 	fprintf(stderr, "  -s num  enable also the vectorscope, allowed numbers 1-16\n");
-
+#endif
 	exit(1);
 	}
 
 int
 main(int argc, char **argv)
 	{
-	int	i, fdin, ss_v, ss_h, chroma_ss, textout;
-	int 	do_vectorscope;
-	int	pwidth, pheight; /* Needed for the vectorscope */
+	int	i, fdin, textout;
 	int	plane0_l, plane1_l, plane2_l;
 	u_char	*yuv[3], *cp;
 #ifdef	HAVE_SDLgfx
-	int	j;
-	int temp_x, temp_y;
+	int	j, ss_v, ss_h, do_vectorscope;
+	int temp_x, temp_y, chroma_ss;
 	u_char	*cpx, *cpy;
+	int	pwidth, pheight; /* Needed for the vectorscope */
 #endif
 	y4m_stream_info_t istream;
 	y4m_frame_info_t iframe;
 
-	do_vectorscope = 0;
-	scalepercent = 0;
-
 #ifdef	HAVE_SDLgfx
 	textout = 0;
+	do_vectorscope = 0;
 #else
 	textout = 1;
 #endif
 
+#ifdef	HAVE_SDLgfx
 	while	((i = getopt(argc, argv, "tps:")) != EOF)
+#else
+	while	((i = getopt(argc, argv, "tp:")) != EOF)
+#endif
 		{
 		switch	(i)
 			{
@@ -508,9 +514,11 @@ main(int argc, char **argv)
 			case	'p':
 				scalepercent = 1;
 				break;
+#ifdef	HAVE_SDLgfx
 			case	's':
 				do_vectorscope = atoi(optarg);
 				break;
+#endif
 			default:
 				usage();
 			}
@@ -560,12 +568,13 @@ main(int argc, char **argv)
         if      (y4m_si_get_plane_count(&istream) != 3)
                 mjpeg_error_exit1("Only 3 plane formats supported");
 
+#ifdef HAVE_SDLgfx
 	pwidth = y4m_si_get_width(&istream);
 	pheight = y4m_si_get_height(&istream);
 	chroma_ss = y4m_si_get_chroma(&istream);
 	ss_h = y4m_chroma_ss_x_ratio(chroma_ss).d;
 	ss_v = y4m_chroma_ss_y_ratio(chroma_ss).d;
-
+#endif
 
 	plane0_l = y4m_si_get_plane_length(&istream, 0);
 	plane1_l = y4m_si_get_plane_length(&istream, 1);
