@@ -444,7 +444,7 @@ static void
 blur_line (double *ctable, double *cmatrix, int cmatrix_length,
 	   u_char  *cur_col, u_char  *dest_col, int y)
   {
-  double scale, sum, *cmatrix_p, *ctable_p;
+  double scale, sum, *ctable_p;
   int i=0, j=0, row, cmatrix_middle = cmatrix_length/2;
   u_char  *cur_col_p, *cur_col_p1, *dest_col_p;
 
@@ -503,7 +503,6 @@ blur_line (double *ctable, double *cmatrix, int cmatrix_length,
 	   for  (i = 0; i < 1; i++)
 	        {
 	        sum = 0;
-	        cmatrix_p = cmatrix;
 	        cur_col_p1 = cur_col_p;
 	        ctable_p = ctable;
 	        for  (j = cmatrix_length; j>0; j--)
@@ -542,7 +541,7 @@ blur_line (double *ctable, double *cmatrix, int cmatrix_length,
 static int
 gen_convolve_matrix(double radius, double **cmatrix_p)
 	{
-	int matrix_length, matrix_midpoint, i, j;
+	int matrix_length, i, j;
 	double *cmatrix, std_dev, sum, base_x;
 	
   /* we want to generate a matrix that goes out a certain radius
@@ -563,7 +562,6 @@ gen_convolve_matrix(double radius, double **cmatrix_p)
 	/* go out 'radius' in each direction */
 	matrix_length = 2 * ceil(radius-0.5) + 1;
 	if (matrix_length <= 0) matrix_length = 1;
-	matrix_midpoint = matrix_length/2 + 1;
 	*cmatrix_p = (double *)malloc(sizeof (double) * matrix_length);
 	cmatrix = *cmatrix_p;
 
