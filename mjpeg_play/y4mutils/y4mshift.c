@@ -224,7 +224,7 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H, int SS_H, in
 	static	int parsed = -1;
 	static	int BX0, BX1;	/* Left, Right border columns */
 	static	int BY0, BY1;	/* Top, Bottom border rows */
-	int	i1, i2, i, dy, W2, H2;
+	int	i1, i2, i, dy, W2;
   
 	if	(parsed == -1)
 		{
@@ -248,7 +248,6 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H, int SS_H, in
 		return;
 
 	W2 = W / SS_H;
-	H2 = H / SS_V;
 
 /*
  * Yoff Lines at the top.   If the vertical offset is 0 then no top border
