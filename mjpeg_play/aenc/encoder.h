@@ -232,14 +232,5 @@ extern void        I_smr(double[SBLIMIT], double[SBLIMIT], double[SBLIMIT]);
 extern void        I_Psycho_One(short[2][1152], double[2][SBLIMIT],
                            double[2][SBLIMIT], frame_params*);
 
-/* The following functions are in the file "psy.c" */
-
-extern void        psycho_anal(short int*, short int[1056], int, int,
-                           FLOAT[32], double);
-
+extern void psycho_anal(short int*, short int[1056], int, int, FLOAT[32], double);
 void fft(FLOAT *x_real, FLOAT *x_imag, FLOAT *energy, FLOAT *phi, int N);
-
-/* The following functions are in the file "wav_io.c" */
-
-extern int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
-                    int *format, int32_t *bytes);
