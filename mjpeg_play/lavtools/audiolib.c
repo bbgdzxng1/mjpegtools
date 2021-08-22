@@ -124,9 +124,7 @@ char *audio_strerror(void);
 void set_timestamp(struct timeval tmstmp);
 void swpcpy(char *dst, char *src, int num);
 
-
 typedef void *(*start_routine_p)(void *);
-
 
 /* some (internally used only) error numbers */
 
@@ -324,7 +322,7 @@ int audio_init(int a_read, int use_read_write,
 	   audio_errno = AUDIO_ERR_FORK;
 	   return -1;
 	 }
-   
+
 #endif
    /* Since most probably errors happen during initialization,
       we wait until the audio task signals either success or failure */
@@ -433,7 +431,6 @@ set_timestamp(struct timeval tmstmp)
       }
    }
 }
-
 
 /*
  * swpcpy: like memcpy, but bytes are swapped during copy
@@ -636,14 +633,14 @@ int audio_write(uint8_t *buf, int size, int swap)
 #ifdef HAVE_SYS_SOUNDCARD_H
 static void system_error(const char *str, int fd, int use_strerror)
 {
-   if(use_strerror)
-      sprintf((char*)shmemptr->error_string, "Error %s - %s",str,strerror(errno));
+   if (use_strerror)
+      snprintf((char*)shmemptr->error_string, sizeof (shmemptr->error_string), "Error: %s - %s",strerror(errno),str);
    else
-      sprintf((char*)shmemptr->error_string, "Error %s",str);
+      snprintf((char*)shmemptr->error_string, sizeof (shmemptr->error_string), "Error: %s",str);
 
    shmemptr->audio_status = -1;
-   if( fd >= 0 )
-	   close(fd);
+   if (fd >= 0)
+	close(fd);
 #ifdef FORK_NOT_THREAD
       exit(1);
 #else
@@ -655,7 +652,6 @@ static void system_error(const char *str, int fd, int use_strerror)
 #ifdef HAVE_SYS_SOUNDCARD_H
 void do_audio(void)
 {
-
    int fd = -1;
    int tmp, ret, caps, afmt, frag;
    int nbdone, nbque, ndiff, nbpend, nbset, maxdiff;
@@ -673,25 +669,10 @@ void do_audio(void)
    struct sched_param schedparam;
    sigset_t blocked_signals;
 
-   /* Set the capture thread in a reasonable state - cancellation enabled
-      and asynchronous, SIGINT's ignored... */
-   /* PTHREAD_CANCEL_ASYNCHRONOUS is evil. */
-/*   if( pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL) )
-   {
-      system_error( "Bad pthread_setcancelstate", fd, 0 );
-   }
-   if( pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL) )
-   {
-      system_error( "Bad pthread_setcanceltype", fd, 0 );
-   }*/
-
    sigaddset( &blocked_signals, SIGINT );
-   if( pthread_sigmask( SIG_BLOCK, &blocked_signals, NULL ))
-   {
-      system_error( "Bad pthread_sigmask", fd, 0 );
-   }
+   if (pthread_sigmask( SIG_BLOCK, &blocked_signals, NULL))
+      system_error( "Bad pthread_sigmask", fd, 0);
 #endif
-	 
 
 /*
  * Fragment size and max possible number of frags
@@ -715,7 +696,9 @@ void do_audio(void)
  */
 
    audio_dev_name = getenv("LAV_AUDIO_DEV");
-   if(!audio_dev_name) audio_dev_name = "/dev/dsp";
+   if (!audio_dev_name) audio_dev_name = "/dev/dsp";
+
+   if (strlen(audio_dev_name) > 2048) audio_dev_name = "/dev/dsp";
 
    if(audio_capt)
       fd=open(audio_dev_name, O_RDONLY, 0);
