@@ -121,7 +121,7 @@ of the mjpegtools package.
 %{_libdir}/*.so
 
 %changelog
-* Sat Jan 31 2021 Bernhard Praschinger <shadowlord@utanet.at>
+* Sun Jan 31 2021 Bernhard Praschinger <shadowlord@utanet.at>
   This some more change for the release made
   A lot of minor bux fixed are merged in the sourcecode since the last release
 
@@ -157,7 +157,7 @@ of the mjpegtools package.
 - Remove quicktime4linux hacks, add libquicktime depdency
 - Remove avifile leftovers
 
-* Wed May 20 2002 Thomas Vander Stichele <thomas@apestaart.org>
+* Mon May 20 2002 Thomas Vander Stichele <thomas@apestaart.org>
 - Added BuildRequires and Requires
 
 * Tue Feb 12 2002 Geoffrey T. Dairiki <dairiki@dairiki.org>
