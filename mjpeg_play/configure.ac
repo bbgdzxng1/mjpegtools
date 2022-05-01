@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([mjpegtools],[2.2.2],[mjpeg-developer@lists.sourceforge.net])
+AC_INIT([mjpegtools],[2.2.3],[mjpeg-developer@lists.sourceforge.net])
 AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
@@ -55,9 +55,6 @@ AC_ARG_WITH(libdv,
 AC_ARG_WITH(libpng,
             AC_HELP_STRING([--without-libpng], [Do not use libpng.]),
             [], [with_libpng=yes])
-AC_ARG_WITH(dga,
-	    AC_HELP_STRING([--without-dga], [Do not use dga.]),
-	    [], [with_dga=yes])
 AC_ARG_WITH(gtk,
 	    AC_HELP_STRING([--without-gtk], [Do not use gtk.]),
 	    [], [with_gtk=yes])
@@ -75,14 +72,12 @@ AC_PROG_LIBTOOL
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
-
 # automake 1.9 could use AM_PROG_STDC but 1.10 became picky and needs CC_C_0
 AM_PROG_CC_C_O
-# AM_PROG_CC_STDC
-
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
+
 AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
