@@ -118,7 +118,6 @@ AC_SUBST(LIBM_LIBS)
 
 dnl *********************************************************************
 dnl Some host-specific tweaks:
-dnl  o OS-X/Darwin needs "-no-cpp-precomp" to avoid compile errors.
 dnl  o (e.g) Cygwin shared libs cannot have undefined symbols, libtool only
 dnl   builds them if really given flag to force this (see ltmain.sh)
 dnl   This also requires inter-library dependency to be indicated in _LIBADD;
@@ -128,9 +127,6 @@ dnl   altivec (utils) can cause circular library dependency (with mpeg2enc),
 dnl   so better limit this flag
 dnl *********************************************************************
 case $host in
-  *-apple-darwin*)
-   CFLAGS="$CFLAGS -no-cpp-precomp"
-   ;;
   *-unknown-netbsdelf2.*)
    LIBS="-lossaudio"
    ;;
