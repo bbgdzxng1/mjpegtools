@@ -117,7 +117,8 @@ musicin.c
 #include <string.h>
 #include "common.h"
 #include "encoder.h"
-#include "wav_io.h"
+
+extern int wav_read_header(FILE *, int *, int *, int *, int *, int32_t *);
 
 /* Global variable definitions for "musicin.c" */
 

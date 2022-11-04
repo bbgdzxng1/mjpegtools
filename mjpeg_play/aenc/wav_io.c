@@ -25,8 +25,6 @@
 #include <unistd.h>
 #include <string.h>
 #include "mjpeg_logging.h"
-#include "wav_io.h"
-
 
 /*
    wav_read_header: Read and analyze the header of a WAV file.

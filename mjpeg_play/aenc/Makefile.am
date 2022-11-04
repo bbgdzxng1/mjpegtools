@@ -23,8 +23,7 @@ noinst_HEADERS = \
 	table_alloc.h \
 	table_cb.h \
 	table_enwindow.h \
-	table_th.h \
-	wav_io.h
+	table_th.h
 
 mp2enc_LDADD = $(top_builddir)/utils/libmjpegutils.la $(LIBM_LIBS)
 if HAVE_ALTIVEC
