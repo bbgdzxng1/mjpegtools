@@ -6,8 +6,6 @@ This software is from the MPEG/audio software simulation group
 I have only changed the input routine so that Edit List
 input is accepted and introduced command line params
 
-USAGE:
-
 Usage: aenc [params] inputfiles
    where possible params are:
    -b num     Bitrate in KBit/sec (default: 224 KBit/s)
