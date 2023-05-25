@@ -26,9 +26,6 @@ AC_SUBST(LT_REVISION)
 AC_SUBST(LT_AGE)
 AC_SUBST(LT_STATIC)
 
-dnl **********************************************************************
-dnl Options
-
 AC_ARG_ENABLE(compile-warnings,     
               AC_HELP_STRING([--enable-compile-warnings],
                              [Turn on compiler warnings.]))
@@ -69,7 +66,6 @@ AC_GNU_SOURCE
 dnl Initialize libtool
 AC_PROG_LIBTOOL
 
-dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
 # automake 1.9 could use AM_PROG_STDC but 1.10 became picky and needs CC_C_0
@@ -94,8 +90,6 @@ fi
 
 AC_CHECK_HEADERS([stdint.h inttypes.h sys/types.h getopt.h malloc.h sys/soundcard.h])
 
-#maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
-#maddog:  (How does this interact with cpml stuff below???????)
 AC_CHECK_LIB([m],[sin])
 AC_CHECK_FUNCS([posix_memalign memalign fmax fmin lround])
 
