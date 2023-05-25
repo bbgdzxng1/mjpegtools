@@ -3216,7 +3216,6 @@ LT_AGE=$MJPEG_MICRO_VERSION
 
 
 
-
 # Check whether --enable-compile-warnings was given.
 if test "${enable_compile_warnings+set}" = set; then :
   enableval=$enable_compile_warnings;
@@ -17573,8 +17572,6 @@ fi
 done
 
 
-#maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
-#maddog:  (How does this interact with cpml stuff below???????)
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sin in -lm" >&5
 $as_echo_n "checking for sin in -lm... " >&6; }
 if ${ac_cv_lib_m_sin+:} false; then :
