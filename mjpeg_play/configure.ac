@@ -157,7 +157,7 @@ CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
-oldLIBS="$LIBS"
+oldLIBS="$LIBS -L/usr/local/lib"
 LIBS="$LIBS $PTHREAD_LIBS"
 AC_CHECK_FUNC(pthread_attr_getstacksize,
               [AC_DEFINE(HAVE_PTHREADSTACKSIZE, 1,
@@ -166,7 +166,7 @@ LIBS="$oldLIBS"
 
 AC_CHECK_LIB(jpeg, jpeg_start_compress,
 	    [ JPEG_LIBS="-ljpeg"
-	      JPEG_CFLAGS=""
+	      JPEG_CFLAGS="-I/usr/local/include"
 	    have_libjpeg=true ],,)
 
 if test x$have_libjpeg != "xtrue"; then
@@ -474,20 +474,7 @@ if test "x$cflags_set" != "xyes" ; then
   cflags_set=yes
 fi
 
-AC_ARG_ENABLE(assert,
-              AC_HELP_STRING([--disable-assert],
-                             [Disable assertions (compile with NDEBUG).]),
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-assert)                ;; esac ],
- [ enable_assert=yes ])
-
-if test x"$enable_assert"                 = x"no"; then NDEBUG=1;                fi
-
 AC_DEFINE(MJPEGTOOLS,1, [Building mjpegtools])
-
-case x"$NDEBUG"                in x"1") 
-	AC_DEFINE(NDEBUG,1, [Optimised no DEBUG build, assertions disabled])       
-	;; 
-esac
 
 dnl **********************************************************************
 dnl Output a Makefile or two and the lib/header descriptor script

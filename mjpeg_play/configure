@@ -848,7 +848,6 @@ enable_libtool_lock
 enable_largefile
 with_v4l
 with_x
-enable_assert
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1525,7 +1524,6 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --disable-largefile     omit support for large files
-  --disable-assert        Disable assertions (compile with NDEBUG).
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -18130,7 +18128,7 @@ CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
 
-oldLIBS="$LIBS"
+oldLIBS="$LIBS -L/usr/local/lib"
 LIBS="$LIBS $PTHREAD_LIBS"
 ac_fn_c_check_func "$LINENO" "pthread_attr_getstacksize" "ac_cv_func_pthread_attr_getstacksize"
 if test "x$ac_cv_func_pthread_attr_getstacksize" = xyes; then :
@@ -18179,7 +18177,7 @@ fi
 $as_echo "$ac_cv_lib_jpeg_jpeg_start_compress" >&6; }
 if test "x$ac_cv_lib_jpeg_jpeg_start_compress" = xyes; then :
    JPEG_LIBS="-ljpeg"
-	      JPEG_CFLAGS=""
+	      JPEG_CFLAGS="-I/usr/local/include"
 	    have_libjpeg=true
 fi
 
@@ -19781,26 +19779,9 @@ if test "x$cflags_set" != "xyes" ; then
   cflags_set=yes
 fi
 
-# Check whether --enable-assert was given.
-if test "${enable_assert+set}" = set; then :
-  enableval=$enable_assert;  case "$enableval" in yes|no) : ;; *) as_fn_error $? "bad value for --enable-assert" "$LINENO" 5                ;; esac
-else
-   enable_assert=yes
-fi
-
-
-if test x"$enable_assert"                 = x"no"; then NDEBUG=1;                fi
-
 
 $as_echo "#define MJPEGTOOLS 1" >>confdefs.h
 
-
-case x"$NDEBUG"                in x"1")
-
-$as_echo "#define NDEBUG 1" >>confdefs.h
-
-	;;
-esac
 
 ac_config_files="$ac_config_files Makefile docs/Makefile lavtools/Makefile yuvcorrect/Makefile yuvdenoise/Makefile yuvdeinterlace/Makefile yuvscaler/Makefile y4munsharp/Makefile y4mutils/Makefile yuvfilters/Makefile mpeg2enc/Makefile aenc/Makefile mplex/Makefile scripts/Makefile utils/Makefile utils/altivec/Makefile utils/mmxsse/Makefile y4mdenoise/Makefile y4mscaler/Makefile mjpegtools.pc mjpegtools.spec"
 

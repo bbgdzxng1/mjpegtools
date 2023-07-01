@@ -61,13 +61,11 @@ public:
         int e;
 
         e = pthread_mutex_lock( &atomic);
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "1 pthread_mutex_lock=%d\n", e);
             abort();
         }
-#endif
         if( fullness == size )
         {
             ++producers_waiting;
@@ -84,13 +82,11 @@ public:
         write = (write + 1) % size;
         pthread_cond_signal( &addition );
         e  = pthread_mutex_unlock( &atomic );
-#ifndef NDEBUG
         if (e != 0)
         {
             fprintf(stderr, "1 pthread_mutex_unlock=%d\n", e);
             abort();
         }
-#endif
     }
 
     void Get( T &out )
@@ -98,13 +94,11 @@ public:
         int e;
 
         e = pthread_mutex_lock( &atomic);
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "2 pthread_mutex_lock=%d\n", e);
             abort();
         }
-#endif
         if( fullness == 0 )
         {
             ++consumers_waiting;
@@ -120,39 +114,33 @@ public:
         read = (read + 1) % size;
         pthread_cond_signal( &removal );
         e  = pthread_mutex_unlock( &atomic );
-#ifndef NDEBUG
         if (e != 0)
         {
             fprintf(stderr, "2 pthread_mutex_unlock=%d\n", e);
             abort();
         }
-#endif
     }
 
     void WaitForNewConsumers()
     {
         int e;
         e = pthread_mutex_lock( &atomic);
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "5 pthread_mutex_lock=%d\n", e);
             abort();
         }
-#endif
         unsigned int wait_for = consumers_waiting+1;
         while( fullness > 0 || consumers_waiting < wait_for )
         {
             pthread_cond_wait( &waiting, &atomic);
         }
         e = pthread_mutex_unlock( &atomic );
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "5 pthread_mutex_unlock=%d\n", e);
             abort();
         }
-#endif
     }
 
     void WaitUntilConsumersWaitingAtLeast( unsigned int wait_for )
@@ -160,25 +148,21 @@ public:
         int e;
 
         e = pthread_mutex_lock( &atomic);
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "3 pthread_mutex_lock=%d\n", e);
             abort();
         }
-#endif
         while( fullness > 0 || consumers_waiting < wait_for )
         {
             pthread_cond_wait( &waiting, &atomic);
         }
         e  = pthread_mutex_unlock( &atomic );
-#ifndef NDEBUG
         if (e != 0)
         {
             fprintf(stderr, "3 pthread_mutex_unlock=%d\n", e);
             abort();
         }
-#endif
     }
 
     void WaitUntilProducersWaitingAtLeast( unsigned int wait_for )
@@ -186,25 +170,21 @@ public:
         int e;
 
         e = pthread_mutex_lock( &atomic);
-#ifndef NDEBUG
         if ( e != 0)
         {
             fprintf(stderr, "4 pthread_mutex_lock=%d\n", e);
             abort();
         }
-#endif
         while( fullness < size || producers_waiting < wait_for )
         {
             pthread_cond_wait( &waiting, &atomic);
         }
         e  = pthread_mutex_unlock( &atomic );
-#ifndef NDEBUG
         if (e != 0)
         {
             fprintf(stderr, "4 pthread_mutex_unlock=%d\n", e);
             abort();
         }
-#endif
     }
 private:
     pthread_cond_t addition;
