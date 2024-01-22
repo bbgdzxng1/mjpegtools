@@ -46,7 +46,7 @@ LpcmParams *LpcmParams::Checked(unsigned int samples,
 								unsigned int chans, 
 								unsigned int bits )
 {
-    if( samples != 48000 && samples != 96000 )
+    if( samples != 48000 && samples != 96000  && samples != 44100 && samples != 32000 )
         return 0;
     if( chans < 1 || chans > 7 )
         return 0;

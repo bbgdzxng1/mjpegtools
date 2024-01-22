@@ -306,7 +306,15 @@ completion:
     default : bps_code = 3; break;
     }
     dst[4] = starting_frame_index;
-    unsigned int bsf_code = (samples_per_second == 48000) ? 0 : 1;
+    unsigned int bsf_code;
+    switch(samples_per_second)
+    {
+    case 48000: bsf_code = 0; break;
+    case 96000: bsf_code = 1; break;
+    case 44100: bsf_code = 2; break;
+    case 32000: bsf_code = 3; break;
+    }
+    //unsigned int bsf_code = (samples_per_second == 48000) ? 0 : 1;
     unsigned int channels_code = channels - 1;
     dst[5] = (bps_code << 6) | (bsf_code << 4) | channels_code;
     dst[6] = dynamic_range_code;
