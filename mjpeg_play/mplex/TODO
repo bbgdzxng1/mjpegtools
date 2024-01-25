@@ -36,13 +36,3 @@ muxed out frames...
 
 - Tidy code so Elementary streams handle their mux parameter initialisation
 	from cmd-line parameters *not* the output stream.
-
-
-Eventually:
-
-- Multi-channel SVCD (MPEG audio extension) support. N.b. multi-track
-  two-channel audio already works.
-
-- DVD muxing and generation of info to help authoring tools produce .IFO's etc.
-
-
