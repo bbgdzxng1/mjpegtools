@@ -673,11 +673,11 @@ HAVE_LIBQUICKTIME_FALSE
 HAVE_LIBQUICKTIME_TRUE
 LIBQUICKTIME_LIBS
 LIBQUICKTIME_CFLAGS
+LIBJPEG_LIBS
+LIBJPEG_CFLAGS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
 PKG_CONFIG
-JPEG_CFLAGS
-JPEG_LIBS
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
@@ -868,6 +868,8 @@ CCASFLAGS
 PKG_CONFIG
 PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
+LIBJPEG_CFLAGS
+LIBJPEG_LIBS
 LIBQUICKTIME_CFLAGS
 LIBQUICKTIME_LIBS
 LIBPNG_CFLAGS
@@ -1568,6 +1570,10 @@ Some influential environment variables:
               directories to add to pkg-config's search path
   PKG_CONFIG_LIBDIR
               path overriding pkg-config's built-in search path
+  LIBJPEG_CFLAGS
+              C compiler flags for LIBJPEG, overriding pkg-config
+  LIBJPEG_LIBS
+              linker flags for LIBJPEG, overriding pkg-config
   LIBQUICKTIME_CFLAGS
               C compiler flags for LIBQUICKTIME, overriding pkg-config
   LIBQUICKTIME_LIBS
@@ -18139,56 +18145,6 @@ fi
 
 LIBS="$oldLIBS"
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for jpeg_start_compress in -ljpeg" >&5
-$as_echo_n "checking for jpeg_start_compress in -ljpeg... " >&6; }
-if ${ac_cv_lib_jpeg_jpeg_start_compress+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-ljpeg  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char jpeg_start_compress ();
-int
-main ()
-{
-return jpeg_start_compress ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_jpeg_jpeg_start_compress=yes
-else
-  ac_cv_lib_jpeg_jpeg_start_compress=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_jpeg_jpeg_start_compress" >&5
-$as_echo "$ac_cv_lib_jpeg_jpeg_start_compress" >&6; }
-if test "x$ac_cv_lib_jpeg_jpeg_start_compress" = xyes; then :
-   JPEG_LIBS="-ljpeg"
-	      JPEG_CFLAGS="-I/usr/local/include"
-	    have_libjpeg=true
-fi
-
-
-if test x$have_libjpeg != "xtrue"; then
-   as_fn_error $? "JPEG 6b library missing - Go to http://www.ijg.org/" "$LINENO" 5
-fi
-
-
-
-
 
 
 
@@ -18309,6 +18265,85 @@ $as_echo "no" >&6; }
 		PKG_CONFIG=""
 	fi
 fi
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libjpeg" >&5
+$as_echo_n "checking for libjpeg... " >&6; }
+
+if test -n "$LIBJPEG_CFLAGS"; then
+    pkg_cv_LIBJPEG_CFLAGS="$LIBJPEG_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libjpeg\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libjpeg") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBJPEG_CFLAGS=`$PKG_CONFIG --cflags "libjpeg" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$LIBJPEG_LIBS"; then
+    pkg_cv_LIBJPEG_LIBS="$LIBJPEG_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libjpeg\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libjpeg") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBJPEG_LIBS=`$PKG_CONFIG --libs "libjpeg" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        LIBJPEG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libjpeg" 2>&1`
+        else
+	        LIBJPEG_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libjpeg" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$LIBJPEG_PKG_ERRORS" >&5
+
+	have_libjpeg=false
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	have_libjpeg=false
+else
+	LIBJPEG_CFLAGS=$pkg_cv_LIBJPEG_CFLAGS
+	LIBJPEG_LIBS=$pkg_cv_LIBJPEG_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	have_libjpeg=true
+fi
+
+if test $have_libjpeg = "false"; then
+   as_fn_error $? "JPEG library missing, download 9c or later from http://www.ijg.org/" "$LINENO" 5
+fi
+
+
+
 
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then

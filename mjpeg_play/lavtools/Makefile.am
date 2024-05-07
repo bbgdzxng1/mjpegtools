@@ -39,14 +39,14 @@ LAV_ALL_LIB_OPTS = \
 	-release $(LT_RELEASE) $(EXTRA_LDFLAGS)
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
-liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS)
+liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(LIBJPEG_CFLAGS)
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavfile_la_LIBADD = $(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS) $(LIBMJPEGUTILS)
+liblavfile_la_LIBADD = $(LIBQUICKTIME_LIBS) $(LIBJPEG_LIBS) $(LIBDV_LIBS) $(LIBMJPEGUTILS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
-liblavjpeg_la_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
+liblavjpeg_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBJPEG_CFLAGS)
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavjpeg_la_LIBADD = $(JPEG_LIBS) $(LIBMJPEGUTILS)
+liblavjpeg_la_LIBADD = $(LIBJPEG_LIBS) $(LIBMJPEGUTILS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
 liblavrec_la_CPPFLAGS = $(AM_CPPFLAGS) # so automake doesn't complain about audiolib & frequencies
@@ -147,8 +147,8 @@ lav2yuv_LDADD = $(LIBMJPEGUTILS) \
 		liblavfile.la liblavjpeg.la
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
-jpeg2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
-jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(JPEG_LIBS)
+jpeg2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBJPEG_CFLAGS)
+jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(LIBJPEG_LIBS)
 
 png2yuv_SOURCES = png2yuv.c colorspace.c subsample.c
 png2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBPNG_CFLAGS)

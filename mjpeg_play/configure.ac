@@ -164,19 +164,16 @@ AC_CHECK_FUNC(pthread_attr_getstacksize,
                          [pthread stack sizes accesible])])
 LIBS="$oldLIBS"
 
-AC_CHECK_LIB(jpeg, jpeg_start_compress,
-	    [ JPEG_LIBS="-ljpeg"
-	      JPEG_CFLAGS="-I/usr/local/include"
-	    have_libjpeg=true ],,)
+PKG_PROG_PKG_CONFIG
 
-if test x$have_libjpeg != "xtrue"; then
-   AC_MSG_ERROR([JPEG 6b library missing - Go to http://www.ijg.org/])
+PKG_CHECK_MODULES(LIBJPEG, [libjpeg], [have_libjpeg=true], [have_libjpeg=false])
+
+if test $have_libjpeg = "false"; then
+   AC_MSG_ERROR([JPEG library missing, download 9c or later from http://www.ijg.org/])
 fi
 
-AC_SUBST(JPEG_LIBS)
-AC_SUBST(JPEG_CFLAGS)
-
-PKG_PROG_PKG_CONFIG
+AC_SUBST(LIBJPEG_LIBS)
+AC_SUBST(LIBJPEG_CFLAGS)
 
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
