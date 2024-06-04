@@ -29,9 +29,6 @@ AC_SUBST(LT_STATIC)
 AC_ARG_ENABLE(compile-warnings,     
               AC_HELP_STRING([--enable-compile-warnings],
                              [Turn on compiler warnings.]))
-AC_ARG_ENABLE(warnings_as_errors,   
-              AC_HELP_STRING([--enable-warnings_as_errors],
-                             [Compiler warnings are errors.]))
 AC_ARG_ENABLE(static-build,     
               AC_HELP_STRING([--enable-static-build],
                              [Force static linkage instead of shared libraries (useful for profiling etc).]))

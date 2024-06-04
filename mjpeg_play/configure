@@ -826,7 +826,6 @@ enable_option_checking
 enable_silent_rules
 enable_maintainer_mode
 enable_compile_warnings
-enable_warnings_as_errors
 enable_static_build
 enable_simd_accel
 with_extra_cflags
@@ -1510,8 +1509,6 @@ Optional Features:
                           sometimes confusing) to the casual installer
   --enable-compile-warnings
                           Turn on compiler warnings.
-  --enable-warnings_as_errors
-                          Compiler warnings are errors.
   --enable-static-build   Force static linkage instead of shared libraries
                           (useful for profiling etc).
   --enable-simd-accel     use SIMD multimedia instructions (MMX, AltiVec,
@@ -3223,11 +3220,6 @@ LT_AGE=$MJPEG_MICRO_VERSION
 # Check whether --enable-compile-warnings was given.
 if test "${enable_compile_warnings+set}" = set; then :
   enableval=$enable_compile_warnings;
-fi
-
-# Check whether --enable-warnings_as_errors was given.
-if test "${enable_warnings_as_errors+set}" = set; then :
-  enableval=$enable_warnings_as_errors;
 fi
 
 # Check whether --enable-static-build was given.
