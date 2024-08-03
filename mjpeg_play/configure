@@ -19275,7 +19275,7 @@ if ${mjt_cv_extern___progname+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <stdio.h>
 int
 main ()
 {

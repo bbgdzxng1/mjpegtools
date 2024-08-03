@@ -41,7 +41,7 @@
 #include "quantize_precomp.h"
 #include "quantize_ref.h"
 					
-int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat );
+int32_t quant_weight_coeff_sum_mmx(int16_t *src, int16_t *i_quant_mat);
 
 void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
 void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);

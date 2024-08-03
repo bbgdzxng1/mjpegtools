@@ -34,7 +34,7 @@
 #include <libdv/dv.h>
 #endif
 
-extern int AVI_errno;
+extern long int AVI_errno;
 
 static char video_format=' ';
 static int  internal_error=0;
