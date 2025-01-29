@@ -102,6 +102,9 @@
 /* Compiling for x86_64 architecture CPU */
 #undef HAVE_X86CPU
 
+/* Is __progname defined by system? */
+#undef HAVE___PROGNAME
+
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
 

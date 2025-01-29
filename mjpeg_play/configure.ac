@@ -210,10 +210,21 @@ dnl    defines X_DISPLAY_MISSING if no X)
 dnl *********************************************************************
 AC_PATH_XTRA
 
-dnl ********************************************************************
+dnl Check to see if __progname is provided by the system
+AC_CACHE_CHECK([for __progname],
+               [mjt_cv_extern___progname],
+               [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>]],
+                                                [[extern char *__progname;
+                                                  puts(__progname);]])],
+                               [mjt_cv_extern___progname=yes],
+			       [mjt_cv_extern___progname=no])])
+if test x$mjt_cv_extern___progname = xyes ; then
+  AC_DEFINE(HAVE___PROGNAME, 1, [Is __progname defined by system?])
+fi
+
 dnl Check for Gtk+/glib (for glav).  2.4.0 or greater required
 dnl   (defines GTK_CFLAGS and GTK_LIBS)
-dnl ********************************************************************
+
 have_gtk=false
 if test x$with_gtk != xno ; then
 	PKG_CHECK_MODULES(GTK, [gtk+-2.0 >= 2.4.0],

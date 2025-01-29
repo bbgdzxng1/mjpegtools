@@ -31,6 +31,10 @@
 
 #include "mjpeg_logging.h"
 
+#ifdef HAVE___PROGNAME
+extern const char *__progname;
+#endif
+
 /*
  * Put these here and NOT in the exported header file mjpeg_logging.h
  * 
@@ -75,8 +79,8 @@ default_mjpeg_log_handler(log_level_t level, const char message[])
   if (default_handler_id != NULL) {
     ids = default_handler_id;
   } else {
-#ifdef HAVE_GETPROGNAME
-    ids = getprogname();
+#ifdef HAVE___PROGNAME
+    ids = __progname;
 #else
     ids = "???";
 #endif
