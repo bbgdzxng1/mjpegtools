@@ -88,7 +88,7 @@ fi
 AC_CHECK_HEADERS([stdint.h inttypes.h sys/types.h getopt.h malloc.h sys/soundcard.h])
 
 AC_CHECK_LIB([m],[sin])
-AC_CHECK_FUNCS([posix_memalign memalign fmax fmin lround])
+AC_CHECK_FUNCS([posix_memalign memalign fmax fmin lround getprogname])
 
 AC_CHECK_FUNC(getopt_long,
               [AC_DEFINE(HAVE_GETOPT_LONG, 1, [long getopt support])],
@@ -211,22 +211,7 @@ dnl *********************************************************************
 AC_PATH_XTRA
 
 dnl ********************************************************************
-dnl Check to see if __progname is provided by the system
-dnl ********************************************************************
-AC_CACHE_CHECK([for __progname],
-               [mjt_cv_extern___progname],
-               [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>]],
-                                                [[extern char *__progname;
-                                                  puts(__progname);]])],
-                               [mjt_cv_extern___progname=yes],
-			       [mjt_cv_extern___progname=no])])
-if test x$mjt_cv_extern___progname = xyes ; then
-  AC_DEFINE(HAVE___PROGNAME, 1, [Is __progname defined by system?])
-fi
-
-dnl ********************************************************************
-dnl Check for Gtk+/glib (for glav).  2.4.0 or greater required (should
-dnl not be a problem on recent distributions).
+dnl Check for Gtk+/glib (for glav).  2.4.0 or greater required
 dnl   (defines GTK_CFLAGS and GTK_LIBS)
 dnl ********************************************************************
 have_gtk=false

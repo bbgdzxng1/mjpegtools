@@ -24,6 +24,9 @@
 /* long getopt support */
 #undef HAVE_GETOPT_LONG
 
+/* Define to 1 if you have the `getprogname' function. */
+#undef HAVE_GETPROGNAME
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -98,9 +101,6 @@
 
 /* Compiling for x86_64 architecture CPU */
 #undef HAVE_X86CPU
-
-/* Is __progname defined by system? */
-#undef HAVE___PROGNAME
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
